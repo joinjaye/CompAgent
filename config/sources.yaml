@@ -217,56 +217,94 @@ sources:
         update_time: null
         category: null
   lbank:
+    # ============================================================
+    # 侦察结论（Phase 1，2026-07-13）：✅ 通，所有 3 个 locale。
+    # www.lbank.com（canonical 域名，Next.js App Router SSR，Cloudflare 前置但
+    # 不拦截 curl）。列表页是服务端渲染的 HTML，正文数据以转义 JSON 形式内嵌在
+    # RSC streaming script（`self.__next_f.push(...)`）里，不是独立 JSON API。
+    # 列表页第 1 页（10 条）可稳定拿到，content 字段已内嵌完整正文；但
+    # ?pageNo=2 / ?page=2 均被忽略，翻页是客户端交互驱动，未逆向出真实调用
+    # （按时间盒子要求，未继续深挖）。detail 页（/support/articles/{code}）
+    # 是另一个 SSR 页面，额外提供 createTime/updateTime（unix ms）两个字段，
+    # 这两个字段列表页没有（列表页只有 contentShowTime，与 detail updateTime
+    # 不完全相同，抽样发现最多相差 ~22 分钟，不能替代）。
+    # 抽样 8 条 detail 页 createTime vs updateTime：7/8 存在真实差异（另 1 条
+    # 相等）——判定 strategy: watermark，但需基于 detail 页的 updateTime，
+    # 不能只用列表页字段。
+    # 10 次连续请求 500ms 间隔，全部 200，无限流/Cloudflare 拦截。
+    # robots.txt 允许 /support/announcement 与 /support/articles/*，只禁止
+    # /my/*、/wallet/* 和追踪 query 参数。
+    # 加分发现：同一条公告的 noticeId/code 在 EN/VN/ID 三个 locale 完全一致，
+    # 可直接作为跨语言 group_id，不需要模糊匹配。
+    # 未验证/待办：翻页 API 未逆向（只能稳定拿到最新 10 条，需要后续 Phase
+    # 用 headless browser 或继续找客户端分页请求）；列表页原始 payload 未
+    # 观察到 per-item 的 category 字段（只有页面级 tabs 列表），按 tab 筛选后
+    # 是否带 category 字段未验证。
+    # ============================================================
     EN:
-      endpoint: null
-      method: null
-      headers: {}
-      locale_param: null
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
-      has_update_time: null
-      strategy: null       # watermark / full_scan
+      endpoint: "https://www.lbank.com/support/announcement"
+      method: GET
+      headers: {}   # 普通浏览器 UA 即可，plain curl 可用
+      locale_param: "path"   # /en-US/support/announcement 会 301 到 canonical 无前缀路径；VN/ID 需要前缀，见下
+      pagination: {type: none, note: "仅第 1 页（10 条）可靠可得，?pageNo=/?page= 均被忽略，翻页为客户端交互，未逆向"}
+      rate_limit_ms: 500
+      detail_mode: html   # SSR HTML，正文数据是内嵌在 RSC script 里的转义 JSON，不是独立 JSON API
+      has_update_time: true   # 仅 detail 页有可靠 updateTime；列表页 contentShowTime 不可靠替代
+      strategy: watermark   # 基于 detail 页 updateTime，抽样 8 条 7 条有真实差异
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
-        category: null
+        article_id: noticeId   # 另有 code（长数字字符串），用于 detail 页 URL slug，二者等价
+        title: title
+        content: content   # 列表页已含完整正文（HTML 实体转义的纯文本）
+        post_time: contentShowTime   # 列表页字段，unix ms；detail 页对应 createTime，也是 unix ms
+        update_time: updateTime   # 仅存在于 detail 页（/support/articles/{code}），需二次请求
+        category: null   # 列表页原始 payload 未观察到 per-item category，只有页面级 tabs；待验证
+      # detail 页 endpoint 模式："https://www.lbank.com/support/articles/{code}"
+      # update_time 可靠性抽样（8 条 detail 页，createTime vs updateTime，UTC）：
+      #   2076511040740261888  create 2026-03-02 06:05:15  update 2026-07-13 03:59:09  差异
+      #   2076504116124712960  create 2026-03-14 08:56:13  update 2026-07-13 00:29:58  差异
+      #   2075928423246594048  create 2026-03-02 06:05:15  update 2026-03-02 08:47:03  差异
+      #   2075923001810878464  create 2026-03-02 06:05:15  update 2026-03-19 20:22:55  差异
+      #   2075910704094773248  create 2026-03-02 06:05:15  update 2026-07-11 20:41:05  差异
+      #   2075904588547883008  create 2026-03-09 13:38:59  update 2026-03-09 15:24:19  差异
+      #   2075888315717910528  create 2026-03-02 06:05:15  update 2026-06-30 03:12:49  差异
+      #   2075873249236877312  create 2026-03-02 06:05:15  update 2026-04-20 12:03:31  差异
+      #   2075852955000504320  create 2026-03-19 07:59:23  update 2026-03-19 07:59:23  相等（1/9）
+      # 分类观察值（页面级 tabs）：LBank VIP / New Listings / Event Announcements /
+      #   System Upgrades & Maintenance / Platform Updates / Delisting Information / Fiat
+      # 时间格式：unix 毫秒，UTC
     VN:
-      endpoint: null
-      method: null
+      endpoint: "https://www.lbank.com/vi-VN/support/announcement"
+      method: GET
       headers: {}
-      locale_param: null
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
-      has_update_time: null
-      strategy: null       # watermark / full_scan
+      locale_param: "path"   # /vi-VN/ 前缀，langCode: "vi-VN" 确认
+      pagination: {type: none, note: "同 EN，仅第 1 页可靠"}
+      rate_limit_ms: 500
+      detail_mode: html
+      has_update_time: true
+      strategy: watermark   # 机制与 EN 相同，noticeId/code 跨 locale 一致
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
+        article_id: noticeId
+        title: title
+        content: content
+        post_time: contentShowTime
+        update_time: updateTime
         category: null
     ID:
-      endpoint: null
-      method: null
+      endpoint: "https://www.lbank.com/id/support/announcement"
+      method: GET
       headers: {}
-      locale_param: null
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
-      has_update_time: null
-      strategy: null       # watermark / full_scan
+      locale_param: "path"   # /id/ 前缀，langCode: "id" 确认
+      pagination: {type: none, note: "同 EN，仅第 1 页可靠"}
+      rate_limit_ms: 500
+      detail_mode: html
+      has_update_time: true
+      strategy: watermark
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
+        article_id: noticeId
+        title: title
+        content: content
+        post_time: contentShowTime
+        update_time: updateTime
         category: null
   zoomex:  # 我方基线，非竞品
     # ============================================================
