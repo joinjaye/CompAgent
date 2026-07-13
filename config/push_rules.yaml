@@ -1,0 +1,74 @@
+# ============================================================
+# 推送规则配置模板
+# Phase 6 的规则引擎从本文件加载判断逻辑，新增/调整规则只改本文件，不改代码。
+#
+# 判断顺序：先看 exclude_conditions，命中任一条 → 不推送；
+#          都不命中时再看 push_conditions，命中任一条（组内条件需全部满足）→ 推送；
+#          push_conditions 都不命中 → 不推送。
+#
+# 条件字段（field）取值来自 announcements / insights 表的列，或以下派生字段：
+#   diff_touches_rules_or_reward  由 Phase 4 分析结果派生的布尔值，标记本次 changed
+#                                  是否涉及活动规则或奖励变化
+#
+# op 支持：eq / ne / in / not_in
+# ============================================================
+
+exclude_conditions:   # 优先于 push_conditions，命中任一条则不推送
+  - id: already_pushed
+    description: 对该 locale 群已推送过，避免重复推送
+    field: push_status
+    op: eq
+    value: pushed
+
+  - id: zmx_already_has_it
+    description: ZMX 已有对应功能/活动，无情报价值
+    field: diff_type
+    op: eq
+    value: ZMX已有
+
+  - id: noise_category
+    description: 维护、风控等噪音类别
+    field: category
+    op: eq
+    value: other
+
+push_conditions:      # 满足任一组（组内条件需全部满足）即推送
+  - id: new_campaign
+    description: 新增活动
+    all:
+      - field: status
+        op: eq
+        value: new
+      - field: category
+        op: eq
+        value: campaign
+
+  - id: changed_rules_or_reward
+    description: 活动规则或奖励发生变化
+    all:
+      - field: status
+        op: eq
+        value: changed
+      - field: diff_touches_rules_or_reward
+        op: eq
+        value: true
+
+  - id: new_playbook_high_priority
+    description: 竞品新玩法，ZMX 缺失且优先级高
+    all:
+      - field: status
+        op: eq
+        value: new
+      - field: diff_type
+        op: eq
+        value: ZMX缺失
+      - field: priority
+        op: eq
+        value: 高
+
+  - id: region_exclusive
+    description: 地区独占公告，反映竞品的区域重点
+    all:
+      - field: is_region_exclusive
+        op: eq
+        value: true

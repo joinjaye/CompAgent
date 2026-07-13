@@ -1,0 +1,327 @@
+# ============================================================
+# 数据源配置模板
+# 由 Phase 1（数据源侦察）填充。本文件中的值必须来自实测的 curl 请求结果，
+# 严禁凭记忆或猜测填写 API 地址 / 字段映射。
+#
+# 字段说明：
+#   endpoint        公告列表接口 URL。若该源没有 JSON API，只有网页，则留空，
+#                   detail_mode 记为 html，不要伪造 API。
+#   method          GET / POST
+#   headers         必要的请求头（如 User-Agent、Accept-Language）。
+#                   敏感凭证（如需要）不要写在这里，走 .env。
+#   locale_param    locale 如何传递给接口：
+#                     "path"          —— 拼在 URL path 里（如 /en/announcements）
+#                     "query:<key>"   —— query 参数，如 "query:lang"
+#                     "header:<key>"  —— 请求头，如 "header:Accept-Language"
+#   pagination      分页机制，如：
+#                     {type: offset, param: page, page_size: 20}
+#                     {type: cursor, param: cursor}
+#   rate_limit_ms   请求间隔毫秒数（合规限速，Phase 1 通过连续请求观察后确定）
+#   detail_mode     inline         —— 列表接口已含正文，无需再请求详情
+#                   separate_api   —— 需另外请求详情接口取正文
+#                   html           —— 仅有网页，无 JSON API
+#   has_update_time 源端是否提供可靠的 update_time / updated_at 等字段。
+#                   Phase 1 需抽样 5-10 条核对：若 update_time 与 post_time 全部相同，
+#                   视为不可靠，标 false 并令 strategy=full_scan；
+#                   若存在差异，标 true，strategy=watermark。
+#   strategy        watermark / full_scan，与 has_update_time 的判断一致，Phase 1 填。
+#   field_mapping   响应字段 -> 本地字段名的映射（article_id / title / content /
+#                   post_time / update_time / category 分别对应响应里的哪个 key）。
+# ============================================================
+
+sources:
+  bitunix:
+    EN:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+    FR:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+    ID:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+  weex:
+    EN:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+    FR:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+  bingx:
+    EN:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+    VN:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+  phemex:
+    EN:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+    FR:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+  lbank:
+    EN:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+    VN:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+    ID:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+  zoomex:  # 我方基线，非竞品
+    EN:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+    FR:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+    EN-Asia:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+    VN:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null
+    ID:
+      endpoint: null
+      method: null
+      headers: {}
+      locale_param: null
+      pagination: {}
+      rate_limit_ms: null
+      detail_mode: null   # inline / separate_api / html
+      has_update_time: null
+      strategy: null       # watermark / full_scan
+      field_mapping:
+        article_id: null
+        title: null
+        content: null
+        post_time: null
+        update_time: null
+        category: null

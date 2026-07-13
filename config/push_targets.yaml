@@ -1,0 +1,25 @@
+# ============================================================
+# 推送目标配置模板
+# locale -> 飞书群 webhook 映射。每个 locale 对应一个独立的群，
+# 各群独立推送，不做跨语言去重（详见 CLAUDE.md 核心约束 4）。
+#
+# webhook 值使用 ${VAR} 引用环境变量，实际地址写在 .env 里，
+# 不要把真实 webhook 直接硬编码在本文件中。
+# ============================================================
+
+targets:
+  EN:
+    webhook: ${WEBHOOK_EN}
+    name: "竞品情报-EN"
+  FR:
+    webhook: ${WEBHOOK_FR}
+    name: "竞品情报-FR"
+  VN:
+    webhook: ${WEBHOOK_VN}
+    name: "竞品情报-VN"
+  ID:
+    webhook: ${WEBHOOK_ID}
+    name: "竞品情报-ID"
+  EN-Asia:
+    webhook: ${WEBHOOK_EN_ASIA}
+    name: "竞品情报-EN-Asia"
