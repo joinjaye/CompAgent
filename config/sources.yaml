@@ -147,75 +147,123 @@ sources:
         update_time: updated_at
         category: section_id
   bingx:
+    # ============================================================
+    # 侦察结论（Phase 1，2026-07-13）：✅ 通，EN/VN。Nuxt 3 SSR（不是 SPA），
+    # 数据内嵌在 `<script id="__NUXT_DATA__">` 里（devalue 索引引用格式，需要
+    # 简单解析：整数值是同一数组内的索引引用）。列表页首屏只给最新 ~20 条
+    # （"Latest Announcements" 分区 total=190），?page=/?sectionId= 等 query
+    # 参数不改变 SSR 输出，翻页是客户端交互（未逆向，按时间盒子要求）。
+    # 完整历史用 sitemap 替代：en/sitemap-support.xml 有 7829 个 URL，含所有
+    # /support/articles/{articleId} 详情页；VN 版本可直接把 EN URL 的 /en/
+    # 换成 /vi/ 得到（VN 自己的 sitemap 只有 56 条，不完整，不能单独用）。
+    # article_id 跨 locale 一致，可直接做 group_id。
+    # createTime vs updateTime 抽样 20 条列表条目，全部逐字节相等，判定
+    # strategy: full_scan，用 content_hash 做变更检测。
+    # 10 次连续请求 500ms 间隔全部 200，无限流。robots.txt 除个别硬编码文章和
+    # 追踪 query 外未禁止 support 路径。
+    # ============================================================
     EN:
-      endpoint: null
-      method: null
+      endpoint: "https://bingx.com/en/support/notice-center"
+      method: GET
       headers: {}
-      locale_param: null
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
-      has_update_time: null
-      strategy: null       # watermark / full_scan
+      locale_param: "path"
+      pagination: {type: none, note: "首屏仅最新~20条，翻页为客户端交互未逆向；完整历史用 sitemap（en/sitemap-support.xml，7829 URL）枚举 /support/articles/{articleId} 详情页替代"}
+      rate_limit_ms: 500
+      detail_mode: separate_api   # 列表页只有 title，正文需另请求详情页；详情页本身也是 SSR HTML 内嵌 JSON，非 REST JSON API
+      has_update_time: true   # 字段存在，但抽样显示恒等于 post_time，不可靠
+      strategy: full_scan   # 抽样 20 条 createTime==updateTime 逐字节相等，watermark 不可靠
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
-        category: null
+        article_id: articleId   # 也叫 newArticleId，同值；跨 locale 一致，可做 group_id
+        title: title
+        content: body   # 仅详情页有，HTML 字符串
+        post_time: createTime   # ISO8601 字符串，带 +08:00 偏移
+        update_time: updateTime   # 抽样恒等于 createTime，不可靠，仅记录不作水位线
+        category: sectionId   # 需另查 sections[] 列表取人类可读名称
+      # update_time 可靠性抽样（20 条列表条目，全部相等，节选 3 条）：
+      #   16806751482255  create 2026-07-12T10:58:07.000+08:00  update 相同
+      #   16795550869391  create 2026-07-11T00:41:23.000+08:00  update 相同
+      #   16182985468559  create 2026-05-20T16:25:44.000+08:00  update 相同
+      # 分类观察值：Latest Announcements / Latest Promotions / Product Updates /
+      #   Asset Maintenance / System Maintenance / Spot Listing / Futures Listing /
+      #   Innovation Listing / Funding Rate / Delisting / Crypto Scout / EventX
+      # 时间格式：ISO8601 字符串，显式 +08:00 偏移（非 UTC）
+      # 详情页 endpoint 模式："https://bingx.com/en/support/articles/{articleId}"
     VN:
-      endpoint: null
-      method: null
+      endpoint: "https://bingx.com/vi/support/notice-center"
+      method: GET
       headers: {}
-      locale_param: null
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
-      has_update_time: null
-      strategy: null       # watermark / full_scan
+      locale_param: "path"   # canonical 前缀是 vi（vi-vn 也能用，302/别名到 vi）
+      pagination: {type: none, note: "同 EN；VN 自己的 sitemap 不完整（仅56条），需用 EN sitemap 的 articleId 把 URL /en/ 换成 /vi/ 来枚举"}
+      rate_limit_ms: 500
+      detail_mode: separate_api
+      has_update_time: true
+      strategy: full_scan   # 与 EN 底层数据一致，仅正文翻译不同
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
-        category: null
+        article_id: articleId
+        title: title
+        content: body
+        post_time: createTime
+        update_time: updateTime
+        category: sectionId
   phemex:
+    # ============================================================
+    # 侦察结论（Phase 1，2026-07-13）：✅ 通，EN/FR，且是本项目截至目前爬取
+    # 最友好的源。服务端渲染（非 SPA），列表页和详情页都内嵌
+    # `window.preloadedData = {...}`（JS 对象字面量，key 不带引号、字符串单
+    # 引号，不是严格 JSON，需要用宽松解析或简单字符串处理提取，不能直接
+    # json.loads）。列表页 query 参数（page/pageNum/p/offset/start）均不改变
+    # 输出，翻页是客户端行为；用专用 sitemap 替代：
+    # sitemap.xml -> sitemap_output/sitemap_Announcement.xml，EN 3467 条、
+    # FR 1816 条文章 URL，且每条 <url> 内含所有 locale 的 hreflang alternate
+    # link，一次性拿到跨语言 URL 映射。
+    # 3 个分类：News / Activities / Newsletter，各有独立 category id 和
+    # 独立 URL（/announcements/news|activities|newsletter）。
+    # createdAt/updatedAt 字段抽样 8 条，差异都在 0-28 秒内，判定为 CMS
+    # 发布流程噪音而非真实内容变更 -> strategy: full_scan + content_hash。
+    # 10 次连续请求 500ms 间隔全部 200，无限流/Cloudflare。
+    # ============================================================
     EN:
-      endpoint: null
-      method: null
+      endpoint: "https://phemex.com/announcements/news"   # 另有 /announcements/activities、/announcements/newsletter 两个分类
+      method: GET
       headers: {}
-      locale_param: null
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
-      has_update_time: null
-      strategy: null       # watermark / full_scan
+      locale_param: "path"
+      pagination: {type: none, note: "列表页 query 参数不生效，翻页为客户端行为；完整文章列表用 sitemap_output/sitemap_Announcement.xml（EN 3467 条 URL）替代"}
+      rate_limit_ms: 500
+      detail_mode: inline   # 详情页 window.preloadedData.pageData 已含完整正文，一次请求即可
+      has_update_time: true   # 字段存在，但抽样显示只是发布流程级别的秒级噪音，不可靠
+      strategy: full_scan   # 抽样 8 条 createdAt/updatedAt 仅相差 0-28 秒，非真实编辑，watermark 不可靠
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
-        category: null
+        article_id: id   # 每个 locale 有各自数值 id；i18n.<locale> 给出各语言版本的 id
+        title: title
+        content: content   # 详情页 preloadedData.pageData.content，HTML 正文
+        post_time: publishedTime   # 朴素字符串 'YYYY-MM-DD HH:MM:SS'，无显式时区，数值上与 UTC 的 createdAt 接近，按 UTC 处理；另有 i18n.createdAt 是标准 ISO8601 UTC
+        update_time: i18n.updatedAt   # ISO8601 UTC，抽样显示只是秒级发布噪音，不用于水位线
+        category: category.name   # 另有 categoryKey，如 "AnnouncementCategory432"
+      # update_time 可靠性抽样（8 条，createdAt vs updatedAt vs publishedTime，UTC）：
+      #   new-contract-listing-gnsusdt  created 2023-08-09T01:55:49.196Z  updated 2023-08-09T01:55:49.210Z（+14ms）
+      #   phemex-will-delist-4-trading-pairs-on-december-5-2025  created 2025-12-03T06:45:39.825Z  updated 2025-12-03T06:54:22.969Z（+8m43s，发布流程内)
+      #   dydx-network-upgrade-on-january-30-2026  created 2026-01-29T08:57:18.950Z  updated 2026-01-29T09:25:09.020Z（+28m，发布流程内）
+      #   其余 5 条差异均在 0-2 秒内
+      # 分类观察值：News（id 432）/ Activities（id 442）/ Newsletter（id 452）
+      # 时间格式：createdAt/updatedAt 为 ISO8601 UTC（Z 后缀）；publishedTime 为朴素 'YYYY-MM-DD HH:MM:SS'（按 UTC 处理）
+      # 详情页 endpoint 模式："https://phemex.com/announcements/{slug}"
     FR:
-      endpoint: null
-      method: null
+      endpoint: "https://phemex.com/fr/announcements/news"   # 另有 /fr/announcements/activities（id 448）、/fr/announcements/newsletter（id 458）
+      method: GET
       headers: {}
-      locale_param: null
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
-      has_update_time: null
-      strategy: null       # watermark / full_scan
+      locale_param: "path"
+      pagination: {type: none, note: "同 EN；完整列表用同一个 sitemap_Announcement.xml 里的 FR hreflang 链接（1816 条 URL）"}
+      rate_limit_ms: 500
+      detail_mode: inline
+      has_update_time: true
+      strategy: full_scan   # 与 EN 同一套底层数据和噪音模式
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
-        category: null
+        article_id: id   # 与 EN 同一篇文章的 id 不同（locale 各自独立数值 id），靠 i18n map 或 slug 关联
+        title: title
+        content: content
+        post_time: publishedTime
+        update_time: i18n.updatedAt
+        category: category.name
   lbank:
     # ============================================================
     # 侦察结论（Phase 1，2026-07-13）：✅ 通，所有 3 个 locale。
