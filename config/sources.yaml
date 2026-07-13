@@ -33,57 +33,90 @@
 
 sources:
   bitunix:
+    # ============================================================
+    # 侦察结论（Phase 1，2026-07-13）：✅ 通，EN/FR/ID。注意：真实公告中心不在
+    # www.bitunix.com 主站（那是 Cloudflare WAF 保护的 Nuxt SPA，其 CMS 后端
+    # platformgateway.bitunix.com 对所有路径返回 403 "Access restricted"，
+    # curl 无法绕过，判定该路径死路，不值得为此上 headless browser）。真实可
+    # 抓取的公告内容在 Bitunix 的 **Zendesk Help Center**：
+    # support.bitunix.com，Announcements 分类 id=13760946490649。
+    # 标准 Zendesk Help Center REST API，公开匿名可访问，/api/v2/ 路径没有
+    # Cloudflare 挑战（/hc/ 的 HTML 页面有挑战，但 API 没有）。
+    # 抽样 30 条 EN 文章（按 position 排序），29/30 updated_at != created_at，
+    # 且有真实的跨天/多天差异 -> strategy: watermark，用 updated_at 做水位线，
+    # 服务端原生支持 ?sort_by=updated_at&sort_order=desc 排序，适合轮询。
+    # 另有 edited_at 字段（仅内容正文编辑时间），多数抽样与 created_at 相等，
+    # 说明 updated_at 会被 metadata-only 变更（如分类/位置调整）触发，是超集
+    # 信号而非精确内容变更信号 —— 因此仍按项目设计用 content_hash 做二次校验。
+    # per_page 最高测到 100（Zendesk 常见上限）。10 次连续请求 500ms 间隔全部
+    # 200，无限流/Cloudflare 挑战。robots.txt 未禁止本接口路径。
+    # ============================================================
     EN:
-      endpoint: null
-      method: null
+      endpoint: "https://support.bitunix.com/api/v2/help_center/en-us/categories/13760946490649/articles.json"
+      method: GET
       headers: {}
-      locale_param: null
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
-      has_update_time: null
-      strategy: null       # watermark / full_scan
+      locale_param: "path"   # Zendesk 自己的 locale code，如 en-us / fr / id，拼在 path 里
+      pagination: {type: offset, param: page, page_size_param: per_page, page_size: 100}
+      rate_limit_ms: 500
+      detail_mode: inline   # 列表 body 字段已含完整正文 HTML（实测 34-55KB），无需再请求详情
+      has_update_time: true
+      strategy: watermark   # 支持 ?sort_by=updated_at&sort_order=desc，抽样 29/30 存在真实差异
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
-        category: null
+        article_id: id   # 数值，跨 locale 一致，可直接做 group_id
+        title: title
+        content: body   # HTML 字符串
+        post_time: created_at   # ISO8601 UTC，Z 后缀
+        update_time: updated_at   # ISO8601 UTC；另有 edited_at（仅内容编辑），updated_at 是超集信号
+        category: section_id   # 需另查 /categories/{id}/sections.json 拿人类可读名称
+      # update_time 可靠性抽样（30 条，EN，节选 5 条，完整见 recon 记录）：
+      #   59923371883417  created 2026-07-11T00:45:26Z  updated 2026-07-13T00:24:06Z  差异
+      #   59908400363161  created 2026-07-10T10:08:39Z  updated 2026-07-10T10:13:53Z  差异
+      #   59645135417497  created 2026-07-03T10:29:04Z  updated 2026-07-03T10:29:04Z  相等（1/30）
+      #   59530587129497  created 2026-06-30T09:46:11Z  updated 2026-07-10T02:24:53Z  差异
+      #   59350723768857  created 2026-06-25T03:24:44Z  updated 2026-06-27T12:56:27Z  差异
+      #   29/30 存在真实差异，确认 watermark 可靠
+      # 分类观察值（section_id -> EN name）：16707858318105 Products and Services /
+      #   13762039477017 Events and Activities / 13762037166105 New Listings /
+      #   17983093824153 Derivatives & Perpetual Futures / 57068501750297 Earn /
+      #   39073446124953 Copy Trading / 47601070306585 Delisting /
+      #   13762058994073 Maintenance and Upgrade
+      # 时间格式：ISO8601 字符串，Z 后缀（UTC）
+      # www.bitunix.com 主站 SPA + platformgateway.bitunix.com 已确认为死路（403，
+      # Cloudflare 拦截），不作为该源的 endpoint 候选。
     FR:
-      endpoint: null
-      method: null
+      endpoint: "https://support.bitunix.com/api/v2/help_center/fr/categories/13760946490649/articles.json"
+      method: GET
       headers: {}
-      locale_param: null
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
-      has_update_time: null
-      strategy: null       # watermark / full_scan
+      locale_param: "path"
+      pagination: {type: offset, param: page, page_size_param: per_page, page_size: 100}
+      rate_limit_ms: 500
+      detail_mode: inline
+      has_update_time: true
+      strategy: watermark   # 机制与 EN 完全一致
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
-        category: null
+        article_id: id
+        title: title
+        content: body
+        post_time: created_at
+        update_time: updated_at
+        category: section_id
     ID:
-      endpoint: null
-      method: null
+      endpoint: "https://support.bitunix.com/api/v2/help_center/id/categories/13760946490649/articles.json"
+      method: GET
       headers: {}
-      locale_param: null
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
-      has_update_time: null
-      strategy: null       # watermark / full_scan
+      locale_param: "path"
+      pagination: {type: offset, param: page, page_size_param: per_page, page_size: 100}
+      rate_limit_ms: 500
+      detail_mode: inline
+      has_update_time: true
+      strategy: watermark
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
-        category: null
+        article_id: id
+        title: title
+        content: body
+        post_time: created_at
+        update_time: updated_at
+        category: section_id
   weex:
     # ============================================================
     # 侦察结论（Phase 1，2026-07-13）：✅ 通。Weex 公告中心跑在 Zendesk 上
