@@ -62,7 +62,7 @@
 
 ```
 ├── CLAUDE.md                  # 本文件
-├── readme.md                  # 项目简介（业务背景，人读）
+├── README.md                   # 项目简介（业务背景，人读）
 ├── phasePrompts.md             # Phase 0-8 的完整任务 prompt 存档
 ├── pytest.ini
 ├── requirements.txt            # 运行时依赖（目前仅 PyYAML）
