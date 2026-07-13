@@ -19,7 +19,9 @@
 #   rate_limit_ms   请求间隔毫秒数（合规限速，Phase 1 通过连续请求观察后确定）
 #   detail_mode     inline         —— 列表接口已含正文，无需再请求详情
 #                   separate_api   —— 需另外请求详情接口取正文
-#                   html           —— 仅有网页，无 JSON API
+#                   html           —— 仅有网页，无 JSON API（服务端渲染，可直接抓 HTML 正文）
+#                   blocked        —— 该源受阻（如纯客户端渲染 SPA、需要登录、Cloudflare 拦截等），
+#                                   见对应条目上方注释里记录的受阻原因和已尝试方法
 #   has_update_time 源端是否提供可靠的 update_time / updated_at 等字段。
 #                   Phase 1 需抽样 5-10 条核对：若 update_time 与 post_time 全部相同，
 #                   视为不可靠，标 false 并令 strategy=full_scan；
@@ -240,16 +242,43 @@ sources:
         update_time: null
         category: null
   zoomex:  # 我方基线，非竞品
+    # ============================================================
+    # 侦察结论（Phase 1，2026-07-13）：BLOCKED，所有 5 个 locale。
+    # help.zoomex.com/{locale}/... 是纯客户端渲染的 Nuxt 3 SPA。已尝试：
+    #   1. 直接请求列表页/详情页 HTML —— 服务端只返回通用 SPA 壳（538555 字节，
+    #      5 个 locale 完全 md5 一致），正文靠客户端 JS 运行时渲染，curl 拿不到。
+    #   2. Nuxt `_payload.json` hydration 约定 —— 返回 200 但 content-type 是
+    #      text/html（同一个壳），不是真的 payload endpoint。
+    #   3. 下载并 grep 主 JS bundle + 全部 263 个引用的 Vite chunk —— 只找到
+    #      `/gw/pub/v1/helpCenter/getHotTopArticle`、`getHotArticleList` 两个
+    #      POST 端点（用于"热门文章"小组件，非公告列表本身），且未能确认其
+    #      请求体参数，为避免猜测未调用。API host 确认为 https://api2.zoomex.com，
+    #      但公告列表/详情的真实 path 未能从静态分析中还原。
+    #   4. sitemap.xml -> sitemap-local.xml（854KB）—— 只列出 14 个顶层
+    #      /{locale}/help 落地页 URL，没有逐条公告文章的 URL。
+    #   5. WebSearch 未找到公开的 help-center API 文档（只有需要 X-BAPI-* 签名的
+    #      交易 API 文档，与公告无关）。
+    #   6. 直接 curl 4 个 Google 收录的真实文章 URL（如 help.zoomex.com/en/article/3858）
+    #      —— 同样只返回通用壳，说明该页面依赖运行时 JS，Google 索引是通过无头
+    #      浏览器渲染的。
+    # robots.txt（www.zoomex.com）：User-agent: * / Disallow: 空，未禁止任何路径。
+    # 建议方案：需要 headless browser（Playwright/Puppeteer）实际加载页面并
+    # 拦截运行时对 api2.zoomex.com 发出的 XHR/fetch 请求，才能拿到真实 endpoint；
+    # 或者因为 Zoomex 是我方产品，直接找内部研发要 api2.zoomex.com 公告接口的
+    # 真实文档，而不是从外部逆向。
+    # Fixture: tests/fixtures/zoomex_EN.html（5 个 locale md5 相同，只保留一份
+    # 作为"确认是同一个空壳"的证据，未重复存 4 份重复文件）。
+    # ============================================================
     EN:
       endpoint: null
       method: null
       headers: {}
-      locale_param: null
+      locale_param: "path"   # 已确认 URL 结构 www.zoomex.com/{locale}/help/{catalogId}
       pagination: {}
-      rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
+      rate_limit_ms: null   # 未做，页面本身无数据，测限流无意义
+      detail_mode: blocked   # SPA，无法静态获取正文；见上方侦察记录
       has_update_time: null
-      strategy: null       # watermark / full_scan
+      strategy: null       # 待定，需先解决 detail_mode 才能判断
       field_mapping:
         article_id: null
         title: null
@@ -261,12 +290,12 @@ sources:
       endpoint: null
       method: null
       headers: {}
-      locale_param: null
+      locale_param: "path"   # 路由确认为 fr-FR，即 /fr-FR/help/{catalogId}
       pagination: {}
       rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
+      detail_mode: blocked
       has_update_time: null
-      strategy: null       # watermark / full_scan
+      strategy: null
       field_mapping:
         article_id: null
         title: null
@@ -278,12 +307,12 @@ sources:
       endpoint: null
       method: null
       headers: {}
-      locale_param: null
+      locale_param: "path"   # 路由确认为 en-AS（与 en/en-US 不同），/en-AS/help/{catalogId}
       pagination: {}
       rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
+      detail_mode: blocked
       has_update_time: null
-      strategy: null       # watermark / full_scan
+      strategy: null
       field_mapping:
         article_id: null
         title: null
@@ -295,12 +324,12 @@ sources:
       endpoint: null
       method: null
       headers: {}
-      locale_param: null
+      locale_param: "path"   # 路由确认为 vi-VN，/vi-VN/help/{catalogId}
       pagination: {}
       rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
+      detail_mode: blocked
       has_update_time: null
-      strategy: null       # watermark / full_scan
+      strategy: null
       field_mapping:
         article_id: null
         title: null
@@ -312,12 +341,12 @@ sources:
       endpoint: null
       method: null
       headers: {}
-      locale_param: null
+      locale_param: "path"   # 路由确认为 id-ID，/id-ID/help/{catalogId}
       pagination: {}
       rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
+      detail_mode: blocked
       has_update_time: null
-      strategy: null       # watermark / full_scan
+      strategy: null
       field_mapping:
         article_id: null
         title: null
