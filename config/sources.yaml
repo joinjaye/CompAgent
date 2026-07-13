@@ -85,40 +85,67 @@ sources:
         update_time: null
         category: null
   weex:
+    # ============================================================
+    # 侦察结论（Phase 1，2026-07-13）：✅ 通。Weex 公告中心跑在 Zendesk 上
+    # （weex.com/help/* 是 weexsupport.zendesk.com 的 SEO 代理），Zendesk 标准
+    # Help Center REST API 可直接匿名访问，无需鉴权。公告归属 Zendesk
+    # category_id=18540264809497（"Latest Announcements"），下设 4 个 section：
+    # Latest updates / Futures events / Spot events / Reward distribution。
+    # 抽样确认 updated_at 与 created_at 存在真实差异（见下方 EN/FR 抽样数据），
+    # 判定 strategy: watermark。10 次连续请求（500ms 间隔）全部 200，无限流。
+    # weexsupport.zendesk.com 无 robots.txt 限制；weex.com/robots.txt 只禁止
+    # 带 utm/gad 追踪参数的 URL 和 register 页，与本接口无关。
+    # 注意：这是第三方 Zendesk 托管接口而非 Weex 自建 API，理论上存在 Weex
+    # 未来迁移掉 Zendesk 的风险，但目前是真实可用的live机制。
+    # ============================================================
     EN:
-      endpoint: null
-      method: null
-      headers: {}
-      locale_param: null
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
-      has_update_time: null
-      strategy: null       # watermark / full_scan
+      endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/en-us/categories/18540264809497/articles.json"
+      method: GET
+      headers: {}   # 匿名可访问，无需鉴权头；仅用普通浏览器 User-Agent 测试过
+      locale_param: "path"   # Zendesk 自己的 locale code，拼在 path 里，如 /en-us/
+      pagination: {type: offset, param: page, page_size_param: per_page, page_size: 30}
+      rate_limit_ms: 500   # 连续 10 次请求 500ms 间隔全部 200，未观察到限流；采用同等节奏
+      detail_mode: inline   # 列表 body 字段已含完整正文 HTML，无需再请求详情
+      has_update_time: true
+      strategy: watermark   # 支持 ?sort_by=updated_at&sort_order=desc 排序，适合水位线轮询
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
-        category: null
+        article_id: id
+        title: title
+        content: body   # HTML 字符串
+        post_time: created_at   # ISO8601 UTC，如 2026-05-16T07:54:53Z
+        update_time: updated_at   # ISO8601 UTC；抽样确认与 created_at 存在真实差异，见下方样本
+        category: section_id   # 数值，需另查 .../sections/{id}.json 拿 name 做人类可读分类
+      # update_time 可靠性抽样（10 条，按 updated_at desc 排序）：
+      #   57976712091673 created 2026-05-16T07:54:53Z updated 2026-05-16T12:10:01Z
+      #   57945631674777 created 2026-05-15T07:01:59Z updated 2026-05-16T07:53:25Z
+      #   57951574367385 created 2026-05-15T09:46:36Z updated 2026-05-15T16:41:57Z
+      #   57946096497945 created 2026-05-15T07:14:11Z updated 2026-05-15T11:03:56Z
+      #   57945912065177 created 2026-05-15T07:08:37Z updated 2026-05-15T07:29:50Z
+      #   57944849662361 created 2026-05-15T06:41:46Z updated 2026-05-15T07:05:30Z
+      #   57828906693401 created 2026-05-12T02:20:25Z updated 2026-05-12T09:19:32Z
+      #   57831404063001 created 2026-05-12T03:28:00Z updated 2026-05-12T06:15:42Z
+      #   57774849676825 created 2026-05-10T09:51:44Z updated 2026-05-11T01:48:48Z
+      #   57773585831833 created 2026-05-10T08:55:04Z updated 2026-05-10T15:04:49Z
+      # 全部存在真实差异，非恒等，确认 watermark 可靠。
+      # 分类观察值（section 下 name）：Latest updates / Futures events / Spot events / Reward distribution
+      # 时间格式：ISO8601 字符串，Z 后缀（UTC）
     FR:
-      endpoint: null
-      method: null
+      endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/fr/categories/18540264809497/articles.json"
+      method: GET
       headers: {}
-      locale_param: null
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: null   # inline / separate_api / html
-      has_update_time: null
-      strategy: null       # watermark / full_scan
+      locale_param: "path"   # locale code "fr"（Zendesk locales.json 确认存在，default_locale 是 zh-cn）
+      pagination: {type: offset, param: page, page_size_param: per_page, page_size: 30}
+      rate_limit_ms: 500
+      detail_mode: inline
+      has_update_time: true
+      strategy: watermark   # 机制与 EN 完全一致，样本 id 56988097353881 created 2026-04-15T07:01:05Z / updated 2026-04-15T07:10:07Z 同样存在差异
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
-        category: null
+        article_id: id
+        title: title
+        content: body
+        post_time: created_at
+        update_time: updated_at
+        category: section_id
   bingx:
     EN:
       endpoint: null
