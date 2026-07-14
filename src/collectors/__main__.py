@@ -3,8 +3,9 @@
 按 config/sources.yaml 驱动地跑一遍采集，落库到 SQLite。单源失败不影响其他源
 （失败写日志、计入 failed 计数，继续跑下一个）。
 
-COLLECTOR_BUILDERS 目前只登记了已实现的交易所（Bitunix / Weex / Zoomex）；sources.yaml
-里其余尚未实现的 source 会被跳过，不报错——后续批次实现后在这里补登记即可。
+COLLECTOR_BUILDERS 目前登记了全部 6 个交易所（Bitunix / Weex / Zoomex / BingX /
+Phemex / Lbank，Phase 2 批次 1-4 全部完成）；sources.yaml 里出现的新 source 需要
+在这里补登记才会被 CLI 认领，否则跳过不报错。
 
 多分类源（如 Zoomex 每个 locale 下的 3-4 个 menu_id、Weex 从 Phase 2.7 起的 2 个
 Zendesk category）一个 builder 会展开成多个 collector 实例，用 --category 可以只跑
@@ -22,7 +23,10 @@ from typing import Any, Callable, Optional
 import yaml
 
 from src.collectors.base import BaseCollector, RunStats
+from src.collectors.bingx import BingXCollector
 from src.collectors.bitunix import BitunixCollector
+from src.collectors.lbank import LbankCollector
+from src.collectors.phemex import PhemexCollector
 from src.collectors.weex import WeexCollector
 from src.collectors.zoomex import ZoomexCollector
 from src.db.connection import DEFAULT_DB_PATH, get_connection, init_db
@@ -68,10 +72,41 @@ def _zoomex_builder(locale: str, cfg: dict[str, Any]) -> list[BaseCollector]:
     return collectors
 
 
+def _phemex_builder(locale: str, cfg: dict[str, Any]) -> list[BaseCollector]:
+    """多分类源：2026-07-14 分页升级后，全部 categories.<name> 共用同一个
+    `list_endpoint`（真实分页 API），只是请求参数里的 `list_category_id` 不同，
+    合并进 config 供 PhemexCollector.fetch_list() 读取（不是构造函数的位置参数，
+    跟 Zoomex/Lbank 把分类标识当位置参数传不同，因为 Phemex 只需要一个数字 id，
+    直接放 config 里更简单）。"""
+    categories = cfg.get("categories") or {}
+    collectors: list[BaseCollector] = []
+    for category_key, category_cfg in categories.items():
+        merged_cfg = {**cfg, "list_category_id": category_cfg["list_category_id"]}
+        merged_cfg.pop("categories", None)
+        collectors.append(PhemexCollector(locale, merged_cfg, category_key))
+    return collectors
+
+
+def _lbank_builder(locale: str, cfg: dict[str, Any]) -> list[BaseCollector]:
+    """多分类源：全部 categories.<name> 共用同一个 endpoint（真实 JSON API，见
+    src/collectors/lbank.py），只是请求体里的 categoryCode 不同，跟 Zoomex 的
+    menu_id 模式一致（不是 Bitunix/Weex/Phemex 那种"每个分类各自独立 endpoint"）。"""
+    categories = cfg.get("categories") or {}
+    collectors: list[BaseCollector] = []
+    for category_key, category_cfg in categories.items():
+        merged_cfg = {**cfg}
+        merged_cfg.pop("categories", None)
+        collectors.append(LbankCollector(locale, merged_cfg, category_key, category_cfg["category_code"]))
+    return collectors
+
+
 COLLECTOR_BUILDERS: dict[str, CollectorBuilder] = {
     "bitunix": _categorized_collector_builder(BitunixCollector),
     "weex": _categorized_collector_builder(WeexCollector),
     "zoomex": _zoomex_builder,
+    "bingx": _categorized_collector_builder(BingXCollector),
+    "phemex": _phemex_builder,
+    "lbank": _lbank_builder,
 }
 
 

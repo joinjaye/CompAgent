@@ -104,7 +104,40 @@ phemex:    # 【Phase 2.6 订正，2026-07-14】sources.yaml 原 field_mapping.c
   "activities": campaign
   "newsletter": other
 
-lbank: null   # 无 per-item category（raw_category 恒 NULL），全部走标题关键词 + LLM
+lbank:     # 【2026-07-14 彻底订正，见 CLAUDE.md「Lbank 真实 API 重写」】找到真实
+           # JSON API 后，用 `POST .../notice/category/list` 拿到完整分类树（7 个
+           # 顶层 tab + 各自子分类），key 是 raw_category 落库的 columnId（详情接口
+           # `noticeContent.columnId`，叶子分类数值 id，字符串化）。
+           # 顶层 tab 本身（53/58/64/69，均带子分类）理论上文章不会直接挂在顶层，
+           # 但保留顶层 id 的映射做防御性兜底（万一有文章没有更细的子分类）；
+           # 57/63/129 三个顶层本身没有子分类，文章会直接挂在顶层 id 上。
+           # 3 个叶子值（54/57/65）已用真实采集数据核对过标题语义（"Will Be Listed"/
+           # "Will Delist"/"Suspended Deposit and Withdrawal"），其余叶子值按分类树
+           # 人类可读名称的语义判断（未逐条核对标题），跟 BingX 当初只凭反查到的
+           # section 名称做映射是同一个置信度级别。
+  "129": campaign   # LBank VIP（无子分类，活动性质的会员权益公告）
+  "53": listing     # New Listings 顶层兜底
+  "54": listing     # Spot Listings（已用真实标题核对："X Will Be Listed on LBank"）
+  "55": listing     # Futures Listings
+  "56": listing     # Copy Trading Listings
+  "58": campaign    # Event Announcements 顶层兜底
+  "61": campaign    # Crypto Airdrop
+  "62": campaign    # Copy Trading Events
+  "73": campaign    # Earn Crypto（Event Announcements 下的活动类子分类，非产品说明）
+  "60": campaign    # Futures Trading Events
+  "59": campaign    # Spot Trading Events
+  "130": campaign   # Omni Events
+  "64": other       # System Upgrades & Maintenance 顶层兜底
+  "68": other       # System Maintenance
+  "66": other       # Spot System Maintenance
+  "67": other       # Futures System Maintenance
+  "65": other       # Deposit & Withdrawal Suspension/Resume（已用真实标题核对："Suspended Deposit and Withdrawal of X"）
+  "69": product     # Platform Updates 顶层兜底
+  "72": product     # LBK Operations Report
+  "71": product     # Product Updates
+  "70": product     # Latest News（隶属 Platform Updates，产品动态性质）
+  "57": delisting   # Delisting Information（无子分类，已用真实标题核对："Will Delist Certain Trading Pairs"）
+  "63": campaign    # Fiat（无子分类，抽样标题以 P2P/充值促销活动为主，如 "Deposit BRL with 0 Fees"）
 
 zoomex:    # menu_id 来自 Phase 1 headless browser 真实侦察（getAllMenu 响应），非猜测；
            # 已用真实采集结果交叉验证：EN new_product_announcement 40 条 raw_category

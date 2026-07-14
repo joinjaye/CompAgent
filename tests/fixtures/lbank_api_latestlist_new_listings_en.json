@@ -1,0 +1,87 @@
+{
+  "data": {
+    "page": {
+      "pageSize": 5,
+      "pageNo": 1,
+      "sortColumn": null,
+      "sortDirect": null,
+      "start": null,
+      "topCategory": "NOTICE",
+      "categoryCode": "CO00000053"
+    },
+    "resultList": [
+      {
+        "exLanguage": null,
+        "noticeId": 17020,
+        "code": "2077027077202116608",
+        "contentId": 67811,
+        "langCode": "en-US",
+        "onHot": false,
+        "onTop": false,
+        "title": "SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock)) Will Be Listed on LBank",
+        "subtitle": "SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock)) Will Be Listed on LBank",
+        "content": "Dear LBank users, SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock)) will be listed on LBank at 13:20 on July 14, 2026 (UTC). The details are as follows:Trading Pair: SOXLB/USDTTrading Zone: USDTZoneToken Label: StocksStart Deposit: 13:20 on July 14, 2026 (UTC)Start Trading: 13:20 on July 14, 2026 (UTC)Start Withdrawal: 14:00 on July 15, 2026 (UTC)SOXLB/USDT spot at: https://www.lbank.com/%language_code%/trade/soxlb_usdt※ This will be effective upon commencement of trading.About SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock))SOXLB is a tokenized bStocks that allows you to gain economic exposure to Semicon Bull 3X ETF tokenized bStocks.Website: https://www.bstocks.finance/en/Blockchain browser: https://bscscan.com/token/0xd97d097a89113fa59b76c572e5b2eb647e8eefaf⚠️ Note: The transaction fee of SOXLB/USDT is Taker (0%), Maker (0%).Based on market conditions, LBank may adjust the trading parameters of the spot market from time to time, which may include the minimum order quantity, price precision, or other relevant parameters without further announcement.LBank will continue to optimize and improve its products and services to provide users with a better trading experience.",
+        "contentShowTime": 1784036749000
+      },
+      {
+        "exLanguage": null,
+        "noticeId": 17019,
+        "code": "2076996364255887360",
+        "contentId": 67802,
+        "langCode": "en-US",
+        "onHot": false,
+        "onTop": false,
+        "title": "DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock)) Will Be Listed on LBank",
+        "subtitle": "DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock)) Will Be Listed on LBank",
+        "content": "Dear LBank users, DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock)) will be listed on LBank at 13:20 on July 14, 2026 (UTC). The details are as follows:Trading Pair: DRAMB/USDTTrading Zone: USDTZoneToken Label: StocksStart Deposit: 13:20 on July 14, 2026 (UTC)Start Trading: 13:20 on July 14, 2026 (UTC)Start Withdrawal: 14:00 on July 15, 2026 (UTC)DRAMB/USDT spot at: https://www.lbank.com/%language_code%/trade/dramb_usdt※ This will be effective upon commencement of trading.About DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock))DRAMB is a tokenized bStocks that allows you to gain economic exposure to Roundhill Memory ETF tokenized bStocks.Website: https://www.bstocks.finance/en/Blockchain browser: https://bscscan.com/token/0x93862d63fd9fd488b1328e9b47717d75e994a84b⚠️ Note: The transaction fee of DRAMB/USDT is Taker (0%), Maker (0%).Based on market conditions, LBank may adjust the trading parameters of the spot market from time to time, which may include the minimum order quantity, price precision, or other relevant parameters without further announcement.LBank will continue to optimize and improve its products and services to provide users with a better trading experience.",
+        "contentShowTime": 1784033664000
+      },
+      {
+        "exLanguage": null,
+        "noticeId": 17015,
+        "code": "2076877373520740352",
+        "contentId": 67764,
+        "langCode": "en-US",
+        "onHot": false,
+        "onTop": false,
+        "title": "FEBU (FEBU) Will Be Listed on LBank",
+        "subtitle": "FEBU (FEBU) Will Be Listed on LBank",
+        "content": "Dear LBank users, FEBU (FEBU) will be listed on LBank at 04:20 on July 14, 2026 (UTC). The details are as follows:Trading Pair: FEBU/USDTTrading Zone: USDTZoneToken Label: MEMEStart Deposit: 04:20 on July 14, 2026 (UTC)Start Trading: 04:20 on July 14, 2026 (UTC)Start Withdrawal: 04:00 on July 15, 2026 (UTC)FEBU/USDT spot at: https://www.lbank.com/%language_code%/trade/febu_usdt※ This will be effective upon commencement of trading.About FEBU (FEBU)febu (febu) is a MEME token deployed on Solana. Official website: https://imfebu.com. Current price: $0.00473800. FDV: $4,737,872. 24h Volume: $4,898,561.1.Website:https://imfebu.comBlockchain browser: https://solscan.io/token/4ko5tSr5o3H4v1sFtjTSd9MPUW7yx5AFCpkNPoL6pump⚠️ Note: The transaction fee of FEBU/USDT is Taker (0.2%), Maker (0.2%).Based on market conditions, LBank may adjust the trading parameters of the spot market from time to time, which may include the minimum order quantity, price precision, or other relevant parameters without further announcement.LBank will continue to optimize and improve its products and services to provide users with a better trading experience.",
+        "contentShowTime": 1784001183000
+      },
+      {
+        "exLanguage": null,
+        "noticeId": 17013,
+        "code": "2076677286609813504",
+        "contentId": 67752,
+        "langCode": "en-US",
+        "onHot": false,
+        "onTop": false,
+        "title": "SKHYB (SKHYB) Will Be Listed on LBank",
+        "subtitle": "SKHYB (SKHYB) Will Be Listed on LBank",
+        "content": "Dear LBank users, SKHYB (SKHYB) will be listed on LBank at 15:00 on July 13, 2026 (UTC). The details are as follows:Trading Pair: SKHYB/USDTTrading Zone: USDTZoneToken Label: STOCKSStart Deposit: 15:00 on July 13, 2026 (UTC)Start Trading: 15:00 on July 13, 2026 (UTC)Start Withdrawal: 15:00 on July 14, 2026 (UTC)SKHYB/USDT spot at: https://www.lbank.com/%language_code%/trade/skhyb_usdt※ This will be effective upon commencement of trading.About SKHYB (SKHYB)SKHYB is a tokenized bStocks that allows you to gain economic exposure to SK Hynix tokenized bStocksBlockchain browser: https://bscscan.com/token/0xca750ef65f295bbecd685abf54e82caf297bdb61⚠️ Note: The transaction fee of SKHYB/USDT is Taker (0%), Maker (0%).Based on market conditions, LBank may adjust the trading parameters of the spot market from time to time, which may include the minimum order quantity, price precision, or other relevant parameters without further announcement.LBank will continue to optimize and improve its products and services to provide users with a better trading experience.",
+        "contentShowTime": 1783953443000
+      },
+      {
+        "exLanguage": null,
+        "noticeId": 17011,
+        "code": "2076639254200451072",
+        "contentId": 67748,
+        "langCode": "en-US",
+        "onHot": false,
+        "onTop": false,
+        "title": "ALD (ALD) Will Be Listed on LBank",
+        "subtitle": "ALD (ALD) Will Be Listed on LBank",
+        "content": "Dear LBank users, ALD (ALD) will be listed on LBank at 12:00 on July 14, 2026 (UTC). The details are as follows:Trading Pair: ALD/USDTTrading Zone: INNOZoneToken Label: RWAStart Deposit: 12:00 on July 13, 2026 (UTC)Start Trading: 12:00 on July 14, 2026 (UTC)Start Withdrawal: 12:00 on July 14, 2026 (UTC)ALD/USDT spot at: https://www.lbank.com/%language_code%/trade/ald_usdt※ This will be effective upon commencement of trading.About ALD (ALD)ALD is the core utility and governance token of the Aladdin RWA ecosystem, a one-stop compliant platform for tokenizing real-world assets. It enables staking for rewards, governance participation, access to exclusive features, and value capture from ecosystem growth. The project focuses on bridging traditional assets such as real estate, commodities, IP, and supply chain finance to blockchain with full regulatory compliance and global liquidity solutions.X : https://x.com/ald_dao TG Community：https://t.me/ALDOfficialAladdin Website: https://www.aldrwa.com/Blockchain browser: https://bscscan.com/token/0x3cbd513239d9e5538a4caed8ed53ef77009df473Whitepaper: https://docs.google.com/document/d/1XAcpPK6yh9NAQ2LPZEntAqHW00A4z5nR3gjJS_GoIVk/edit?tab=t.0⚠️ Note: The transaction fee of ALD/USDT is Taker (0.1%), Maker (0.1%).Based on market conditions, LBank may adjust the trading parameters of the spot market from time to time, which may include the minimum order quantity, price precision, or other relevant parameters without further announcement.LBank will continue to optimize and improve its products and services to provide users with a better trading experience.",
+        "contentShowTime": 1783944368000
+      }
+    ],
+    "hasNext": false,
+    "totalCount": 6909,
+    "totalPage": 1382,
+    "topCategory": null
+  },
+  "code": 200,
+  "message": "Success!",
+  "args": null
+}

@@ -1,0 +1,72 @@
+{
+  "data": {
+    "exLanguage": null,
+    "topCategory": "NOTICE",
+    "noticeContent": {
+      "exLanguage": null,
+      "contentId": 67811,
+      "noticeId": 17020,
+      "code": "2077027077202116608",
+      "remark": "SOXLB-流量项目上线",
+      "urlParam": "2077027077202116608",
+      "showInColumn": true,
+      "onTop": false,
+      "onHot": false,
+      "authorId": null,
+      "columnId": 54,
+      "createTime": 1768226744000,
+      "updateTime": 1784034525000,
+      "creatorId": 428,
+      "modifierId": 0,
+      "currencyAttach": null,
+      "spotAttach": null,
+      "etfAttach": null,
+      "contractAttach": null,
+      "currencyRelates": [],
+      "spotRelates": [],
+      "etfRelates": [],
+      "contractRelates": [],
+      "footer": {
+        "exLanguage": null,
+        "pageFootId": 1,
+        "langCode": "en-US",
+        "content": "https://jiz.lbank.com/page_footer/2hl_0409125847596.stxt"
+      },
+      "columnIds": {
+        "exLanguage": null,
+        "categoryId": 53,
+        "code": "CO00000053",
+        "name": "New Listings",
+        "langCode": "en-US",
+        "introduce": null,
+        "children": [
+          {
+            "exLanguage": null,
+            "categoryId": 54,
+            "code": "CO00000054",
+            "name": "Spot Listings",
+            "langCode": "en-US",
+            "introduce": null,
+            "children": null,
+            "topCategoryEnum": null
+          }
+        ],
+        "topCategoryEnum": "NOTICE"
+      },
+      "langCode": "en-US",
+      "title": "[[0]]SOXLB[[/0]] ([[1]]Semicon Bull 3X ETF (bStocks Tokenized Stock)[[/1]]) Will Be Listed on LBank",
+      "subtitle": "[[0]]SOXLB[[/0]] ([[1]]Semicon Bull 3X ETF (bStocks Tokenized Stock)[[/1]]) Will Be Listed on LBank",
+      "pic": "",
+      "summary": "Dear LBank users, [[0]]SOXLB[[/0]] ([[1]]Semicon Bull 3X ETF (bStocks Tokenized Stock)[[/1]]) will be listed on LBank at [[2]]13:20 on July 14, 2026 (UTC)[[/2]]. The details are as follows: Trading Pair: [[0]]SOXLB[[/0]]/[[14]]USDT[[/14]] Trading Zone: [[3]]USDT[[/3]] Zon",
+      "content": "https://jiz.lbank.com/notice/2077027077202116608/a7a_0714214659161.stxt",
+      "contentExt": "{}",
+      "howTo": "[\n  {\n    \"name\": \"Deposit SOXLB to LBank\",\n    \"text\": \"Deposit SOXLB to your LBank account starting from 13:20 on July 14, 2026 (UTC).\"\n  },\n  {\n    \"name\": \"Trade SOXLB on the spot market\",\n    \"text\": \"Access the SOXLB/USDT spot trading pair at https://www.lbank.com/%language_code%/trade/soxlb_usdt to begin trading from 13:20 on July 14, 2026 (UTC).\"\n  },\n  {\n    \"name\": \"Withdraw SOXLB from LBank\",\n    \"text\": \"Withdraw SOXLB from your LBank account starting from 14:00 on July 15, 2026 (UTC).\"\n  }\n]\n",
+      "tags": null,
+      "contentShowTime": 1784036749000,
+      "level": null
+    }
+  },
+  "code": 200,
+  "message": "Success!",
+  "args": null
+}

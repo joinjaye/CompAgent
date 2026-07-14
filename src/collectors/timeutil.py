@@ -24,3 +24,13 @@ def iso_to_ms(iso: Optional[str]) -> Optional[int]:
         return None
     dt = datetime.strptime(iso, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
     return int(dt.timestamp() * 1000)
+
+
+def offset_iso_to_utc_iso(value: Optional[str]) -> Optional[str]:
+    """带显式时区偏移的 ISO8601 字符串（如 BingX 的 `2026-07-14T17:48:29.000+08:00`）
+    -> UTC ISO8601（Z 结尾，秒精度）。BingX 用（见 sources.yaml bingx 块，时间格式带
+    +08:00 偏移，不是 UTC）。"""
+    if value is None:
+        return None
+    dt = datetime.fromisoformat(value)
+    return dt.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")

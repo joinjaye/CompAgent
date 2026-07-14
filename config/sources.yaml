@@ -266,24 +266,31 @@ sources:
     # /support/articles/{articleId}，不带分区 segment，逻辑上与 Phemex 一致，
     # 天然覆盖全部 12 个分区，全量回填不需要按分区单独跑 sitemap。
     #
-    # 【设计要点，供批次 3 实现 BingX collector 时用，2026-07-14 记录】首屏 ~20 条
+    # 【设计要点，2026-07-14 记录，供批次 3 实现 BingX collector 时用】首屏 ~20 条
     # 跨分区聚合视图**不能**当日常增量的数据源用，只能当"取 sectionId"的辅助信息来源
     # （sitemap 的 URL 不带分区信息，sectionId 只有首屏/详情页才有）。原因：首屏窗口是
     # 固定 20 条，一旦当天新增公告超过 20 条，多出来的会被挤出窗口、**永久漏采**（不是
-    # "变更检测不到"，是新增条目从未进过 fetch_list 的返回值）。正确的日常增量做法：
+    # "变更检测不到"，是新增条目从未进过 fetch_list 的返回值）。原计划的日常增量做法：
     # `fetch_list()` 拉 sitemap 全量 URL 集合，跟 DB 里 `source='BingX'` 已有的
     # `article_id` 集合求差集，差集即新增文章；差集为空的 URL 不需要请求详情页（省网络）。
-    # sitemap diff 只能发现"新增"，发现不了"存量文章被编辑但 URL 不变"的场景——如果需要
-    # 覆盖这种变更，仍要靠 full_scan 的语义（对已入库文章定期重新请求详情页比对
-    # content_hash），可以用首屏 ~20 条兼顾"最近编辑"这个子集（大概率覆盖最新变更），
-    # 不需要对全部历史文章都重新请求详情页。
+    #
+    # 【2026-07-14 政策调整，见 CLAUDE.md「水位逻辑策略调整」，本次实现时采纳】上面的
+    # sitemap diff 设计已废弃，改用户要求的统一简化模型：除 Zoomex 外的全部源，全量回填
+    # 默认关闭（force_full 默认 false），日常调用在"水位判断本来就不可靠"的源（本源即
+    # 属此类）上固定只拉一个有限窗口，靠 content_hash 判断 new/changed/unchanged，不再
+    # 为每个源单独设计"怎么找增量"的专用机制。BingX 首屏本身就不是分页接口（真翻页未
+    # 逆向），这个"有限窗口"退化成固定的这一屏 ~20 条，`force_full` 参数对 BingX 因此
+    # 是 no-op（True/False 结果一样）——不是遗漏，是如实反映"BingX 没有除首屏外的可靠
+    # 数据源"这个事实，全量历史回填（sitemap 枚举）不在本次实现范围内，需要时可以按上面
+    # 记录的 diff 设计另起一个 session 实现。
     # ============================================================
     EN:
       endpoint: "https://bingx.com/en/support/notice-center"
+      detail_endpoint: "https://bingx.com/en/support/articles/{article_id}"
       method: GET
       headers: {}
       locale_param: "path"
-      pagination: {type: none, note: "首屏仅最新~20条，翻页为客户端交互未逆向；已确认首屏是跨分区聚合（非单分区），完整历史用 sitemap（en/sitemap-support.xml，7829 URL，已确认覆盖全部 12 个分区）枚举 /support/articles/{articleId} 详情页替代"}
+      pagination: {type: none, note: "首屏仅最新~20条跨分区聚合，非分页接口，force_full 对本源是 no-op，见上方 2026-07-14 政策调整说明"}
       rate_limit_ms: 500
       detail_mode: separate_api   # 列表页只有 title，正文需另请求详情页；详情页本身也是 SSR HTML 内嵌 JSON，非 REST JSON API
       has_update_time: true   # 字段存在，但抽样显示恒等于 post_time，不可靠
@@ -318,10 +325,11 @@ sources:
       # 详情页 endpoint 模式："https://bingx.com/en/support/articles/{articleId}"
     VN:
       endpoint: "https://bingx.com/vi/support/notice-center"
+      detail_endpoint: "https://bingx.com/vi/support/articles/{article_id}"
       method: GET
       headers: {}
       locale_param: "path"   # canonical 前缀是 vi（vi-vn 也能用，302/别名到 vi）
-      pagination: {type: none, note: "同 EN；VN 自己的 sitemap 不完整（仅56条），需用 EN sitemap 的 articleId 把 URL /en/ 换成 /vi/ 来枚举"}
+      pagination: {type: none, note: "同 EN，见上方 2026-07-14 政策调整说明"}
       rate_limit_ms: 500
       detail_mode: separate_api
       has_update_time: true
@@ -372,24 +380,47 @@ sources:
     #   sitemap 里找到——因为所有分类文章共享同一个扁平 /announcements/{slug} 路径，
     #   不带分类 segment，sitemap 天然是全量的。Phase 2 全量回填仍然只需要一份
     #   sitemap，无需按分类单独下载。
+    #
+    # 【2026-07-14 分页升级，见 CLAUDE.md「Phemex 分页升级」，本次替代下面的政策调整
+    # 记录】上面记录的 sitemap 全量回填方案、以及"Phemex 没有分页只能拿固定这一页"
+    # 的判断均已被推翻——用户要求核实"BingX/Phemex 是否有跟 Lbank 同类的隐藏真实接口"
+    # 后，headless browser 抓包发现页面 hydration 之后真正调用的是一个匿名 JSON API：
+    # `GET https://prod-cms-api.phemex.com/articles/query?categoryKey=
+    # AnnouncementCategory<id>&entryKey=Announcement&language=<lang>&pageNo=N&
+    # pageSize=M`。真正支持翻页（pageNo 递增返回不同文章，已用真实请求验证）、
+    # 不需要签名/cookie（BingX 同类接口发现有签名保护，逆向成本不可控，已放弃，见
+    # CLAUDE.md「BingX 签名保护」；Phemex 这个接口没有这个问题）。
+    # **关键发现**：`categoryKey` 的数字部分不随 locale 变化，一直是这里记录的
+    # EN 侧 432/442/452（不是下面 FR 块历史记录的"i18n 各 locale 独立编号"
+    # 438/448/458 那组值——那组值是 Phase 2.6 从 `window.preloadedData.pageData.
+    # category.id` 观察到的，是另一套跟这个新接口无关的 locale 相关编号，予以保留
+    # 仅供参考，不要跟这里的 `list_category_id` 混淆），切换语言完全靠 `language`
+    # 参数（真实验证：`language=fr` 返回法语标题，News/Activities/Newsletter 总数
+    # 分别为 1658/158/5，跟 Phase 1 侦察记录的 FR 总数 1641/158/4 基本吻合，小幅
+    # 增长是数据自然更新）。
+    # `data.rows[]` 每条只有 id/language/slug/publishedTime/title/authorName/
+    # desc（**截断预览，不是完整正文**）/tagKeys/categoryKey，`data.total` 是
+    # 分类下全部文章数。**完整正文仍然要靠详情页 `window.preloadedData`**
+    # （`parse_article_detail()`，未受这次改动影响，详情页本身没有截断/分页问题，
+    # 之前已验证正文完整）。见 src/parsers/phemex_web.py 顶部「2026-07-14 补充」。
     # ============================================================
     EN:
       categories:
         news:
-          endpoint: "https://phemex.com/announcements/news"
-          category_id: 432
+          list_category_id: 432   # AnnouncementCategory432，真实分页 API 用这个 id，locale 无关
         activities:
-          endpoint: "https://phemex.com/announcements/activities"
-          category_id: 442   # campaign 标签的核心来源，Phase 1 首版遗漏，2026-07-13 补齐
+          list_category_id: 442   # campaign 标签的核心来源，Phase 1 首版遗漏，2026-07-13 补齐
         newsletter:
-          endpoint: "https://phemex.com/announcements/newsletter"
-          category_id: 452
+          list_category_id: 452
+      list_endpoint: "https://prod-cms-api.phemex.com/articles/query"
+      language: "en"   # 分页 API 的 language 参数，控制返回哪个语言版本的文章
       method: GET
       headers: {}
-      locale_param: "path"
-      pagination: {type: none, note: "列表页 query 参数不生效，翻页为客户端行为；完整文章列表（含全部 3 个分类）用 sitemap_output/sitemap_Announcement.xml（EN 3485 条去重 URL，已验证覆盖 News/Activities/Newsletter）替代"}
+      locale_param: "path"   # 详情页 URL 仍然是 phemex.com/{locale}/announcements/{slug}
+      pagination: {type: page_number, page_size: 20, max_pages: 5}   # daily 增量默认
+        # 只翻前 5 页；--force-full 忽略这个上限，翻到 rows 返回空为止
       rate_limit_ms: 500
-      detail_mode: inline   # 详情页 window.preloadedData.pageData 已含完整正文，一次请求即可
+      detail_mode: separate_api   # 列表接口只有截断 desc，完整正文仍需详情页（window.preloadedData）
       has_update_time: true   # 字段存在，但抽样显示只是发布流程级别的秒级噪音，不可靠
       strategy: full_scan   # 抽样 8 条 createdAt/updatedAt 仅相差 0-28 秒，非真实编辑，watermark 不可靠
       field_mapping:
@@ -420,22 +451,26 @@ sources:
     FR:
       categories:
         news:
-          endpoint: "https://phemex.com/fr/announcements/news"
-          category_id: 438   # 实测 tests/fixtures/phemex_FR.html 确认，name:'Nouvelles'（与 EN 432 不同，i18n 独立编号）
+          list_category_id: 432   # 注意：仍然是 EN 侧的数字 id，不是下面注释里 i18n 观察到的 438，见上方「2026-07-14 分页升级」说明
         activities:
-          endpoint: "https://phemex.com/fr/announcements/activities"
-          category_id: 448
+          list_category_id: 442
         newsletter:
-          endpoint: "https://phemex.com/fr/announcements/newsletter"
-          category_id: 458
+          list_category_id: 452
+      list_endpoint: "https://prod-cms-api.phemex.com/articles/query"
+      language: "fr"
       method: GET
       headers: {}
       locale_param: "path"
-      pagination: {type: none, note: "同 EN；完整列表（含全部 3 个分类）用同一个 sitemap_Announcement.xml 里的 FR hreflang 链接（1834 条去重 URL，已验证覆盖 News/Activities/Newsletter）"}
+      pagination: {type: page_number, page_size: 20, max_pages: 5}
       rate_limit_ms: 500
-      detail_mode: inline
+      detail_mode: separate_api
       has_update_time: true
       strategy: full_scan   # 与 EN 同一套底层数据和噪音模式
+      # category.id（Phase 2.6 从 window.preloadedData.pageData.category.id 观察到
+      # 的 locale 相关编号，News=438/Activities=448/Newsletter=458，实测
+      # tests/fixtures/phemex_FR.html 确认 name:'Nouvelles'）跟真实分页 API 用的
+      # list_category_id 是两套不同编号体系，不要混用；这组值目前只在这条注释里
+      # 留档，代码不消费。
       field_mapping:
         article_id: id   # 与 EN 同一篇文章的 id 不同（locale 各自独立数值 id），靠 i18n map 或 slug 关联
         title: title
@@ -502,72 +537,164 @@ sources:
     #     REST/GraphQL 调用），维持 Phase 1 原判断——只能稳定拿到默认聚合
     #     视图的最新 10 条，按 tab 筛选需要 headless browser 才能抓到真实
     #     的客户端请求。
+    #
+    # 【2026-07-14 彻底重写：找到真实匿名 JSON API，见 CLAUDE.md「Lbank 真实 API
+    # 重写」】上面记录的"翻页未逆向、只能拿默认聚合视图 10 条"的结论已被推翻——
+    # 用户要求投入一次 headless browser 抓包（跟当年破解 Zoomex SPA 同样的方法）
+    # 后，找到了页面 hydration 之后真正调用的接口，均匿名可访问、不需要 cookie/
+    # 签名：
+    #   - 列表：POST https://www.lbank.com/lbk-api/huamao-media-center/notice/latestList
+    #     body {"pageNo":N,"pageSize":M,"topCategory":"NOTICE","categoryCode":"<code>"}
+    #     真正支持翻页（pageNo 递增返回完全不同的条目，已用真实请求验证 page1/page2
+    #     无重叠）、真正支持分类筛选（categoryCode 传顶层 code 会聚合其全部子分类，
+    #     如 "CO00000053" New Listings 聚合 Spot/Futures/Copy Trading 三个子分类，
+    #     total=6909，远超默认视图的 10 条）。响应里每条已经带完整 content（纯文本，
+    #     真实抽样比对跟详情接口的正文实质一致，字符数几乎相等，不存在截断）。
+    #   - 详情：GET .../notice/content/{code}?noticeCode={code}，返回
+    #     noticeContent.columnId（叶子分类数值 id，可靠）+ createTime/updateTime
+    #     （均 unix 毫秒，可靠，抽样确认非 Phase 1 那批 8 条历史数据的重复）。
+    #     content 字段本身是指向另一域名（jiz.lbank.com）静态文本文件的 URL，不是
+    #     字面量，本项目不解析这个字段（列表接口的 content 已经够用，见
+    #     src/parsers/lbank.py 顶部说明）。
+    #   - 分类树：POST .../notice/category/list body {"topCategory":"NOTICE"}，
+    #     返回 7 个顶层 tab（categoryId/code 跟 Phase 1 补充侦察记录的页面级 tab
+    #     代码树完全对上：129 LBank VIP / 53 New Listings / 58 Event Announcements /
+    #     64 System Upgrades & Maintenance / 69 Platform Updates / 57 Delisting
+    #     Information / 63 Fiat），每个顶层 tab 下还有子分类（如 53 下有 54 Spot
+    #     Listings/55 Futures Listings/56 Copy Trading Listings）。
+    #   - 语言切换：**不是**标准 `Accept-Language` 请求头（实测传 "id" 无效，
+    #     仍返回英文），是应用自定义头 `ex-language`，三个值均已真实验证生效：
+    #     `en-US`/`vi-VN`/`id`。
+    #   - 分页规模：pageSize 实测最高测到 100（接受，无报错），totalPage 按
+    #     total/pageSize 正确换算。
+    #   - robots.txt 未检查这批 `/lbk-api/*` 路径（API 域名与页面同域，一般
+    #     API 路径不受页面级 robots 规则约束，且行为等同于用户浏览器正常加载
+    #     该页面时的请求，未绕过任何访问限制）。
+    # 类目粒度：按 7 个顶层 tab 采集（categoryCode 传顶层 code，服务端自动聚合
+    # 全部子分类），不逐子分类单独请求——跟 Weex 用 category 级聚合（而不是
+    # section 级）是同一个设计选择。`raw_category` 落库详情接口给的 columnId
+    # （叶子分类数值 id，比顶层 categoryCode 更精确），跟 Weex 用真实 section_id
+    # 做 raw_category 是同一个惯例（Weex 也是按 category 级聚合采集，但
+    # raw_category 记的是每条真正的 section_id）。
     # ============================================================
     EN:
-      endpoint: "https://www.lbank.com/support/announcement"
-      method: GET
-      headers: {}   # 普通浏览器 UA 即可，plain curl 可用
-      locale_param: "path"   # /en-US/support/announcement 会 301 到 canonical 无前缀路径；VN/ID 需要前缀，见下
-      pagination: {type: none, note: "仅第 1 页（10 条）可靠可得，?pageNo=/?page= 均被忽略，翻页为客户端交互，未逆向"}
+      endpoint: "https://www.lbank.com/lbk-api/huamao-media-center/notice/latestList"
+      detail_endpoint: "https://www.lbank.com/lbk-api/huamao-media-center/notice/content/{code}?noticeCode={code}"
+      lang_header: "en-US"
+      locale_path: ""   # 公开文章 URL 前缀（拼 group_id 之外的展示用 url 字段），EN 无前缀
+      categories:
+        lbank_vip:
+          category_code: "CO00000129"
+        new_listings:
+          category_code: "CO00000053"
+        event_announcements:
+          category_code: "CO00000058"
+        system_maintenance:
+          category_code: "CO00000064"
+        platform_updates:
+          category_code: "CO00000069"
+        delisting_information:
+          category_code: "CO00000057"
+        fiat:
+          category_code: "CO00000063"
+      method: POST
+      headers: {"Content-Type": "application/json"}
+      pagination: {type: page_number, page_size: 50, max_pages: 5}   # daily 增量默认
+        # 只翻前 5 页；--force-full 忽略这个上限，翻到 resultList 返回空为止
       rate_limit_ms: 500
-      detail_mode: html   # SSR HTML，正文数据是内嵌在 RSC script 里的转义 JSON，不是独立 JSON API
-      has_update_time: true   # 仅 detail 页有可靠 updateTime；列表页 contentShowTime 不可靠替代
-      strategy: full_scan   # Phase 2.5 订正：翻页未逆向、每轮只能拿固定 10 条，watermark 前提不成立，见上方订正说明；detail 页 updateTime 仍落库，仅供观测不参与翻页决策
+      detail_mode: separate_api   # 列表接口已含 content，详情接口只用来补 columnId/updateTime，见上方说明
+      has_update_time: true   # 详情接口 updateTime 可靠（抽样确认非重复历史数据）
+      strategy: full_scan   # latestList 默认按 noticeId 降序（等价创建顺序），非 updateTime，
+        # 不能安全依赖排序做提前退出翻页判断编辑变更（同 Zoomex 批次 2 教训），变更检测交给 content_hash
       field_mapping:
-        article_id: noticeId   # 另有 code（长数字字符串），用于 detail 页 URL slug，二者等价
-        title: title
-        content: content   # 列表页已含完整正文（HTML 实体转义的纯文本）
-        post_time: contentShowTime   # 列表页字段，unix ms；detail 页对应 createTime，也是 unix ms
-        update_time: updateTime   # 仅存在于 detail 页（/support/articles/{code}），需二次请求
-        category: null   # 列表页原始 payload 未观察到 per-item category；已找到完整 tab 分类代码树（见上方补充侦察）但尚无法按 tab 单独抓取，暂时留空
-      # detail 页 endpoint 模式："https://www.lbank.com/support/articles/{code}"
-      # update_time 可靠性抽样（8 条 detail 页，createTime vs updateTime，UTC）：
-      #   2076511040740261888  create 2026-03-02 06:05:15  update 2026-07-13 03:59:09  差异
-      #   2076504116124712960  create 2026-03-14 08:56:13  update 2026-07-13 00:29:58  差异
-      #   2075928423246594048  create 2026-03-02 06:05:15  update 2026-03-02 08:47:03  差异
-      #   2075923001810878464  create 2026-03-02 06:05:15  update 2026-03-19 20:22:55  差异
-      #   2075910704094773248  create 2026-03-02 06:05:15  update 2026-07-11 20:41:05  差异
-      #   2075904588547883008  create 2026-03-09 13:38:59  update 2026-03-09 15:24:19  差异
-      #   2075888315717910528  create 2026-03-02 06:05:15  update 2026-06-30 03:12:49  差异
-      #   2075873249236877312  create 2026-03-02 06:05:15  update 2026-04-20 12:03:31  差异
-      #   2075852955000504320  create 2026-03-19 07:59:23  update 2026-03-19 07:59:23  相等（1/9）
-      # 分类观察值（页面级 tabs）：LBank VIP / New Listings / Event Announcements /
-      #   System Upgrades & Maintenance / Platform Updates / Delisting Information / Fiat
+        article_id: noticeId   # 另有 code（长数字字符串），用于详情接口 URL/展示 URL，二者等价
+        title: title   # 列表接口字段，已经是干净文本（不带高亮模板标记）
+        content: content   # 列表接口字段，纯文本（偶有 HTML 实体），真实抽样确认跟详情接口正文实质一致、非截断
+        post_time: contentShowTime   # 列表接口字段，unix ms；详情接口 createTime 更精确，落库时以详情接口为准
+        update_time: updateTime   # 详情接口字段，unix ms，可靠
+        category: columnId   # 详情接口字段，叶子分类数值 id，可靠（不是 categoryCode 请求参数本身）
+      # 真实验证记录（2026-07-14）：
+      #   pageNo=1 vs pageNo=2（pageSize=15，categoryCode=null）：noticeId 完全不重叠
+      #     （page1: 17021~17009，page2: 17006~16991）
+      #   categoryCode=CO00000054（Spot Listings，New Listings 子分类）：返回条目标题
+      #     均为 "X Will Be Listed on LBank"，跟 Bitunix/Weex 用真实 title 核对映射
+      #     的方法一致
+      #   categoryCode=CO00000053（New Listings 顶层）：total=6909，条目分布在
+      #     Spot/Futures/Copy Trading 三个子分类，确认顶层 code 自动聚合子分类
+      #   ex-language 头分别传 en-US/vi-VN/id，响应 langCode 逐一对应正确切换
+      # 7 个顶层分类真实 total（categoryCode=顶层 code，pageSize=5 探测）：
+      #   129 LBank VIP: 1 / 53 New Listings: 6909 / 58 Event Announcements: 2754 /
+      #   64 System Upgrades & Maintenance: 3422 / 69 Platform Updates: 523 /
+      #   57 Delisting Information: 796 / 63 Fiat: 59
       # 时间格式：unix 毫秒，UTC
     VN:
-      endpoint: "https://www.lbank.com/vi-VN/support/announcement"
-      method: GET
-      headers: {}
-      locale_param: "path"   # /vi-VN/ 前缀，langCode: "vi-VN" 确认
-      pagination: {type: none, note: "同 EN，仅第 1 页可靠"}
+      endpoint: "https://www.lbank.com/lbk-api/huamao-media-center/notice/latestList"
+      detail_endpoint: "https://www.lbank.com/lbk-api/huamao-media-center/notice/content/{code}?noticeCode={code}"
+      lang_header: "vi-VN"
+      locale_path: "vi-VN/"
+      categories:
+        lbank_vip:
+          category_code: "CO00000129"
+        new_listings:
+          category_code: "CO00000053"
+        event_announcements:
+          category_code: "CO00000058"
+        system_maintenance:
+          category_code: "CO00000064"
+        platform_updates:
+          category_code: "CO00000069"
+        delisting_information:
+          category_code: "CO00000057"
+        fiat:
+          category_code: "CO00000063"
+      method: POST
+      headers: {"Content-Type": "application/json"}
+      pagination: {type: page_number, page_size: 50, max_pages: 5}
       rate_limit_ms: 500
-      detail_mode: html
+      detail_mode: separate_api
       has_update_time: true
-      strategy: full_scan   # 机制与 EN 相同，noticeId/code 跨 locale 一致；full_scan 理由同 EN 见上方订正说明
+      strategy: full_scan   # 机制与 EN 相同，noticeId/code 跨 locale 一致
       field_mapping:
         article_id: noticeId
         title: title
         content: content
         post_time: contentShowTime
         update_time: updateTime
-        category: null
+        category: columnId
     ID:
-      endpoint: "https://www.lbank.com/id/support/announcement"
-      method: GET
-      headers: {}
-      locale_param: "path"   # /id/ 前缀，langCode: "id" 确认
-      pagination: {type: none, note: "同 EN，仅第 1 页可靠"}
+      endpoint: "https://www.lbank.com/lbk-api/huamao-media-center/notice/latestList"
+      detail_endpoint: "https://www.lbank.com/lbk-api/huamao-media-center/notice/content/{code}?noticeCode={code}"
+      lang_header: "id"   # 注意：不是 "id-ID"，实测只有裸 "id" 生效（ex-language 头，非 Accept-Language）
+      locale_path: "id/"
+      categories:
+        lbank_vip:
+          category_code: "CO00000129"
+        new_listings:
+          category_code: "CO00000053"
+        event_announcements:
+          category_code: "CO00000058"
+        system_maintenance:
+          category_code: "CO00000064"
+        platform_updates:
+          category_code: "CO00000069"
+        delisting_information:
+          category_code: "CO00000057"
+        fiat:
+          category_code: "CO00000063"
+      method: POST
+      headers: {"Content-Type": "application/json"}
+      pagination: {type: page_number, page_size: 50, max_pages: 5}
       rate_limit_ms: 500
-      detail_mode: html
+      detail_mode: separate_api
       has_update_time: true
-      strategy: full_scan   # full_scan 理由同 EN 见上方订正说明
+      strategy: full_scan
       field_mapping:
         article_id: noticeId
         title: title
         content: content
         post_time: contentShowTime
         update_time: updateTime
-        category: null
+        category: columnId
   zoomex:  # 我方基线，非竞品
     # ============================================================
     # 侦察结论（Phase 1，2026-07-13）：BLOCKED（详见下方"补充侦察"，本次已解除）。

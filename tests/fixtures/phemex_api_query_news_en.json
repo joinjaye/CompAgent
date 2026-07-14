@@ -1,0 +1,70 @@
+{
+  "code": 0,
+  "duration": 119,
+  "msg": "OK",
+  "data": {
+    "rows": [
+      {
+        "id": 135338,
+        "language": "en",
+        "slug": "/announcements/phemex-will-delist-manta-and-scr-spot-and-margin-trading-pairs",
+        "publishedTime": 1783935461000,
+        "headerImage": null,
+        "title": "Phemex Will Delist MANTA and SCR Spot and Margin Trading Pairs",
+        "authorName": "devin",
+        "desc": "Dear Traders, Phemex will delist the following margin trading pairs and spot markets. Please review the schedule below carefully: MANTA / USDT SCR / USDT Delisting Schedule Margin Trading 10:00 UTC on",
+        "tagKeys": "",
+        "categoryKey": "AnnouncementCategory432"
+      },
+      {
+        "id": 135329,
+        "language": "en",
+        "slug": "/announcements/phemex-new-futures-listing-skhyusdt937",
+        "publishedTime": 1783934701000,
+        "headerImage": null,
+        "title": "Phemex New Futures Listing - SKHYUSDT",
+        "authorName": "Phemex",
+        "desc": "Dear Users, At 10:00 UTC on July 13, 2026, Phemex will be listing the new futures trading pair SKHYUSDT. This futures pair is linear USDT-margined and supports hedge mode, which allows you to keep bot",
+        "tagKeys": "",
+        "categoryKey": "AnnouncementCategory432"
+      },
+      {
+        "id": 135319,
+        "language": "en",
+        "slug": "/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100434",
+        "publishedTime": 1783933806000,
+        "headerImage": null,
+        "title": "Phemex Will Delist the ZETA / USDT Spot Trading Pair on July 14, 2026",
+        "authorName": "Phemex",
+        "desc": "Dear Traders, Phemex will delist the ZETA / USDT spot trading pair on July 14, 2026. Here is the offline schedule: - 10:00 UTC on July 14, 2026 - The ZETA / USDT spot pair will be delisted from the Ph",
+        "tagKeys": "",
+        "categoryKey": "AnnouncementCategory432"
+      },
+      {
+        "id": 135309,
+        "language": "en",
+        "slug": "/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100756",
+        "publishedTime": 1783933517000,
+        "headerImage": null,
+        "title": "Phemex Will Delist the SOPH / USDT Spot Trading Pair on July 14, 2026",
+        "authorName": "Phemex",
+        "desc": "Dear Traders, Phemex will delist the SOPH / USDT spot trading pair on July 14, 2026. Here is the offline schedule: - 10:00 UTC on July 14, 2026 - The SOPH / USDT spot pair will be delisted from the Ph",
+        "tagKeys": "",
+        "categoryKey": "AnnouncementCategory432"
+      },
+      {
+        "id": 135289,
+        "language": "en",
+        "slug": "/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100520",
+        "publishedTime": 1783933506000,
+        "headerImage": null,
+        "title": "Phemex Will Delist the TAIKO / USDT Spot Trading Pair on July 14, 2026",
+        "authorName": "Phemex",
+        "desc": "Dear Traders, Phemex will delist the TAIKO / USDT spot trading pair on July 14, 2026. Here is the offline schedule: - 10:00 UTC on July 14, 2026 - The TAIKO / USDT spot pair will be delisted from the ",
+        "tagKeys": "",
+        "categoryKey": "AnnouncementCategory432"
+      }
+    ],
+    "total": 2945
+  }
+}

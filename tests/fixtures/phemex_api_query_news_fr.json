@@ -1,0 +1,70 @@
+{
+  "code": 0,
+  "duration": 140,
+  "msg": "OK",
+  "data": {
+    "rows": [
+      {
+        "id": 135344,
+        "language": "fr",
+        "slug": "/announcements/phemex-will-delist-manta-and-scr-spot-and-margin-trading-pairs",
+        "publishedTime": 1783935461000,
+        "headerImage": null,
+        "title": "Phemex retire les paires de trading spot et marge MANTA et SCR",
+        "authorName": "devin",
+        "desc": "Chers traders, Phemex va retirer les paires de trading sur marge et les marchés spot suivants. Veuillez consulter attentivement le calendrier ci-dessous : MANTA / USDT SCR / USDT Calendrier du retrait",
+        "tagKeys": "",
+        "categoryKey": "AnnouncementCategory432"
+      },
+      {
+        "id": 135331,
+        "language": "fr",
+        "slug": "/announcements/phemex-new-futures-listing-skhyusdt937",
+        "publishedTime": 1783934701000,
+        "headerImage": null,
+        "title": "Nouvelle cotation de contrats à terme Phemex - SKHYUSDT",
+        "authorName": "Phemex",
+        "desc": "Chers Utilisateurs, À 10:00 UTC on July 13, 2026, Phemex inscrira la nouvelle paire de trading à terme SKHYUSDT. Cette paire de contrats à terme est linéaire, avec une marge en USDT, et prend en charg",
+        "tagKeys": "",
+        "categoryKey": "AnnouncementCategory432"
+      },
+      {
+        "id": 135321,
+        "language": "fr",
+        "slug": "/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100434",
+        "publishedTime": 1783933806000,
+        "headerImage": null,
+        "title": "Phemex retirera la paire de trading Spot ZETA / USDT le July 14, 2026",
+        "authorName": "Phemex",
+        "desc": "Chers traders, Phemex retirera la paire de trading Spot ZETA / USDT le July 14, 2026. Voici le calendrier de mise hors ligne : - 10:00 UTC on July 14, 2026 - La paire Spot ZETA / USDT sera retirée du ",
+        "tagKeys": "",
+        "categoryKey": "AnnouncementCategory432"
+      },
+      {
+        "id": 135311,
+        "language": "fr",
+        "slug": "/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100756",
+        "publishedTime": 1783933518000,
+        "headerImage": null,
+        "title": "Phemex retirera la paire de trading Spot SOPH / USDT le July 14, 2026",
+        "authorName": "Phemex",
+        "desc": "Chers traders, Phemex retirera la paire de trading Spot SOPH / USDT le July 14, 2026. Voici le calendrier de mise hors ligne : - 10:00 UTC on July 14, 2026 - La paire Spot SOPH / USDT sera retirée du ",
+        "tagKeys": "",
+        "categoryKey": "AnnouncementCategory432"
+      },
+      {
+        "id": 135291,
+        "language": "fr",
+        "slug": "/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100520",
+        "publishedTime": 1783933507000,
+        "headerImage": null,
+        "title": "Phemex retirera la paire de trading Spot TAIKO / USDT le July 14, 2026",
+        "authorName": "Phemex",
+        "desc": "Chers traders, Phemex retirera la paire de trading Spot TAIKO / USDT le July 14, 2026. Voici le calendrier de mise hors ligne : - 10:00 UTC on July 14, 2026 - La paire Spot TAIKO / USDT sera retirée d",
+        "tagKeys": "",
+        "categoryKey": "AnnouncementCategory432"
+      }
+    ],
+    "total": 1658
+  }
+}
