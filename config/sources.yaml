@@ -648,7 +648,10 @@ sources:
       method: POST
       headers: {"Content-Type": "application/json"}
       locale_param: "body:lang"   # 请求体里的 lang 字段，值 "en-US"（不是 URL path，与其它源不同）
-      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30}
+      # max_pages: daily 增量（非 --force-full）时最多翻这么多页就停，见
+      # src/collectors/zoomex.py 顶部"2026-07-14 补充"说明——已知权衡：不保证捕获
+      # 排在窗口外、且被源站编辑过的旧文章，靠定期 --force-full 兜底。
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 5}
       rate_limit_ms: 500   # 10 次连续请求 500ms 间隔全部 200，无限流
       detail_mode: separate_api   # 列表接口只有 title，正文（content，富文本 JSON）需另调 getArticleById
       has_update_time: true   # gmtUpdatedAt，抽样 10 条全部与 gmtCreatedAt 存在真实差异
@@ -674,7 +677,10 @@ sources:
       method: POST
       headers: {"Content-Type": "application/json"}
       locale_param: "body:lang"
-      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30}
+      # max_pages: daily 增量（非 --force-full）时最多翻这么多页就停，见
+      # src/collectors/zoomex.py 顶部"2026-07-14 补充"说明——已知权衡：不保证捕获
+      # 排在窗口外、且被源站编辑过的旧文章，靠定期 --force-full 兜底。
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 5}
       rate_limit_ms: 500
       detail_mode: separate_api
       has_update_time: true
@@ -702,7 +708,10 @@ sources:
       method: POST
       headers: {"Content-Type": "application/json"}
       locale_param: "body:lang"
-      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30}
+      # max_pages: daily 增量（非 --force-full）时最多翻这么多页就停，见
+      # src/collectors/zoomex.py 顶部"2026-07-14 补充"说明——已知权衡：不保证捕获
+      # 排在窗口外、且被源站编辑过的旧文章，靠定期 --force-full 兜底。
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 5}
       rate_limit_ms: 500
       detail_mode: separate_api
       has_update_time: true
@@ -728,7 +737,10 @@ sources:
       method: POST
       headers: {"Content-Type": "application/json"}
       locale_param: "body:lang"
-      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30}
+      # max_pages: daily 增量（非 --force-full）时最多翻这么多页就停，见
+      # src/collectors/zoomex.py 顶部"2026-07-14 补充"说明——已知权衡：不保证捕获
+      # 排在窗口外、且被源站编辑过的旧文章，靠定期 --force-full 兜底。
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 5}
       rate_limit_ms: 500
       detail_mode: separate_api
       has_update_time: true
@@ -754,7 +766,10 @@ sources:
       method: POST
       headers: {"Content-Type": "application/json"}
       locale_param: "body:lang"
-      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30}
+      # max_pages: daily 增量（非 --force-full）时最多翻这么多页就停，见
+      # src/collectors/zoomex.py 顶部"2026-07-14 补充"说明——已知权衡：不保证捕获
+      # 排在窗口外、且被源站编辑过的旧文章，靠定期 --force-full 兜底。
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 5}
       rate_limit_ms: 500
       detail_mode: separate_api
       has_update_time: true

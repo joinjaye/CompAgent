@@ -1,0 +1,38 @@
+# ============================================================
+# Phase 4 LLM 分析层配置。
+#
+# 凭证（LLM_API_KEY / LLM_API_BASE / LLM_MODEL）不放在这里，走
+# config/.env.example 模板 -> 实际 .env（gitignored），由 src/analysis/config.py
+# 读取。本文件只放非敏感的分析参数，改这些值不需要碰代码。
+#
+# LLM_API_BASE 约定指向一个 OpenAI 兼容的 /chat/completions endpoint（"任何 OpenAI
+# 兼容接口"里最大公约数的调用形态），Anthropic 原生 API 需要经由兼容层
+# （如 Anthropic 官方的 OpenAI-compatible endpoint）接入，不在本层做双协议分支。
+# ============================================================
+
+llm:
+  temperature: 0          # 全部 prompt 要求输出稳定，固定为 0
+  timeout_s: 60
+  max_retries: 3
+  max_tokens_by_category:
+    campaign: 2000
+    product: 2000
+    listing: 1500
+    delisting: 800
+
+prompt_versions:          # 改某个 category 的 prompt 正文后必须递增这里的版本号
+  campaign: campaign-v1
+  product: product-v1
+  listing: listing-v1
+  delisting: delisting-v1
+
+zmx_index:
+  lookback_days: 90       # Zoomex 基线只取近 90 天
+  top_k: 5                # 每个批次检索 top5 条 Zoomex 基线
+  min_hits_for_full_confidence: 3   # 命中 < 3 条时在 prompt 里注明"基线数据有限"
+
+content_truncation:
+  article_content_chars: 4000   # 单篇正文喂给 LLM 前的截断上限，超长正文（个别 Weex
+                                 # 活动规则页）避免把 token 预算全部耗在一篇文章上
+  zmx_preview_chars: 400         # ZMX_BLOCK 每条摘要长度，跟 prompt 文本里的
+                                 # content_preview 定义一致

@@ -487,50 +487,369 @@ other 关键词：maintenance / system / upgrade / risk / 维护 / 风险
 
 ## Phase 4｜LLM 分析层（summary + ZMX 差异）
 
-交付物：`src/analysis/`，写入 insights 表
-验收：每条 insight 的 related_uids 都能链回真实 uid；diff_type 不出现无依据的「ZMX已有」
+基于已完成的 Phase 3 pipeline，实现批次级 LLM 分析层。
 
-```
-实现分析层，产出汇总分析表的核心字段。
+【核心概念变更：分析单元是批次，不是单条公告】
 
-【前置：建立 Zoomex 基线】
-Zoomex 现在已经完全可用（Phase 2 已接入 api2.zoomex.com 的 3 个接口），把 Zoomex 的 announcements 按 category 索引（近 90 天），作为对比语料库。
+每次采集运行结束后，把当日（因为这个流程每天跑一次，所以每日相当于是当轮批次下的所有内容） status IN (new, changed) 的公告按
+(source, category, locale) 分组，每组作为一个分析批次，整组传入一次 LLM，
+产出一行 insights 记录。原版「逐条公告两次调用」方案废弃，改为批次级单次调用。
 
-Zoomex 的分类结构：
-- Platform Announcement（menu_id=26）→ 综合公告，对应 other 为主
-- New Product Announcement（menu_id=123）→ product
-- Platform Events（menu_id=145）→ campaign
-- Exclusive Events（menu_id=69，仅 EN-Asia）→ campaign
+批次 PK 设计：SHA256(source || "_" || category || "_" || locale || "_" || batch_date)
+- 同一天同一批次重跑：追加新公告到 related_uids，用本日全量重新调 LLM，覆盖原记录
+- 不同天的记录各自独立，不合并
 
-索引方式：关键词索引 + TF-IDF 向量（scikit-learn 即可，不引入重型向量库），
-支持按 category 过滤后检索 Top5 相似公告。
+【第一步：schema 迁移（migrate_v3.py）】
 
-【任务 A：特点/玩法 summary】
-对每个 category in (campaign, product, listing) 的公告组（按 group 维度），用 LLM 抽取结构化信息：
-- 玩法机制（一句话）
-- 参与门槛
-- 奖励形式与规模（数字必须从原文抽取）
-- 时间窗口
-- 目标用户群
-然后生成 2-3 句中文 summary。
+insights 表废弃旧版全部字段，替换为以下结构：
 
-【任务 B：ZMX 差异分析】
-把该公告的 title + summary 作为 query，在 Zoomex 基线中按同 category 检索 Top5。
-连同检索结果一起传给 LLM，要求输出：
-- diff_type: ZMX已有 / ZMX缺失 / ZMX玩法不同 / 不适用
-- zmx_diff: 具体差异描述
-- priority: 高 / 中 / 低
-- evidence_uids: Zoomex 公告 uid 列表
+  CREATE TABLE insights (
+    id                TEXT PRIMARY KEY,
+    batch_date        TEXT NOT NULL,           -- UTC date, YYYY-MM-DD
+    source            TEXT NOT NULL,
+    category          TEXT NOT NULL CHECK(category IN
+                        ('campaign','product','listing','delisting','other')),
+    locale            TEXT NOT NULL,
+    article_count     INTEGER NOT NULL DEFAULT 0,
+    related_uids      TEXT NOT NULL DEFAULT '[]',  -- JSON array of uid strings
+    is_locale_derived BOOLEAN NOT NULL DEFAULT 0,
+    derived_from_id   TEXT REFERENCES insights(id),
+    summary           TEXT,                    -- batch_summary 字段的 LLM 输出
+    articles_analysis TEXT,                    -- JSON array，每篇公告的结构化分析
+    zmx_diff          TEXT,                    -- zmx_comparison.analysis 的文字部分
+    diff_type         TEXT CHECK(diff_type IN
+                        ('ZMX已有','ZMX缺失','ZMX玩法不同','混合','不适用')),
+    priority          TEXT CHECK(priority IN ('高','中','低')),
+    zmx_evidence_uids TEXT NOT NULL DEFAULT '[]',  -- JSON array of Zoomex uid strings
+    prompt_version    TEXT NOT NULL,
+    llm_tokens_used   INTEGER,
+    created_at        TEXT NOT NULL,
+    updated_at        TEXT NOT NULL
+  );
 
-【硬性约束（防幻觉）】
-- LLM 只能基于传入的 Zoomex 基线语料判断。Top5 检索不足以判断时，必须输出 diff_type="不适用"。严禁编造。
-- 判断依据必须引用具体 Zoomex 公告 uid。无法引用则 diff_type 只能是"不适用"或"ZMX缺失"。
-- status=changed 的公告：把 content_history 旧版本和新版本一起传入，让 LLM 输出"改了什么"。
+  CREATE INDEX idx_insights_batch ON insights(batch_date, source, category, locale);
+  CREATE INDEX idx_insights_source_cat ON insights(source, category);
 
-【成本控制】
-- 所有 LLM 调用按 (content_hash, prompt_version) 缓存
-- 记录每次调用的 token 数和成本到日志
-```
+migrate_v3.py 沿用 Phase 2.5 建立的迁移惯例：
+  建 insights_v3 → INSERT SELECT 能对上的旧列（id/source/category/created_at）→
+  DROP insights → RENAME insights_v3 → insights。
+旧数据量极少（只有开发态数据），旧字段大多对不上新结构，迁移只保留 PK 和时间戳，
+其他字段全部 NULL，后续重跑自动补齐。
+
+【第二步：Zoomex 基线索引（src/analysis/zmx_index.py）】
+
+把 announcements 表里 source='Zoomex' 的近 90 天数据建成可检索的基线语料库。
+采用轻量全文检索（这部分数据目前还在运行中）：
+
+  build_index(conn, category, locale) -> ZmxIndex
+    - 按 category + locale 过滤，只索引 content 非空的行
+    - 对每条记录做简单 TF-IDF 权重计算（用 sklearn CountVectorizer + TfidfTransformer
+      即可，或自己实现：词频 / log(文档数/含该词文档数)）
+    - 返回可调用的索引对象
+
+  search(query_text, top_k=5) -> List[ZmxArticle]
+    - 把 batch 内所有公告的 title 拼接成 query（不是 content，title 更能代表主题）
+    - 返回 top_k 条，附带 uid / title / content[:400] / post_time
+
+  ZmxArticle: uid, title, content_preview, post_time, similarity_score
+
+索引可能命中很少或为空。处理规则：
+  - 命中 < 3 条时，如实传入（不补全），并在 prompt 里注明「基线数据有限」
+  - 命中 0 条时，跳过 ZMX 差异分析，diff_type 强制填「不适用」，不调 LLM 的
+    zmx_comparison 部分（减少 token 浪费）
+
+【第三步：locale 复用判断（src/analysis/batch.py）】
+
+在正式调用 LLM 之前，先检查是否可以复用 EN 批次的分析：
+
+  can_derive_from_en(conn, source, category, locale, batch_date) -> Optional[str]
+    # 返回 EN 批次的 insight id，如果满足复用条件；否则返回 None
+
+  复用条件（同时满足）：
+    1. locale != 'EN'（EN 自己不能复用自己）
+    2. 当日同 source × category × EN 的 insights 行已存在
+    3. 当前 locale 批次内所有公告的 group_id，都能在 EN 批次的 related_uids 里找到
+       对应的 EN 版本（即没有 locale 独占条目）
+
+  满足复用条件时：
+    - 复制 EN 批次的 summary / articles_analysis / zmx_diff / diff_type /
+      priority / zmx_evidence_uids / prompt_version
+    - 设 is_locale_derived=true，derived_from_id 指向 EN 批次 id
+    - llm_tokens_used=0（没有调 LLM）
+    - related_uids 用本 locale 自己的 uid 列表（不是 EN 的）
+    - articles_analysis 里的 uid 字段也替换成本 locale 对应的 uid
+
+  不满足复用条件（批次内有 is_region_exclusive=true 的独占条目）时：
+    - 正常调 LLM，只传本 locale 的独占条目 + Zoomex 同 locale 的基线
+
+  注意：EN 批次必须在其他 locale 批次之前处理（run() 的循环顺序按 locale 排序，
+  EN 排第一）
+
+【第四步：LLM 调用（src/analysis/llm.py）】
+
+模型：通过 .env 配置，支持 OpenAI / Anthropic / 任何 OpenAI 兼容接口。
+参数从 config/analysis.yaml 读取（temperature=0，确保输出稳定；max_tokens 按
+category 分别设定，campaign/product=2000，listing=1500，delisting=800）。
+
+prompt_version 格式："{category}-v{N}"（如 "campaign-v1"），写在每套 prompt
+的顶部注释里，改 prompt 必须递增版本号，便于追溯历史批次用的哪版。
+
+输出格式：严格 JSON，不包含任何 markdown 代码块标记或前缀文字。
+入库前校验：
+  - JSON 解析失败 → 记日志，该批次 summary/articles_analysis/zmx_diff 全部填
+    NULL，不重试（避免无限消耗 token），下次重跑会触发覆盖
+  - diff_type 不在枚举值内 → 强制改为「不适用」并记日志
+  - diff_type 不是「不适用」但 evidence_indices 为空数组 → 强制改为「不适用」
+    并记日志（核心防幻觉校验）
+  - articles 数组里的 uid 值不在本批次 related_uids 内 → 丢弃该条目并记日志
+
+缓存：按 (SHA256(所有related_uids的content_hash拼接), prompt_version) 缓存。
+同批次内容没变、prompt 版本没变时直接返回缓存，不调 LLM。
+缓存存 SQLite 一张新表 llm_cache(cache_key TEXT PK, response TEXT, created_at TEXT)。
+
+【第五步：四套 Prompt（按 category 分发）】
+
+以下是每套 prompt 的完整文本，实现时按字面量使用，用 Python f-string 填入变量。
+变量占位符格式：{VARIABLE_NAME}。
+
+---
+
+# prompt_version: campaign-v1
+
+SYSTEM:
+你是一名加密交易所竞品分析师，服务对象是运营团队。你的职责是分析竞品的活动公告，
+提炼可操作的情报。输出必须是合法 JSON，不包含任何 markdown 标记或解释文字。
+
+USER:
+【本批次信息】
+竞品：{SOURCE}
+地区/语言：{LOCALE}
+日期：{BATCH_DATE}
+公告数：{ARTICLE_COUNT} 条（新增 {NEW_COUNT} 条，变更 {CHANGED_COUNT} 条）
+
+【活动公告列表】
+{ARTICLES_BLOCK}
+（每条格式：
+[{index}] UID: {uid}
+标题：{title}
+状态：{status}
+正文：{content}
+{如果 status=changed: 变更前正文：{old_content}}
+）
+
+【Zoomex 基线（同类目、同地区，近 90 天相关度最高的 {ZMX_COUNT} 条）】
+{ZMX_BLOCK}
+（每条格式：[Z{index}] UID: {zmx_uid} | {post_time} | 标题：{title} | 摘要：{content_preview}）
+{如果 ZMX_COUNT=0: 注意：当前 Zoomex 基线数据不足，无法进行差异判断，zmx_comparison 的 diff_type 必须填「不适用」。}
+
+【分析任务】
+请输出以下结构的 JSON：
+
+{
+  "batch_summary": "2-3 句话，描述本批次活动的整体方向和共同规律。必须具体：如「本日 Bitunix 集中发布 3 场交易竞赛，均以交易量排名为分配依据，奖励形式以 USDT 为主」。禁止使用「丰富」「多样」「显著」等模糊形容词。",
+  "articles": [
+    {
+      "uid": "（原样照抄，不得修改）",
+      "title": "（原样照抄）",
+      "mechanics": "玩法机制一句话。门槛、奖励形式、奖励规模必须从正文数字中提取，不可估算或替换为模糊表达。正文信息不足时填「原文信息不足」。",
+      "time_window": "活动起止时间，格式 YYYY-MM-DD ~ YYYY-MM-DD。正文未提供时填 null。",
+      "target_users": "目标用户群，如「所有用户」「新注册用户」「合约交易用户」「大户（持仓 > X USDT）」。",
+      "change_summary": "（仅 status=changed 时填写，其他情况填 null）具体变更内容，如「奖池从 10,000 USDT 增加至 50,000 USDT，活动截止日期延长 7 天」。"
+    }
+  ],
+  "zmx_comparison": {
+    "diff_type": "从以下选项选一个：ZMX已有 / ZMX缺失 / ZMX玩法不同 / 混合 / 不适用。「混合」表示本批次内同时存在 ZMX 已有和 ZMX 缺失的情况。没有充分基线依据时只能填「不适用」。",
+    "analysis": "具体叙述与 Zoomex 的差异。必须引用 [Z{index}] 编号（如「[Z2] 所示，Zoomex 在 2026-05 也举办过类似交易竞赛，但奖池规模（5,000 USDT）明显低于本批次」）。diff_type=「混合」时，逐条标注各篇公告的具体情况。无充分依据时填「基线数据不足，无法判断」，diff_type 同时改为「不适用」。",
+    "evidence_indices": [整数数组，引用了哪几条 [Z{index}]，未引用任何基线时必须为空数组 []],
+    "priority": "高 / 中 / 低。高：ZMX 缺失的高价值玩法或奖池规模显著高于 ZMX 同类活动；中：ZMX 已有类似玩法但规模/机制有差异；低：与 ZMX 高度雷同或信息量不足。",
+    "priority_reason": "一句话说明定级依据，必须包含具体数字或事实，不接受「因为差异较大」这类空话。"
+  }
+}
+
+【强制规则，违反时输出视为无效】
+1. uid 字段原样照抄，不得改动任何字符
+2. mechanics 里的数字必须来自正文，禁止出现「大量」「丰厚」「一定数量」等模糊词
+3. evidence_indices 为空数组时，diff_type 只能是「不适用」
+4. 整个输出必须是合法 JSON，不加任何注释（// 或 /* */ 均不允许）
+
+---
+
+# prompt_version: product-v1
+
+SYSTEM:
+你是一名加密交易所竞品分析师，服务对象是产品团队。你的职责是分析竞品的产品更新公告，
+识别功能差距和迭代方向。输出必须是合法 JSON，不包含任何 markdown 标记或解释文字。
+
+USER:
+【本批次信息】
+竞品：{SOURCE}
+地区/语言：{LOCALE}
+日期：{BATCH_DATE}
+公告数：{ARTICLE_COUNT} 条（新增 {NEW_COUNT} 条，变更 {CHANGED_COUNT} 条）
+
+【产品更新公告列表】
+{ARTICLES_BLOCK}
+
+【Zoomex 基线（同类目、同地区，近 90 天相关度最高的 {ZMX_COUNT} 条）】
+{ZMX_BLOCK}
+{如果 ZMX_COUNT=0: 注意：当前 Zoomex 基线数据不足，zmx_comparison 的 diff_type 必须填「不适用」。}
+
+【分析任务】
+{
+  "batch_summary": "2-3 句话描述本批次产品更新的整体方向。必须具体说明功能领域，如「集中在合约风控规则调整（强平机制优化）和 API 接口扩展」，禁止使用「提升用户体验」「全面优化」等空话。",
+  "articles": [
+    {
+      "uid": "（原样照抄）",
+      "title": "（原样照抄）",
+      "feature_description": "新功能或变更的一句话描述。必须说清楚「做了什么」，如「新增跟单交易止损止盈功能，支持跟单者自定义最大跟单金额上限」。禁止使用「优化了体验」「提升了性能」等无实质内容的表述。",
+      "affected_users": "影响哪类用户，如「所有合约交易用户」「使用 API 接入的机构用户」「跟单交易跟随者」。",
+      "change_summary": "（仅 status=changed 时填写，其他情况填 null）具体改了什么，如「手续费返还比例从 20% 提高至 30%，适用范围从 VIP3+ 扩展至 VIP1+」。"
+    }
+  ],
+  "zmx_comparison": {
+    "diff_type": "ZMX已有 / ZMX缺失 / ZMX玩法不同 / 混合 / 不适用",
+    "analysis": "Zoomex 是否有同类功能，功能成熟度和覆盖范围的对比。必须引用 [Z{index}] 编号。对于「ZMX缺失」的判断要保守：基线里没有搜到不等于 ZMX 真的没有，应表述为「基线中未见相关记录，建议人工复核」。",
+    "evidence_indices": [],
+    "priority": "高 / 中 / 低。高：基线确认 ZMX 缺失且该功能对用户留存或获客有直接影响；中：ZMX 有类似功能但实现细节有差距；低：功能高度雷同或属于常规维护类更新。",
+    "priority_reason": "一句话定级依据。"
+  }
+}
+
+【强制规则】
+1. uid 字段原样照抄
+2. feature_description 必须包含「做了什么」的实质内容，不接受仅描述影响而不描述功能的表述
+3. evidence_indices 为空时 diff_type 只能是「不适用」
+4. 整个输出必须是合法 JSON
+
+---
+
+# prompt_version: listing-v1
+
+SYSTEM:
+你是一名加密交易所竞品分析师，服务对象是运营和产品团队。你的职责是分析竞品的上币公告，
+识别竞品的上币策略和潜在的 ZMX 上币机会。输出必须是合法 JSON。
+
+USER:
+【本批次信息】
+竞品：{SOURCE}
+地区/语言：{LOCALE}
+日期：{BATCH_DATE}
+公告数：{ARTICLE_COUNT} 条
+
+【上币公告列表】
+{ARTICLES_BLOCK}
+
+【Zoomex 基线（近 90 天上币记录，相关度最高的 {ZMX_COUNT} 条）】
+{ZMX_BLOCK}
+{如果 ZMX_COUNT=0: 注意：Zoomex 上币基线数据不足，diff_type 必须填「不适用」。}
+
+【分析任务】
+{
+  "batch_summary": "2-3 句话描述本批次上币特征，如「本日 Bitunix 新增 5 个现货交易对，以 Layer2 生态项目为主，其中 2 个为 meme 类代币，无明显头部项目」。",
+  "articles": [
+    {
+      "uid": "（原样照抄）",
+      "title": "（原样照抄）",
+      "token_symbol": "代币符号，如「BTCUSDT」。从标题或正文提取，提取不到填 null。",
+      "market_type": "现货 / 合约 / 两者均有 / 不明",
+      "launch_time": "上线时间，格式 YYYY-MM-DD HH:MM UTC。正文未提供填 null。",
+      "project_brief": "项目一句话简介，从正文提取。正文无介绍填 null，禁止自行补充 LLM 知识库里的项目信息。"
+    }
+  ],
+  "zmx_comparison": {
+    "diff_type": "ZMX已有 / ZMX缺失 / 混合 / 不适用",
+    "analysis": "逐一说明本批次各代币在 Zoomex 基线中的情况。对每个代币：基线中有记录则标注 [Z{index}] 引用；基线中无记录则表述为「基线中未见 {token_symbol} 上币记录」（不得直接断言 ZMX 没有上线，因为 Zoomex 全量数据尚未入库）。",
+    "evidence_indices": [],
+    "priority": "高 / 中 / 低。高：至少 1 个代币基线确认 ZMX 缺失且属于有一定市值的主流项目；中：基线未见但项目知名度有限；低：全部代币已在基线中找到对应记录。",
+    "priority_reason": "一句话定级依据。"
+  }
+}
+
+【强制规则】
+1. uid 字段原样照抄
+2. project_brief 只能来自正文，禁止使用 LLM 训练数据中的项目知识
+3. evidence_indices 为空时 diff_type 只能是「不适用」
+4. listing 批次的 diff_type 不含「ZMX玩法不同」选项
+
+---
+
+# prompt_version: delisting-v1
+
+SYSTEM:
+你是一名加密交易所竞品分析师。你的职责是分析竞品的下架公告，提取关键信息供运营团队
+参考和风险预警。输出必须是合法 JSON。
+
+USER:
+【本批次信息】
+竞品：{SOURCE}
+地区/语言：{LOCALE}
+日期：{BATCH_DATE}
+公告数：{ARTICLE_COUNT} 条
+
+【下架公告列表】
+{ARTICLES_BLOCK}
+
+【分析任务】
+下架公告不做 ZMX 差异分析（diff_type 固定为「不适用」）。
+请聚焦在信息提取准确性上。
+
+{
+  "batch_summary": "一句话总结本批次下架概况，如「Bitunix 今日下架 3 个现货交易对，涉及 2 个 meme 类代币和 1 个流动性不足的小市值项目，下架时间集中在本周末」。",
+  "articles": [
+    {
+      "uid": "（原样照抄）",
+      "title": "（原样照抄）",
+      "token_symbol": "代币符号，提取不到填 null",
+      "market_type": "现货 / 合约 / 两者均有 / 不明",
+      "delist_time": "下架时间，格式 YYYY-MM-DD HH:MM UTC。正文未提供填 null。",
+      "reason": "下架原因，从正文提取。常见值：「流动性不足」「项目方要求」「合规原因」「维护升级」。正文未说明填 null，禁止推断。"
+    }
+  ],
+  "zmx_comparison": {
+    "diff_type": "不适用",
+    "analysis": null,
+    "evidence_indices": [],
+    "priority": "高 / 中 / 低。高：涉及主流代币或下架时间紧迫（72 小时内）；中：小市值代币但时间充裕；低：纯合约维护类下架。",
+    "priority_reason": "一句话定级依据。"
+  }
+}
+
+【强制规则】
+1. uid 字段原样照抄
+2. reason 只能来自正文，禁止推断
+3. diff_type 固定为「不适用」，不得修改
+
+---
+
+【第六步：批次编排（src/analysis/run.py）】
+实际调用 weex collector，跑一下获取今日完整数据，然后对其和目前本地的zoomex数据进行必要的前置处理（地区，category）后进行测试
+run(conn, batch_date=None, sources=None, dry_run=False):
+  - batch_date 默认今日 UTC date
+  - 查询 announcements 表：status IN ('new','changed') AND
+    date(fetched_at) = batch_date AND source IN sources AND category != 'other'
+  - 按 (source, category, locale) 分组，locale 排序 EN 排第一
+  - 对每个批次：
+    1. 检查 can_derive_from_en() → 可复用则直接写入，跳过 LLM
+    2. 构建 ZmxIndex，search 取 top5
+    3. 检查缓存
+    4. 构建 ARTICLES_BLOCK（changed 条目附旧版本：从 content_history 取最近一条）
+    5. 调 LLM，解析 JSON，做入库前校验
+    6. upsert insights 行（已存在则更新 updated_at + 所有分析字段）
+  - dry_run=True 时打印每个批次的 token 预估和 prompt 预览，不调 LLM，不写库
+
+  CLI：python -m src.analysis [--date YYYY-MM-DD] [--source Bitunix,Weex]
+       [--category campaign] [--dry-run]
+
+【第七步：单测】
+
+tests/analysis/ 目录，离线测试（mock LLM 返回）：
+  - test_zmx_index.py：TF-IDF 检索按 category 过滤、空基线处理
+  - test_batch.py：locale 复用判断（满足/不满足条件各一个场景）、
+    批次 PK 生成幂等
+  - test_llm.py：JSON 解析失败处理、evidence_indices 空数组强制改「不适用」、
+    uid 字段不在 related_uids 内时丢弃并记日志
+  - test_run.py：dry_run 模式不写库、category=other 被跳过
+
 
 ---
 

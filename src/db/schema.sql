@@ -1,4 +1,4 @@
--- 竞品情报平台 SQLite schema（schema 版本 v2，见 CLAUDE.md「Phase 2.5 完成情况」）
+-- 竞品情报平台 SQLite schema（schema 版本 v3，见 CLAUDE.md「Phase 4 完成情况」）
 -- 所有时间字段统一使用 UTC ISO8601 字符串（如 2026-07-13T02:30:00Z），不使用 SQLite 原生 DATETIME。
 -- SQLite 是唯一真相源；飞书多维表只是同步出去的业务视图。
 
@@ -68,28 +68,52 @@ CREATE INDEX IF NOT EXISTS idx_content_history_uid
     ON content_history (uid);
 
 -- ============================================================
--- insights（分析层 / 汇总分析表）
--- Phase 4 产出。一行 = 一次 LLM 分析结论，可回链多个 announcements。
+-- insights（分析层 / 批次级汇总分析表，Phase 4 起 schema v3）
+-- 一行 = 一次「批次」分析结论：同一天同一 (source, category, locale) 的全部
+-- status IN (new, changed) 公告合并成一次 LLM 调用的产出。不再是逐条公告一行
+-- （v1/v2 的设计），见 CLAUDE.md「Phase 4」。
+-- PK: id = SHA256(source || "_" || category || "_" || locale || "_" || batch_date)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS insights (
-    id             TEXT PRIMARY KEY,
-    related_uids   TEXT,   -- JSON 数组，回链 announcements.uid
-    source         TEXT,
-    category       TEXT
-                  CHECK (category IS NULL OR category IN ('campaign', 'product', 'listing', 'delisting', 'other')),
-    summary        TEXT,
-    zmx_diff       TEXT,
-    diff_type      TEXT
-                  CHECK (diff_type IS NULL OR diff_type IN ('ZMX已有', 'ZMX缺失', 'ZMX玩法不同', '不适用')),
-    priority       TEXT
-                  CHECK (priority IS NULL OR priority IN ('高', '中', '低')),
-    created_at     TEXT
+    id                 TEXT PRIMARY KEY,
+    batch_date         TEXT NOT NULL,          -- UTC date, YYYY-MM-DD
+    source             TEXT NOT NULL,
+    category           TEXT NOT NULL
+                      CHECK (category IN ('campaign', 'product', 'listing', 'delisting', 'other')),
+    locale             TEXT NOT NULL,
+    article_count      INTEGER NOT NULL DEFAULT 0,
+    related_uids       TEXT NOT NULL DEFAULT '[]',  -- JSON 数组，回链 announcements.uid
+    is_locale_derived  BOOLEAN NOT NULL DEFAULT 0,  -- true = 复用同日 EN 批次分析，未调 LLM
+    derived_from_id    TEXT REFERENCES insights (id),
+    summary            TEXT,                    -- batch_summary 字段的 LLM 输出
+    articles_analysis  TEXT,                    -- JSON 数组，每篇公告的结构化分析
+    zmx_diff           TEXT,                    -- zmx_comparison.analysis 的文字部分
+    diff_type          TEXT
+                      CHECK (diff_type IS NULL OR diff_type IN ('ZMX已有', 'ZMX缺失', 'ZMX玩法不同', '混合', '不适用')),
+    priority           TEXT
+                      CHECK (priority IS NULL OR priority IN ('高', '中', '低')),
+    zmx_evidence_uids  TEXT NOT NULL DEFAULT '[]',  -- JSON 数组，引用到的 Zoomex uid
+    prompt_version     TEXT NOT NULL,           -- 如 "campaign-v1"，改 prompt 必须递增
+    llm_tokens_used    INTEGER,                 -- 复用 EN 分析时为 0
+    created_at         TEXT NOT NULL,
+    updated_at         TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_insights_source_category
+CREATE INDEX IF NOT EXISTS idx_insights_batch
+    ON insights (batch_date, source, category, locale);
+CREATE INDEX IF NOT EXISTS idx_insights_source_cat
     ON insights (source, category);
-CREATE INDEX IF NOT EXISTS idx_insights_diff_type
-    ON insights (diff_type);
+
+-- ============================================================
+-- llm_cache（Phase 4 新增）
+-- key = SHA256(本批次全部 related_uids 的 content_hash 拼接 || prompt_version)。
+-- 同一批次内容没变、prompt 版本没变时直接返回缓存，不重复调用 LLM。
+-- ============================================================
+CREATE TABLE IF NOT EXISTS llm_cache (
+    cache_key    TEXT PRIMARY KEY,
+    response     TEXT NOT NULL,   -- 原始 LLM 响应 JSON 字符串
+    created_at   TEXT NOT NULL
+);
 
 -- ============================================================
 -- crawl_state（采集水位线）

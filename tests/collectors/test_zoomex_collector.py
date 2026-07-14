@@ -1,8 +1,9 @@
 """ZoomexCollector 测试（mock HTTP 层，不发真实请求）。
 
 Zoomex 跟 Bitunix/Weex 不一样的地方，是这套测试要覆盖到的重点：
-- fetch_list() 不依赖排序提前退出，而是翻完 menu_id 下的全部页（见 src/collectors/
-  zoomex.py 顶部关于「实测列表不是按 gmtUpdatedAt 排序」的说明）
+- fetch_list() 不依赖排序提前退出（见 src/collectors/zoomex.py 顶部关于「实测列表不是
+  按 gmtUpdatedAt 排序」的说明）；force_full=False（daily 增量）时翻页数有上限
+  （pagination.max_pages），force_full=True（建仓/全量核查）时翻完全部页
 - needs_detail() 用 DB 里已存的 update_time 做增量判断，只有新增/变更的条目才会
   真正发一次详情请求（用调用计数断言，而不是只看最终落库结果）
 - force_full=True 会跳过 needs_detail 的增量判断，重新请求全部详情——用于验证
@@ -161,6 +162,45 @@ def test_fetch_list_walks_all_pages_regardless_of_since(db_path, monkeypatch):
     assert fake.list_calls == 2
     assert sorted(int(i.article_id) for i in items) == [101, 102, 103]
     assert items[0].update_time == ms_to_iso(articles[101]["updated"])
+
+
+# ---------------------------------------------------------------- 分页数上限（daily 增量） ----
+
+def test_fetch_list_caps_pages_when_not_force_full(db_path, monkeypatch):
+    # 6 篇文章、page_size=1、max_pages=2 -> 正常增量只应该翻 2 页（拿到前 2 篇）
+    articles = {
+        i: {"created": 1700000000000 + i, "updated": 1700000000000 + i, "title": f"Article {i}"}
+        for i in range(1, 7)
+    }
+    fake = FakeHttp(articles=articles, page_size=1)
+    monkeypatch.setattr("src.collectors.zoomex.fetch_json", fake)
+
+    cfg = {**CFG, "pagination": {**CFG["pagination"], "page_size": 1, "max_pages": 2}}
+    collector = ZoomexCollector("EN", cfg, category_key="platform_announcement", menu_id=26)
+    collector.force_full = False  # 未经过 run()，模拟 daily 增量路径
+
+    items = collector.fetch_list(since=None)
+
+    assert fake.list_calls == 2
+    assert sorted(int(i.article_id) for i in items) == [1, 2]
+
+
+def test_fetch_list_ignores_page_cap_when_force_full(db_path, monkeypatch):
+    articles = {
+        i: {"created": 1700000000000 + i, "updated": 1700000000000 + i, "title": f"Article {i}"}
+        for i in range(1, 7)
+    }
+    fake = FakeHttp(articles=articles, page_size=1)
+    monkeypatch.setattr("src.collectors.zoomex.fetch_json", fake)
+
+    cfg = {**CFG, "pagination": {**CFG["pagination"], "page_size": 1, "max_pages": 2}}
+    collector = ZoomexCollector("EN", cfg, category_key="platform_announcement", menu_id=26)
+    collector.force_full = True  # 模拟 run(force_full=True) 已经把这个属性同步过
+
+    items = collector.fetch_list(since=None)
+
+    assert fake.list_calls == 6
+    assert sorted(int(i.article_id) for i in items) == [1, 2, 3, 4, 5, 6]
 
 
 # ---------------------------------------------------------------- 增量：只对新增/变更详情请求 ----

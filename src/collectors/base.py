@@ -75,6 +75,11 @@ class BaseCollector(ABC):
     category: str = ""  # crawl_state 的第三个 key。单分类源留空；多分类源（如 Zoomex 的
     # 各 menu_id）的子类 __init__ 里覆写成各自的分类标识，独立维护水位线，见 zoomex.py。
 
+    force_full: bool = False  # run() 开始时同步成当次调用的 force_full 参数，供 fetch_list()
+    # 里需要区分"daily 增量"还是"全量核查/建仓"的子类读取（目前只有 ZoomexCollector 用到，
+    # 见 zoomex.py 的分页上限逻辑）。默认 False 保证直接调用 fetch_list()（不经过 run()）的
+    # 单测行为不变。
+
     def __init__(self, locale: str, config: dict[str, Any]):
         self.locale = locale
         self.config = config
@@ -121,6 +126,7 @@ class BaseCollector(ABC):
         未真正变更的旧条目本来就不会被重新拉取/重新校验，需要 force_full 才能强制
         重新过一遍全部条目。
         """
+        self.force_full = force_full
         stats = RunStats(source=self.source_name, locale=self.locale)
         since = None
         if self.strategy == "watermark" and not force_full:
