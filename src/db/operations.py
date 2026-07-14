@@ -125,10 +125,14 @@ def get_content_history(conn: sqlite3.Connection, uid: str) -> list[sqlite3.Row]
     ).fetchall()
 
 
-def get_crawl_state(conn: sqlite3.Connection, source: str, locale: str) -> Optional[sqlite3.Row]:
+def get_crawl_state(
+    conn: sqlite3.Connection, source: str, locale: str, category: str = ""
+) -> Optional[sqlite3.Row]:
+    """category 留空代表单分类源（Bitunix/Weex 等），多分类源（如 Zoomex 的各 menu_id）
+    各自传入独立的 category 字符串，互不覆盖水位线。"""
     return conn.execute(
-        "SELECT * FROM crawl_state WHERE source = ? AND locale = ?",
-        (source, locale),
+        "SELECT * FROM crawl_state WHERE source = ? AND locale = ? AND category = ?",
+        (source, locale, category),
     ).fetchone()
 
 
@@ -140,17 +144,18 @@ def set_crawl_state(
     high_watermark: Optional[str],
     strategy: str = "watermark",
     updated_at: Optional[str] = None,
+    category: str = "",
 ) -> None:
-    """写入/更新某个 source×locale 的水位线（upsert on PRIMARY KEY）。"""
+    """写入/更新某个 source×locale×category 的水位线（upsert on PRIMARY KEY）。"""
     updated_at = updated_at or utcnow_iso()
     conn.execute(
         """
-        INSERT INTO crawl_state (source, locale, high_watermark, strategy, updated_at)
-        VALUES (?, ?, ?, ?, ?)
-        ON CONFLICT (source, locale) DO UPDATE SET
+        INSERT INTO crawl_state (source, locale, category, high_watermark, strategy, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+        ON CONFLICT (source, locale, category) DO UPDATE SET
             high_watermark = excluded.high_watermark,
             strategy = excluded.strategy,
             updated_at = excluded.updated_at
         """,
-        (source, locale, high_watermark, strategy, updated_at),
+        (source, locale, category, high_watermark, strategy, updated_at),
     )

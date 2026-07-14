@@ -1,0 +1,172 @@
+"""Bitunix / Weex 采集器测试（mock HTTP 层，不发真实请求，基于 tests/fixtures 快照）。
+
+覆盖：
+- normalize() 字段映射、group_id 拼接、article_id 转 str
+- 幂等：同一份数据连跑两次，watermark 会挡住已处理过的条目，第二轮 0 new/changed
+- 变更检测：手动 tamper content_hash 后，用 --force-full 语义（force_full=True）
+  重新全量校验，能正确识别为 changed（watermark 模式下未真正变更的旧条目本来就不会
+  被自然轮询重新拉取，见 src/collectors/base.py run() 的 force_full 说明）
+"""
+
+from __future__ import annotations
+
+import copy
+import json
+from pathlib import Path
+
+import pytest
+
+from src.collectors.base import RawItem
+from src.collectors.bitunix import BitunixCollector
+from src.collectors.weex import WeexCollector
+from src.db.connection import get_connection, init_db
+from src.db.operations import compute_uid
+
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
+
+BASE_CFG = {
+    "pagination": {"type": "offset", "param": "page", "page_size_param": "per_page", "page_size": 100},
+    "rate_limit_ms": 0,
+    "detail_mode": "inline",
+    "strategy": "watermark",
+    "headers": {},
+}
+
+BITUNIX_CFG = {
+    **BASE_CFG,
+    "endpoint": "https://support.bitunix.com/api/v2/help_center/en-us/categories/13760946490649/articles.json",
+}
+
+WEEX_CFG = {
+    **BASE_CFG,
+    "endpoint": "https://weexsupport.zendesk.com/api/v2/help_center/en-us/categories/18540264809497/articles.json",
+}
+
+
+def _load_single_page_fixture(name: str) -> dict:
+    """加载 fixture 并把 next_page 清空，测试只用一页，不需要为第二页也造 mock。"""
+    payload = copy.deepcopy(json.loads((FIXTURES / name).read_text(encoding="utf-8")))
+    payload["next_page"] = None
+    return payload
+
+
+@pytest.fixture()
+def db_path(tmp_path):
+    path = tmp_path / "test.db"
+    init_db(path)
+    return path
+
+
+# ---------------------------------------------------------------- normalize ----
+
+def test_bitunix_normalize_maps_fields_and_builds_group_id():
+    collector = BitunixCollector("EN", BITUNIX_CFG)
+    raw = RawItem(
+        article_id=59923371883417,
+        title="Bitunix to Launch SKHYUSDT",
+        content="<p>body</p>",
+        post_time="2026-07-11T00:45:26Z",
+        update_time="2026-07-13T00:24:06Z",
+        url="https://support.bitunix.com/hc/en-us/articles/59923371883417",
+        category_raw=13762037166105,
+    )
+
+    ann = collector.normalize(raw)
+
+    assert ann.source == "Bitunix"
+    assert ann.locale == "EN"
+    assert ann.article_id == "59923371883417"  # 转成 str
+    assert ann.group_id == "bitunix_59923371883417"
+    assert ann.category is None  # Phase 3 之前不分类
+    assert ann.source_endpoint == BITUNIX_CFG["endpoint"]
+    assert ann.post_time == "2026-07-11T00:45:26Z"
+    assert ann.update_time == "2026-07-13T00:24:06Z"
+
+
+def test_weex_normalize_uses_weex_group_id_prefix():
+    collector = WeexCollector("FR", WEEX_CFG)
+    raw = RawItem(article_id=57976712091673, title="t", content="c")
+    ann = collector.normalize(raw)
+
+    assert ann.source == "Weex"
+    assert ann.group_id == "weex_57976712091673"
+
+
+# ---------------------------------------------------------------- 幂等 ----
+
+def test_bitunix_first_run_inserts_all_then_second_run_is_idempotent(db_path, monkeypatch):
+    payload = _load_single_page_fixture("bitunix_EN.json")
+    monkeypatch.setattr("src.collectors.zendesk_base.fetch_json", lambda url, **kw: payload)
+
+    collector = BitunixCollector("EN", BITUNIX_CFG)
+
+    with get_connection(db_path) as conn:
+        first = collector.run(conn)
+    assert first.new == len(payload["articles"])
+    assert first.changed == 0
+    assert first.failed == 0
+
+    with get_connection(db_path) as conn:
+        row_count_before = conn.execute("SELECT COUNT(*) c FROM announcements").fetchone()["c"]
+
+    # 第二轮：watermark 已推进到上一轮最大 update_time，源端数据未变，
+    # 应该 0 new / 0 changed（要么因为水位线挡住不再重取，要么重取后 hash 相同）。
+    with get_connection(db_path) as conn:
+        second = collector.run(conn)
+    assert second.new == 0
+    assert second.changed == 0
+    assert second.failed == 0
+
+    with get_connection(db_path) as conn:
+        row_count_after = conn.execute("SELECT COUNT(*) c FROM announcements").fetchone()["c"]
+    assert row_count_after == row_count_before  # 未产生重复行
+
+
+def test_weex_first_run_inserts_all_then_second_run_is_idempotent(db_path, monkeypatch):
+    payload = _load_single_page_fixture("weex_EN.json")
+    monkeypatch.setattr("src.collectors.zendesk_base.fetch_json", lambda url, **kw: payload)
+
+    collector = WeexCollector("EN", WEEX_CFG)
+
+    with get_connection(db_path) as conn:
+        first = collector.run(conn)
+    assert first.new == len(payload["articles"])
+
+    with get_connection(db_path) as conn:
+        second = collector.run(conn)
+    assert second.new == 0
+    assert second.changed == 0
+
+
+# ---------------------------------------------------------------- 变更检测 ----
+
+def test_force_full_rerun_detects_manually_tampered_content_hash(db_path, monkeypatch):
+    payload = _load_single_page_fixture("bitunix_EN.json")
+    monkeypatch.setattr("src.collectors.zendesk_base.fetch_json", lambda url, **kw: payload)
+
+    collector = BitunixCollector("EN", BITUNIX_CFG)
+
+    with get_connection(db_path) as conn:
+        collector.run(conn)
+
+    tampered_article = payload["articles"][0]
+    uid = compute_uid("Bitunix", "EN", str(tampered_article["id"]))
+    with get_connection(db_path) as conn:
+        conn.execute(
+            "UPDATE announcements SET content_hash = 'tampered-hash' WHERE uid = ?", (uid,)
+        )
+
+    # 强制全量重跑（force_full=True），忽略 watermark，重新拉取并比对全部条目。
+    with get_connection(db_path) as conn:
+        second = collector.run(conn, force_full=True)
+
+    assert second.changed == 1
+    assert second.unchanged == len(payload["articles"]) - 1
+    assert second.new == 0
+
+    with get_connection(db_path) as conn:
+        row = conn.execute(
+            "SELECT content_hash, status FROM announcements WHERE uid = ?", (uid,)
+        ).fetchone()
+    assert row["status"] == "changed"
+    assert row["content_hash"] != "tampered-hash"

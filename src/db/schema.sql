@@ -84,16 +84,19 @@ CREATE INDEX IF NOT EXISTS idx_insights_diff_type
 
 -- ============================================================
 -- crawl_state（采集水位线）
--- 每个 source × locale 一行，记录增量采集的状态。
+-- 每个 source × locale 一行；若该源在同一 locale 下有多个互相独立翻页的子分类
+-- （如 Zoomex 的多个 menu_id、Phase 2 批次 2 起），category 区分之，单分类源留空
+-- 字符串 ''（不是 NULL，NULL 在 SQLite 里参与唯一约束比较的语义容易出岔子）。
 -- ============================================================
 CREATE TABLE IF NOT EXISTS crawl_state (
     source           TEXT NOT NULL,
     locale           TEXT NOT NULL,
+    category         TEXT NOT NULL DEFAULT '',   -- 多分类源各分类独立维护水位线；单分类源恒为 ''
     high_watermark   TEXT,   -- 上轮最大 update_time，UTC ISO8601
     strategy         TEXT NOT NULL DEFAULT 'watermark'
                     CHECK (strategy IN ('watermark', 'full_scan')),
     updated_at       TEXT,
-    PRIMARY KEY (source, locale)
+    PRIMARY KEY (source, locale, category)
 );
 
 -- ============================================================
