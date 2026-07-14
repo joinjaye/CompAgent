@@ -1,4 +1,9 @@
-"""Bitunix / Weex 采集器测试（mock HTTP 层，不发真实请求，基于 tests/fixtures 快照）。
+"""Bitunix 采集器测试（mock HTTP 层，不发真实请求，基于 tests/fixtures 快照）。
+
+Weex 从 2026-07-14 起不再走这套 ZendeskCollector 实现（改为解析 www.weex.com 前台
+页面，见 src/collectors/weex.py 顶部注释 + CLAUDE.md「Weex 数据源迁移」），Weex 专属
+测试已迁到 tests/collectors/test_weex_collector.py；本文件只保留 Bitunix（仍然跑在
+Zendesk 上）的测试，以及跟具体交易所无关的 ZendeskCollector 通用行为测试。
 
 覆盖：
 - normalize() 字段映射、group_id 拼接、article_id 转 str
@@ -18,7 +23,6 @@ import pytest
 
 from src.collectors.base import RawItem
 from src.collectors.bitunix import BitunixCollector
-from src.collectors.weex import WeexCollector
 from src.db.connection import get_connection, init_db
 from src.db.operations import compute_uid
 
@@ -35,11 +39,6 @@ BASE_CFG = {
 BITUNIX_CFG = {
     **BASE_CFG,
     "endpoint": "https://support.bitunix.com/api/v2/help_center/en-us/categories/13760946490649/articles.json",
-}
-
-WEEX_CFG = {
-    **BASE_CFG,
-    "endpoint": "https://weexsupport.zendesk.com/api/v2/help_center/en-us/categories/18540264809497/articles.json",
 }
 
 
@@ -103,16 +102,6 @@ def test_bitunix_normalize_raw_category_none_when_category_raw_missing():
     assert ann.raw_category is None
 
 
-def test_weex_normalize_uses_weex_group_id_prefix():
-    collector = WeexCollector("FR", WEEX_CFG)
-    raw = RawItem(article_id=57976712091673, title="t", content="c", category_raw=18540264809497)
-    ann = collector.normalize(raw)
-
-    assert ann.source == "Weex"
-    assert ann.group_id == "weex_57976712091673"
-    assert ann.raw_category == "18540264809497"
-
-
 # ---------------------------------------------------------------- 多分类（Phase 2.7） ----
 
 def test_zendesk_collector_defaults_to_empty_category_for_backward_compat():
@@ -123,41 +112,8 @@ def test_zendesk_collector_defaults_to_empty_category_for_backward_compat():
 
 
 def test_zendesk_collector_accepts_explicit_category_key():
-    collector = WeexCollector("EN", WEEX_CFG, category_key="listings_delistings")
-    assert collector.category == "listings_delistings"
-
-
-def test_two_weex_categories_maintain_independent_crawl_state(db_path, monkeypatch):
-    """Weex 的 latest_announcements / listings_delistings 各自独立维护水位线，
-    互不覆盖（crawl_state PK 是 (source, locale, category)，Phase 2 批次 2 就是为
-    这种场景加的这一列）。"""
-    payload_a = _load_single_page_fixture("weex_EN.json")
-    payload_b = _load_single_page_fixture("bitunix_EN.json")  # 借用另一份 fixture 模拟第二个分类
-
-    def fake_fetch(url, **kw):
-        return payload_a if "announcements" in url else payload_b
-
-    monkeypatch.setattr("src.collectors.zendesk_base.fetch_json", fake_fetch)
-
-    cfg_a = {**WEEX_CFG, "endpoint": "https://weexsupport.zendesk.com/.../announcements/articles.json"}
-    cfg_b = {**WEEX_CFG, "endpoint": "https://weexsupport.zendesk.com/.../listings/articles.json"}
-    collector_a = WeexCollector("EN", cfg_a, category_key="latest_announcements")
-    collector_b = WeexCollector("EN", cfg_b, category_key="listings_delistings")
-
-    with get_connection(db_path) as conn:
-        stats_a = collector_a.run(conn)
-        stats_b = collector_b.run(conn)
-
-    assert stats_a.new == len(payload_a["articles"])
-    assert stats_b.new == len(payload_b["articles"])
-
-    with get_connection(db_path) as conn:
-        from src.db.operations import get_crawl_state
-
-        state_a = get_crawl_state(conn, "Weex", "EN", category="latest_announcements")
-        state_b = get_crawl_state(conn, "Weex", "EN", category="listings_delistings")
-    assert state_a is not None and state_b is not None
-    assert state_a["high_watermark"] != state_b["high_watermark"]  # 两份不同 fixture，水位线应该不同
+    collector = BitunixCollector("EN", BITUNIX_CFG, category_key="some_category")
+    assert collector.category == "some_category"
 
 
 # ---------------------------------------------------------------- 幂等 ----
@@ -206,22 +162,6 @@ def test_bitunix_run_persists_plain_text_content_and_raw_category(db_path, monke
         ).fetchone()
     assert "<" not in row["content"]
     assert row["raw_category"] == str(first_article["section_id"])
-
-
-def test_weex_first_run_inserts_all_then_second_run_is_idempotent(db_path, monkeypatch):
-    payload = _load_single_page_fixture("weex_EN.json")
-    monkeypatch.setattr("src.collectors.zendesk_base.fetch_json", lambda url, **kw: payload)
-
-    collector = WeexCollector("EN", WEEX_CFG)
-
-    with get_connection(db_path) as conn:
-        first = collector.run(conn)
-    assert first.new == len(payload["articles"])
-
-    with get_connection(db_path) as conn:
-        second = collector.run(conn)
-    assert second.new == 0
-    assert second.changed == 0
 
 
 # ---------------------------------------------------------------- 变更检测 ----

@@ -1,16 +1,21 @@
 """src/collectors/__main__.py 里 collector 展开逻辑的单测（不发真实请求，纯构造逻辑）。
 
 覆盖：
-- _zendesk_builder 对没有 categories 结构的单分类配置（Bitunix、批次 1 时代的 Weex）
+- _categorized_collector_builder 对没有 categories 结构的单分类配置（Bitunix）
   原样返回一个 collector，category=''，向后兼容路径不能破
-- _zendesk_builder 对有 categories 结构的多分类配置（Weex Phase 2.7 起）展开成多个
-  collector，每个 category 各自拿到自己的 endpoint、crawl_state.category
+- _categorized_collector_builder 对有 categories 结构的多分类配置展开成多个
+  collector，每个 category 各自拿到自己的 endpoint、crawl_state.category——这里借用
+  WeexCollector 的构造函数签名验证展开逻辑本身（config 内容是随手写的旧式占位，不
+  代表 Weex 现在真实的 sources.yaml 结构，见 src/collectors/weex.py 的真实实现）；
+  WeexCollector 不再继承 ZendeskCollector 之后这个通用 builder 依然对它适用，因为
+  builder 只要求 `(locale, config)` / `(locale, config, category_key)` 构造签名，
+  不要求特定基类
 - --category 过滤（_build_collectors）能只选中其中一个分类
 """
 
 from __future__ import annotations
 
-from src.collectors.__main__ import _build_collectors, _zendesk_builder
+from src.collectors.__main__ import _build_collectors, _categorized_collector_builder
 from src.collectors.bitunix import BitunixCollector
 from src.collectors.weex import WeexCollector
 
@@ -28,7 +33,7 @@ SHARED_CFG = {
 
 def test_single_category_config_returns_one_collector_with_empty_category():
     cfg = {**SHARED_CFG, "endpoint": "https://support.bitunix.com/.../articles.json"}
-    build = _zendesk_builder(BitunixCollector)
+    build = _categorized_collector_builder(BitunixCollector)
 
     collectors = build("EN", cfg)
 
@@ -45,7 +50,7 @@ def test_multi_category_config_expands_into_one_collector_per_category():
             "listings_delistings": {"endpoint": "https://weexsupport.zendesk.com/.../44507081559193/articles.json"},
         },
     }
-    build = _zendesk_builder(WeexCollector)
+    build = _categorized_collector_builder(WeexCollector)
 
     collectors = build("EN", cfg)
 

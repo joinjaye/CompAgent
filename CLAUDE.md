@@ -1547,3 +1547,301 @@ v3 结构直接跳过）。**本 session 没有对本地 `data/competitor_intel.
   这三个源的 collector 仍未实现（批次 3/4 遗留），`prompts.py` 的四套模板本身跟
   `source` 无关（`{SOURCE}` 只是个字符串变量），新源接入 Phase 4 不需要改
   `src/analysis/` 任何代码，只要 `announcements.category` 能正常打上标就行。
+
+## Weex 数据源迁移（2026-07-14，Phase 4 真实数据验证过程中发现并修复）
+
+为了按 phasePrompts.md Phase 4 的要求"实际调用 weex collector，跑一下获取今日完整
+数据"做真实验证，重新跑了 `python -m src.collectors --source weex`（不限定 locale/
+category，像真实每日任务那样跑），暴露出一个比"漏采"严重得多的问题：**Weex 公告的
+真实数据源已经从 Phase 1/2/2.6/2.7 反复验证过的 Zendesk 公开 REST API
+（weexsupport.zendesk.com）迁移到了 www.weex.com 自己的 Next.js 前台**，旧 API 已经
+过期。本节记录发现过程、验证证据、新方案的实现，以及仍然遗留的工作。
+
+### 发现过程
+
+1. 第一次重跑 `--source weex`（无过滤）表面上"成功"，new=5567，但排查后发现这是因为
+   Phase 2.7 之后那次"只保留 Zoomex"的清库操作把 Weex 的 `crawl_state`（水位线）也
+   一并删了——水位线一清空，watermark 策略的首次运行天然等价于全量回填，5567 正好是
+   Phase 2.7 验收记录的历史总量，不是真实单日新增量。这批数据已撤回重清。
+2. 用户指出：Weex 真实网站里点进「现货活动」等分区，能看到当天更新的公告
+   （`https://www.weex.com/zh-CN/help/sections/33143373088665`
+   （现货活动/Spot events）、`https://www.weex.com/zh-CN/help/categories/1010101`
+   （最新文章）两个页面截图，日期分别是 2026/07/12、2026/07/09、2026/07/14），但我们
+   采集到的 Weex 数据最新只到 2026-05-16——差了近两个月。
+3. 直接对 `weexsupport.zendesk.com` 的真实 REST API（3 个已配置 endpoint、该
+   category 下全部 6 个 section、en-us/zh-cn/fr 三个 locale）逐一发真实请求核对，
+   确认这个 API **真的**从 2026-05-16 起再未返回过任何更新——不是我们的分页/排序/
+   locale 参数用错了，是这个 API 本身已经停止更新。`weex.com/help` 页面本身仍然在
+   HTML 里引用 `weexsupport.zendesk.com`（没有整体换域名），但页面渲染出来的内容不
+   再从这个公开 REST API 读取。
+4. 用 Playwright 打开用户给的真实文章所在分区页面（`.../help/sections/
+   33143373088665`）抓包，确认**没有任何可发现的 JSON/XHR 接口**——数据是 Next.js
+   服务端直接渲染进返回的 HTML 里的（React Server Components "flight" 流，
+   `<script>self.__next_f.push([1,"..."])</script>`），前端拿到页面后不需要另外
+   发请求。这也解释了为什么 Playwright 网络抓包是空的：这套机制根本不经过浏览器
+   发起的 XHR。
+5. 逐层解析这个 flight 流，找到真实的 `articleListData` JSON 数组（列表页）和
+   `<div class="zendesk-html">...</div>`（详情页正文，直接是服务端渲染好的 HTML，
+   不需要解析 flight 流）。用真实文章（`edgeX (EDGE) WE-Launch...`）的
+   `createdAt=1783848600000` 反解为 `2026-07-12T09:30:00Z`（北京时间 17:30），跟
+   用户截图上的日期/时间精确对上，证实数据是真的、解析方式是对的。
+
+### 新方案（完整技术细节见 `src/parsers/weex_web.py` 顶部注释、
+`config/sources.yaml` weex 块注释、`src/collectors/weex.py` 顶部注释）
+
+- 列表页：`GET https://www.weex.com/{locale_path}/help/categories/{category_id}
+  ?page={n}`（或 `.../sections/{section_id}?page={n}`），从内嵌 flight 流里解析
+  `articleListData`（article_id/title/createdAt/sectionId/prioritise/url）+
+  `pageInfo`/`totalCount`/`totalPage`。改用 **category 级聚合**而不是逐个已知
+  section 硬编码，额外发现了一个旧 Zendesk `sections.json` 里根本查不到的新
+  section（`608152974386`「All about TradFi」，6 篇，已映射为 product，见
+  `category_mapping.yaml`）——这是選用聚合而不是硬编码列表的直接收益：新分区不会
+  被静默漏采。
+- 详情页：`GET https://www.weex.com/{locale_path}/help/articles/{id}`，正文摘自
+  服务端渲染好的 `<div class="zendesk-html">`（不需要解析 flight 流，比列表页
+  简单），交给已有的 `html_text.py` 转纯文本，跟 Bitunix/Weex 旧数据同一套转换器。
+  新旧两种 article_id 格式（新文章是小写字母数字 slug，旧文章在新系统里仍能查到、
+  ID 还是原来的 Zendesk 数字）走同一套详情页结构，都验证过。
+- 无 per-item `update_time`（只有 `createdAt`），`strategy` 改判 **full_scan**
+  （不写 `crawl_state.high_watermark`），content_hash 兜底检测变更，跟 BingX/
+  Phemex/Lbank 同一类源。`pagination.max_pages`（默认 5）限制 daily 增量的扫描
+  深度，`--force-full` 时忽略上限翻到 `totalPage` 为止（同 Zoomex daily 增量
+  补丁设计）。列表条目的 `prioritise`（置顶）标记可能不按时间顺序排最前——不依赖
+  排序做提前退出翻页（同 Zoomex 批次 2 教训）。
+- `sectionId` 沿用旧 Zendesk 的数值体系，`config/category_mapping.yaml` 现有的
+  weex 映射对新数据直接适用，不需要重新对照（只新增了上面提到的
+  `608152974386`）。
+- `src/collectors/__main__.py` 的 `_zendesk_builder` 改名成
+  `_categorized_collector_builder`（原名字已经不准确——Weex 不再是
+  ZendeskCollector 子类），继续通过鸭子类型支持 Bitunix（仍是 ZendeskCollector）
+  和 Weex（现在是独立的 BaseCollector 子类）共用同一套"单分类/多分类展开"逻辑。
+
+### 一处真实 bug：flight 流拼接文本的错误解码（mojibake）
+
+第一版 `src/parsers/weex_web.py` 用 `text.encode("utf-8").decode("unicode_escape")`
+把拼接后的 flight 流文本转成"真实文本"，这是错的——`html` 在更早的
+`resp.read().decode("utf-8")` 那一步就已经是正确的 Python str，里面的非 ASCII
+字符（中文、法语重音字符）是**原样的 Unicode 字符**，不是转义序列；再把这个正确的
+字符串编码成 UTF-8 字节、又用 unicode_escape（本质是 Latin-1 + 转义处理）解码，会把
+每个多字节 UTF-8 字符拆成几个乱码字符（典型 mojibake）。2026-07-14 真实网络验收时
+第一次发现：法语 P2P 公告标题 `"Offre spéciale WEEX P2P..."` 被解析成
+`"Offre spÃ©ciale WEEX P2P..."`，英文内容因为全 ASCII 没有暴露这个问题，回头检查
+连 Phase 1 侦察阶段那次法语抽样（`"WEEX WE-Launch â Synvine..."`）也已经中招，只是
+当时没注意到。修复：改用 `json.loads(f'"{joined}"')`——把拼接文本当一个 JSON
+字符串字面量解析，只有真正的转义序列（`\"`/`\\`/`\n`/`\uXXXX` 等）会被处理，字面量
+的 Unicode 字符完全不受影响。`tests/parsers/test_weex_web.py` 新增
+`test_parse_article_list_decodes_non_ascii_titles_correctly`（用真实法语 fixture
+锁定这个修复）。已清空 fix 前采集的 32 条 Weex 数据（EN 20 + FR 12 的
+p2p_announcement）重新采集，确认标题/正文均无残留 `Ã` 类 mojibake 字符。
+
+### 真实网络验收记录（2026-07-14）
+
+```
+python -m src.collectors --source weex --locale EN --category p2p_announcement
+# 首轮：new=20 changed=0 unchanged=0 failed=0
+# 第二轮：new=0 changed=0 unchanged=20 failed=0（full_scan 靠 content_hash 判断
+#   unchanged，不是水位线挡住——crawl_state 里确认 0 行 Weex 记录）
+python -m src.collectors --source weex --locale FR --category p2p_announcement
+# new=12 changed=0 unchanged=0 failed=0，标题正确带重音字符，无 mojibake
+
+pytest
+# 186 通过（新增 tests/parsers/test_weex_web.py 11 个、
+# tests/collectors/test_weex_collector.py 11 个；旧的 test_zendesk_collectors.py
+# 里 Weex 专属用例已删除/迁移，Bitunix 用例原样保留未受影响）
+```
+
+真实数据抽样验证（EN p2p_announcement，按 post_time 降序）：
+`"WEEX P2P notice on the delisting of PHP (Philippine Peso)"`（2026-06-22）、
+`"...ETB (Ethiopian Birr)"`（2026-06-11）——都是新系统才有、旧 Zendesk API 完全
+拿不到的近期真实内容，确认新方案有效解决了"数据过期"问题。
+
+`python -m src.collectors --source weex`（不限定 locale/category，覆盖全部
+2 locale × 3 category，默认 `max_pages=5` 的 daily 增量范围）已在后台跑，用于给
+Phase 4 `pipeline classify/region` + `python -m src.analysis --dry-run` 提供真实
+测试数据，结果见下次记录或本节后续更新。
+
+### 未做 / 已知限制
+
+- **Bitunix 是否也存在同样的数据源迁移风险，本次未验证**：用户当时明确选择"现在就
+  做完整侦察，重写 Weex collector"，没有同时要求核查 Bitunix；Bitunix 仍然假设
+  `support.bitunix.com`（Zendesk）是真实数据源，建议下次找机会用同样的方法核对
+  一下（对比几个已知分类的最新 `updated_at` 跟真实网站显示的日期）。
+- **`608152974386`「All about TradFi」只抽样看了 6 篇标题**：没有逐篇精读判断
+  campaign/product/other 边界，映射成 product 是基于整体基调的合理判断，不是
+  逐篇核实过。
+- **详情页里 `prioritise=true` 的置顶文章语义未深挖**：只确认了它可能不按时间顺序
+  排在列表最前面（不依赖排序提前退出的原因），没有进一步确认"置顶"本身是否有
+  额外的业务含义（比如运营手动置顶的高优先级公告），如果之后分析层想利用这个信号，
+  需要在 `RawItem.extra` 里把它透传出来（目前 `parse_article_list` 有解析这个字段，
+  但 `WeexCollector.fetch_list()` 没有把它放进 `RawItem`，因为当前用不上）。
+- **`www.weex.com` 页面结构本身没有版本化保护**：这套解析完全依赖 Next.js flight
+  流的字面量结构（`articleListData` 键名、`zendesk-html` class 名）和页面路由
+  （`/help/categories/{id}?page=N`），任何一次前端改版都可能悄悄改变这些细节而
+  不报错（返回 200 但解析不到数据，`parse_article_list`/`extract_article_body_html`
+  会返回空 list/None，不会抛异常）。建议在 Phase 8 调度/监控里加一条"Weex 采集
+  连续 N 天 new+changed=0"之类的哨兵检查，及早发现类似本次的静默过期。
+
+## Phase 4 之后补丁：Zoomex 第二层关键词分类修复（2026-07-14）
+
+用户发现 Zoomex 分类结果里 `other` 占比异常高（2018 条里 1091 条，54%）、`listing`
+异常低（仅 5 条）——对一个持续上新的交易所来说明显不合理，怀疑第二层关键词匹配
+对 Zoomex 失效。排查确认：**只有** `menu_id=26`（"Platform Announcement"，raw_category
+第一层映射到 `other`）会落到第二层关键词匹配（其余 menu_id 都有专属映射，第一层直接
+命中，不经过关键词层）；抽样这 1091 条发现约 275 条是真实的新币种/新合约上线公告，
+但 Zoomex 的措辞（`"X are now live"`、`"X is now available on Zoomex Spot"`、
+`"perpetual contract(s) are available"`、`"Launching Soon on Zoomex Spot"`）完全不
+包含 `list`/`listing` 这两个词——`KEYWORD_RULES` 里 listing 分类的关键词是照着
+Bitunix/Weex 的措辞（"New Listing: X"）调的，对 Zoomex 这种一句话都不用"list"字样
+的风格完全失效。
+
+**没有采纳"合并成 platform/listing/delisting 三分类"的提案**：实测发现 `other` 桶
+里除了这 275 条误判的 listing，剩下约 800 条是真实的"既非 listing 也非
+delisting"内容（资金费率区间调整、风险限额调整、钱包/充提维护、社区招募、新年
+贺词），把这些强行归进 listing/delisting 会制造新的误判；而合并三个分类本身会
+牵动 `schema.sql` 的 CHECK 约束、`prompts.py` 四套按 category 区分的 LLM 模板、
+`push_rules.yaml` 的按 category 推送规则——这些改动的收益不成正比，问题的根源
+是"关键词覆盖不够"，不是"分类粒度设计错了"。
+
+**修复（第一版，已订正见下）**：最初把新词直接加进 `KEYWORD_RULES` 的 listing
+分组，结果发现会连带影响本不该动的行——原因见下方"订正"。
+
+**订正**：用户指出，"正确"的判断基准是 `category_mapping.yaml` 里按 menu_id 做的
+第一层原生映射（`145/69 -> campaign`、`123 -> product`），这次修复本来就只应该
+影响"因为 menu_id=26 映射到 other、才需要靠关键词兜底"的那部分行，不应该动任何
+已经有明确归属（不管是第一层原生映射、还是第二层关键词已经命中过）的分类结果。
+第一版实现没有完全做到这一点：新词被塞进 `KEYWORD_RULES` 的 listing 分组后，
+因为 `KEYWORD_RULES` 里 listing 排在 campaign/product 前面，会抢先命中那些标题里
+恰好也包含 "trading" 等词的行——这些行在改动前已经被原有关键词命中过（即使命中
+的词是"trading"这种宽泛误报），被新词从 campaign 抢先改判成 listing，不在这次
+修复的授权范围内。
+
+修正后的实现：`src/pipeline/category.py` 新增独立的 `LISTING_FALLBACK_KEYWORDS`
+列表（`now live / is now available / now available on / contract are available /
+contracts are available / launching soon`），**不**塞进 `KEYWORD_RULES`，而是在
+`classify_by_keyword()` 里等 `KEYWORD_RULES` 全部检查完、仍然没有任何命中时才
+兜底检查——`listed` 这个词因为不依赖新短语、原本就该属于标准 listing 关键词，
+保留在 `KEYWORD_RULES` 本身。这样任何已经被 `KEYWORD_RULES`（含原生映射短路
+之后才会走到的关键词层）命中过的行，不管命中的是不是"合理"的词，都不会被这批
+新词影响；新词只救回那些原来完全没有关键词命中、纯粹靠 `native_other` 兜底判成
+`other` 的行。
+
+```
+python -m src.pipeline classify --apply --sources Zoomex
+# 各 layer 命中数：{'keyword': 639, 'native_other': 794, 'native': 585, '_written': 2018}
+```
+
+修复前后 Zoomex 全量 category 分布：
+
+| category | 修复前 | 修复后 |
+|---|---|---|
+| other | 1091 | 818 |
+| campaign | 534 | 534（不变，第一版曾错误降到 526，订正后已恢复） |
+| listing | 5 | 278 |
+| product | 168 | 168（不变） |
+| delisting | 220 | 220（不变） |
+
+`campaign`/`product`/`delisting` 三列在订正后逐字节不变，只有 `other`→`listing`
+之间发生了 273 条真实的重新分类（1091-818=273，5+273=278），跟第一版"顺带误伤
+8 条 campaign"的问题已经消除。
+
+`is_region_exclusive` 不受影响（151 行不变，region 判断只看 group 归属的 locale，
+跟 category 无关）。
+
+**遗留**：`LISTING_FALLBACK_KEYWORDS` 是全源共用的（不是按 source 分开的配置），
+这批新短语理论上也会应用到 Lbank（`raw_category` 恒 NULL，全量走关键词层）和
+未来的 Phemex/BingX；`data/competitor_intel.db` 目前 Bitunix/Weex 数据已清空
+（见「数据库清理」一节），没有真实数据可交叉验证这组新词会不会在它们的"other"
+分区标题里误触发。等 Bitunix/Weex 数据重新采集回来后，应该跑一次
+`python -m src.pipeline classify --dry-run --sources Bitunix,Weex` 交叉核对
+`keyword` 层命中数有没有异常增长——但因为是"全不命中才兜底"的设计，风险已经比
+第一版低很多（不会抢在任何已有规则前面）。
+
+## Weex 修复版 collector 真实数据验证 + Phase 4 pipeline/analysis 打通（2026-07-14）
+
+`src/pipeline/category.py` 在本节写入时正处于另一个并行 session 的修改过程中（见
+上一节，`KEYWORD_RULES` 里 campaign/product/other 三组暂时被注释掉），本节的验证
+特意避开触碰这个文件，只跑 `classify --apply`（用的是文件当时的实际内容，不是
+完整版）——如果后续该文件恢复完整，`Weex` 的 category 分布可能会因为 keyword 层
+命中数变化而略有不同，属于预期之内，不代表本节记录的数字是错的。
+
+### 真实数据修复验证（`id` 替代 `documentId` 的修复版本）
+
+用修好 `documentId`/`id` 重复问题（见上一节「Weex 数据源迁移」）之后的版本重新跑了
+`python -m src.collectors --source weex`（EN+FR × 3 category，`max_pages=5`，
+仍然不做日期过滤——用户明确要求这一步先只限制页数，日期窗口留到指定"当天"时再加）：
+
+```
+Weex EN latest_announcements   new=323 changed=0 unchanged=0 failed=2（2 次真实 502/超时，非代码问题）
+Weex EN listings_delistings    new=324 changed=0 unchanged=0 failed=1
+Weex EN p2p_announcement       new=20  changed=0 unchanged=0 failed=0
+Weex FR latest_announcements   new=324 changed=0 unchanged=1 failed=0
+Weex FR listings_delistings    new=323 changed=0 unchanged=0 failed=2
+Weex FR p2p_announcement       new=12  changed=0 unchanged=0 failed=0
+```
+
+验收结果：Weex 总计 1326 行，交叉核对：
+- 重复 URL：0（修复前是 1 组，见上一节）
+- mojibake（`Ã` 类残留）：0
+- 正文残留 HTML 标签：0
+- `content_hash` 为 NULL：0
+- `raw_category` 值全部在 `category_mapping.yaml` 里能查到（含新发现的
+  `12312367451234`「All about Earn delistings/maintenance」，已按标题抽样
+  ["Annonce de WEEX concernant le retrait du produit de staking flexible XAUT"]
+  映射为 delisting）
+- `post_time` 范围 `2025-01-31` ~ `2026-07-14T11:30:00Z`，含真实当天数据
+
+**顺带发现一类不影响正确性、但值得记录的怪异真实数据**：`article_id`/`id` 字段里
+有 302 行是 `help_article_{数字}` 这种明显像"占位符"的字符串（而不是真实数字
+Zendesk ID 或 slug），真实抽查这批文章的 `documentId` 字段反而是正常的 slug——
+跟"Weex 数据源迁移"一节记录的那类 bug（documentId 重复、id 才稳定）恰好相反。
+交叉检查确认这批 `help_article_N` 值本身互不重复、每个对应一篇真实存在的历史
+文章（`url` 字段也用同一个值，duplicate url 检查=0），推测是 Weex 自己更早一批
+内容迁移时给"当时也没有真实 slug/数字 ID"的文章生成的占位符规则，**不是我们代码
+的 bug，也没有造成数据重复**，无需处理，只是留个记录以防以后遇到类似模式会
+困惑。
+
+### pipeline classify/region 真实验证
+
+```
+python -m src.pipeline classify --apply --sources Weex
+# native=1106 keyword=3 native_other=217 _written=1326
+
+python -m src.pipeline group-check --sources Weex,Zoomex
+# 检查了 1689 个 group，0 异常
+
+python -m src.pipeline region --sources Weex
+# 共 843 个 group，176 个判定为地区独占（抽样确认标题确实是区域限定内容，如
+# "Suspension temporaire des dépôts sur le réseau TON pour maintenance système"
+# 这类只在 FR 出现的公告）
+```
+
+### Phase 4 `--dry-run` 真实数据验证
+
+```
+python -m src.analysis --source Weex --dry-run
+```
+
+正确产出 8 个批次（`campaign/delisting/listing/product` × `EN/FR`，`other` 被
+正确排除），token 预估从 ~4700（Weex/delisting/EN，11 篇）到 ~126000
+（Weex/campaign/EN，239 篇）不等，四套 prompt 模板输出结构目视检查正常（标题/
+正文/UID 正确嵌入，ZMX 基线段落按命中数量正确显示"有限"/"不适用"提示或
+真实检索结果）。
+
+**`--dry-run` 模式下 EN→FR 复用没有触发（`derived=0`）是设计使然，不是 bug**：
+`can_derive_from_en()` 需要查到当天已写入的 EN `insights` 行，但 `dry_run=True`
+从头到尾不写库（连 EN 自己的分析结果都没有落库），所以同一次 `--dry-run` 调用里
+FR 永远找不到可复用的 EN 批次。要真正验证 EN→FR 复用路径，需要一次非 dry-run
+的真实/mock LLM 调用（`tests/analysis/test_run.py` 已经用 mock 覆盖了这个场景，
+但真实数据 + 真实 LLM 的端到端验证仍然留待下次配置好 `.env` 凭证后补齐）。
+
+### 仍然遗留（如实记录）
+
+- **真实 LLM 调用仍未验证**：`.env` 里 `LLM_API_KEY`/`LLM_API_BASE`/`LLM_MODEL`
+  还是空的，`--dry-run` 只验证了批次划分/ZMX 检索/prompt 构建这些不需要真实
+  调用的部分。
+- **`content_truncation` 的截断阈值在真实数据下的实际触发情况未检查**：
+  `Weex/campaign/EN` 单批次就有 239 篇文章、预估 12 万+ token，如果接入真实 LLM，
+  这么大的单次调用可能会超过很多服务商的单请求 token 上限——需要考虑是否要把
+  "批次"进一步按天然分页拆分成更小的子批次，这是 phasePrompts.md 原设计没有
+  预见到的真实数据规模问题（原设计假设的"一天新增"量级明显比 top-5-pages 回填出来
+  的量级小很多），下次接真实 LLM 前需要跟用户确认怎么处理超大批次。

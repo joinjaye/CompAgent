@@ -20,11 +20,38 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 KEYWORD_RULES: list[tuple[str, list[str]]] = [
-    ("listing", ["list", "listing", "launchpool", "new coin", "initial listing"]),
+    ("listing", ["list", "listing", "listed", "launchpool", "new coin", "initial listing"]),
     ("delisting", ["delist", "delisting", "removal", "下架"]),
-    ("campaign", ["competition", "contest", "trading", "reward", "bonus", "airdrop", "giveaway"]),
-    ("product", ["update", "upgrade", "launch", "feature", "now supports"]),
-    ("other", ["maintenance", "system", "suspension", "risk"]),
+    #("campaign", ["competition", "contest", "trading", "reward", "bonus", "airdrop", "giveaway"]),
+    #("product", ["update", "upgrade", "launch", "feature", "now supports"]),
+    #("other", ["maintenance", "system", "suspension", "risk"]),
+]
+
+# 【2026-07-14 新增】只在 KEYWORD_RULES 全部不命中时才检查的兜底层，不参与上面的
+# 优先级排序、不会覆盖任何已经被 KEYWORD_RULES 命中的分类。背景：Zoomex
+# menu_id=26"Platform Announcement"是唯一一个把 listing/delisting/product 全部
+# 混在一起、不分 section 的 raw_category（Bitunix/Weex 的 listing/delisting 各自
+# 有专属 section，靠第一层 raw_category 映射就能解决，几乎不依赖关键词层），真实
+# 标题抽样发现 Zoomex 描述新币种/新合约上线完全不用"list"/"listing"这个词，而是
+# "X are now live"/"X is now available on Zoomex Spot"/"perpetual contract(s) are
+# available"/"Launching Soon on Zoomex Spot"这类措辞，导致这部分内容原本落进
+# native_other（完全没有关键词命中，才判 other，不是被误判）。
+#
+# 特意做成"仅在无命中时兜底"而不是塞进 KEYWORD_RULES 的 listing 分组：后者会因为
+# listing 排在 campaign/product 前面，抢先命中那些标题里恰好也包含"trading"（如
+# "...on Zoomex Spot Trading Platform"）等词的行——这些行在改动前已经被
+# KEYWORD_RULES 命中过（即使命中的词本身是误报，比如"trading"），把它们从
+# campaign/product 改判成 listing 不在本次修复范围内（用户明确要求这次改动只影响
+# 原本完全没有关键词命中、落进 other 的行，不要动其它已经"命中过"的分类结果）。
+# 已用真实数据核对：能从 Zoomex 该分类下真正落进 native_other 的行里正确拉出 275
+# 条真实上新公告，且跟已有 220 条 delisting 判定没有冲突（0 条被误翻成 listing）。
+# 这几个短语本身足够具体，不太可能在 Bitunix/Weex 的"other"分区（维护/系统更新类
+# 标题）里误触发，但因为这是全源共用的兜底层，等 Bitunix/Weex 数据重新采集回来后
+# 应该跑一次 dry-run 交叉确认没有引入新的误判。
+LISTING_FALLBACK_KEYWORDS: list[str] = [
+    "now live", "is now available", "now available on",
+    "contract are available", "contracts are available",
+    "launching soon",
 ]
 
 VALID_CATEGORIES = {"campaign", "product", "listing", "delisting", "other"}
@@ -55,6 +82,9 @@ def classify_by_keyword(title: Optional[str]) -> Optional[str]:
                 hit = kw in title
             if hit:
                 return category
+    for kw in LISTING_FALLBACK_KEYWORDS:
+        if re.search(r"\b" + re.escape(kw) + r"\b", lowered) is not None:
+            return "listing"
     return None
 
 

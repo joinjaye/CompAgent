@@ -121,108 +121,119 @@ sources:
         category: section_id
   weex:
     # ============================================================
-    # 侦察结论（Phase 1，2026-07-13）：✅ 通。Weex 公告中心跑在 Zendesk 上
-    # （weex.com/help/* 是 weexsupport.zendesk.com 的 SEO 代理），Zendesk 标准
-    # Help Center REST API 可直接匿名访问，无需鉴权。公告归属 Zendesk
-    # category_id=18540264809497（"Latest Announcements"），下设 4 个 section：
-    # Latest updates / Futures events / Spot events / Reward distribution。
-    # 抽样确认 updated_at 与 created_at 存在真实差异（见下方 EN/FR 抽样数据），
-    # 判定 strategy: watermark。10 次连续请求（500ms 间隔）全部 200，无限流。
-    # weexsupport.zendesk.com 无 robots.txt 限制；weex.com/robots.txt 只禁止
-    # 带 utm/gad 追踪参数的 URL 和 register 页，与本接口无关。
-    # 注意：这是第三方 Zendesk 托管接口而非 Weex 自建 API，理论上存在 Weex
-    # 未来迁移掉 Zendesk 的风险，但目前是真实可用的live机制。
+    # 【2026-07-14 数据源迁移侦察，详见 CLAUDE.md「Weex 数据源迁移」】原 Phase 1/2/2.7
+    # 侦察确认可用的 weexsupport.zendesk.com 公开 Zendesk REST API **已经过期**：真实
+    # 请求核对（3 个 endpoint、6 个已知 section、en-us/zh-cn/fr 三个 locale 交叉验证）
+    # 确认该 API 从 2026-05-16 起再没有更新过任何内容，但用户反馈 www.weex.com/help
+    # 前台页面能看到当天发布的公告，实测坐实：真实数据源已经切换成 www.weex.com 自己的
+    # Next.js SSR 前台（不是 weexsupport.zendesk.com 代理），且没有任何可发现的 JSON/
+    # XHR 接口（Playwright 抓包为空——内容是服务端直接渲染进 HTML 的，不是前端另发请求
+    # 拿到的）。当时判定"这是第三方 Zendesk 托管接口，理论上存在 Weex 未来迁移掉
+    # Zendesk 的风险"这条 Phase 1 记录的风险已经真实发生。
     #
-    # 【Phase 2.7 补充侦察，2026-07-14】用 GET .../categories.json 枚举了 Weex
-    # Zendesk 全部 9 个顶层 category（Phase 2.6 只反查过 category_id 已知的
-    # section，看不到平级的其它 category，这次是主动枚举）。完整核查结论表见
-    # CLAUDE.md「Phase 2.7 完成情况」，摘要：
-    #   - Latest Announcements（已覆盖）+ Listings/Delistings（本次新增覆盖）
-    #     两个是真正的公告类内容。
-    #   - About WEEX / FAQ / Copy Trading / App Download / Quick Buy/OTC /
-    #     User Guide 共 6 个是静态客服文档/术语词典/ToS，不在采集范围内。
-    #   - P2P Trading（33 篇）待定：其中 section "P2P Announcement"
-    #     (id=49365180202777) 全是区域专属活动/新增法币支持这类 campaign 性质
-    #     内容，跟公告没有本质区别；但同一 category 下另外 3 个 section 是纯
-    #     FAQ。如果要收，需要按 section 粒度单独拉（不是整个 category），这是
-    #     一个新的采集粒度，本次未擅自决定，留给用户拍板。
+    # 新方案：解析 www.weex.com/{locale}/help/... 页面里内嵌的两类数据（完整技术细节
+    # 见 src/parsers/weex_web.py 顶部注释）：
+    #   - 列表页（category 或 section 皆可）：数据在 Next.js React Server Components
+    #     的 flight 流文本里（<script>self.__next_f.push([1,"..."])</script>），含
+    #     articleListData 数组（article_id/title/createdAt/sectionId/prioritise/url）
+    #     + pageInfo/totalCount/totalPage。
+    #   - 详情页：正文直接是服务端渲染好的 HTML，在 <div class="zendesk-html">
+    #     里，不需要解析 flight 流，摘出这个 div 内层 HTML 交给已有的
+    #     html_text.py 转纯文本即可（跟 Bitunix/Weex 旧数据同一套转换器）。
+    #   两者都是普通 HTTP GET + ?page=N 查询参数即可翻页，**不需要 headless
+    #   browser**（Playwright 只在这次侦察阶段用来确认"没有可发现的 XHR 接口"这个
+    #   事实，日常采集全程 urllib 就够，跟 Zoomex 当年的侦察模式一致）。
+    #
+    # sectionId 沿用旧 Zendesk 的数值体系（新系统仍然把这套 taxonomy 当分类用，只是
+    # 文章内容/发布走了新管线），config/category_mapping.yaml 现有的 weex 映射对新
+    # 数据直接适用。改用 category 级聚合页（而不是逐个已知 section 去拉）额外发现了
+    # 一个旧 Zendesk sections.json 里根本查不到的新 section
+    # （608152974386「All about TradFi」，6 篇，真实标题抽样是费率类公告与 FAQ
+    # 混杂——"TradFi futures zero-fee promotion ends"、"Fee Adjustment
+    # Announcement" 属公告性质，其余是产品说明，已按整体基调映射为 product，见
+    # category_mapping.yaml 注释）——这也是选用 category 级聚合而不是硬编码已知
+    # section 列表的原因：能自动发现新分区，不会静默漏采，这是本次踩过 Phase 2.7
+    # 同类坑（当时是撞见 Weex Listings/Delistings 完全没被采集）之后才吸取的教训。
+    #
+    # 无 per-item update_time（列表条目只有 createdAt，没有任何"最后编辑"字段），
+    # strategy 改判 full_scan：content_hash 兜底检测变更，跟 BingX/Phemex/Lbank 是
+    # 同一类源，不写 crawl_state.high_watermark。列表条目有 prioritise（置顶）标记，
+    # 置顶文章可能不按时间顺序排在最前——不依赖排序做提前退出翻页（同 Zoomex 批次 2
+    # 教训，见 CLAUDE.md「Phase 2 批次 2」），只用 pagination.max_pages 限制每轮扫描
+    # 深度；--force-full 时忽略这个上限、翻到 totalPage 为止（同 Zoomex daily 增量
+    # 补丁设计）。
+    #
+    # locale 路径 segment 是 weex.com 自己的路由 code（en/fr/vi/id/zh-CN...），跟旧
+    # Zendesk locale code（en-us/fr）是两套不同体系，均已用真实请求验证 200 且各自
+    # 返回对应语言标题。项目范围只需要 EN/FR（与既定竞品语言范围一致），vi/id 虽然
+    # 也有内容但不在范围内，未采集。
+    #
+    # 分类端点（category 级聚合，覆盖该 category 下全部 section，含未知新 section）：
+    #   Latest Announcements: category_id=18540264809497，总量约 1091 条 / 17 页
+    #   Listings/Delistings:  category_id=44507081559193，总量约 3688 条 / 57 页
+    # P2P Announcement 维持 section 级（section_id=49365180202777，20 条 / 1 页），
+    # 不能用其所在的「P2P Trading」category 聚合页（会混入另外 3 个纯 FAQ section，
+    # 同 Phase 2.7 结论）。
+    #
+    # robots.txt（www.weex.com/robots.txt）明确 Disallow 了两篇文章
+    # （/help/articles/f8gmpz85kfw6teot9f9xpa09、/help/articles/gqv1v2r402ocvucwvllzz0mj），
+    # collector 遇到这两个 article_id 会跳过不抓（见 weex.py DISALLOWED_ARTICLE_IDS）；
+    # 其余 /help/* 路径 robots.txt 允许。连续 6 次请求间隔 500ms 全部 200，未观察到
+    # 限流；单页 HTML 响应体比旧 Zendesk JSON 接口重得多（~650KB/页），予以保留同样
+    # 的 500ms 节奏，不做更激进的并发。
     # ============================================================
     EN:
+      locale_path: "en"
       categories:
         latest_announcements:
-          endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/en-us/categories/18540264809497/articles.json"
-        listings_delistings:   # Phase 2.7 新增：category_id=44507081559193，之前完全没有被采集，
-          # 见 config/category_mapping.yaml weex 块注释和 CLAUDE.md「Phase 2.7」的 categories.json
-          # 核查表。真实采集当天 total=3199（比 latest_announcements 的 1038 还多），4 个 section
-          # 全部是逐条上架/下架公告（真实标题样本："Initial listing: RARERIAL (RL) now available
-          # on WEEX!"、"Starpower (STAR) now available on WEEX!"），不是噪音
-          endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/en-us/categories/44507081559193/articles.json"
-        p2p_announcement:   # Phase 2.7 新增：不是整个 category，是 category_id=49344046693529
-          # 「P2P Trading」下的一个 section（section_id=49365180202777），用 Zendesk 的
-          # /sections/{id}/articles.json 端点单独拉（真实请求验证过，跟 /categories/{id}/
-          # articles.json 一样支持 cursor 分页），不拉整个 P2P Trading category——同 category
-          # 下另外 3 个 section（Start P2P trading / P2P merchant guide / P2P Order Appeal）
-          # 是纯 FAQ，混进来会是噪音。真实采集当天 total=17，抽样标题全是区域专属活动/新增
-          # 法币支持（"[Vietnam Exclusive] P2P flash sale: Buy USDT at 20% off"），公告性质
-          # 跟 latest_announcements 没有本质区别。见 CLAUDE.md「Phase 2.7」用户确认记录。
-          endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/en-us/sections/49365180202777/articles.json"
+          endpoint: "https://www.weex.com/en/help/categories/18540264809497"
+        listings_delistings:
+          endpoint: "https://www.weex.com/en/help/categories/44507081559193"
+        p2p_announcement:
+          endpoint: "https://www.weex.com/en/help/sections/49365180202777"
       method: GET
       headers: {}   # 匿名可访问，无需鉴权头；仅用普通浏览器 User-Agent 测试过
-      locale_param: "path"   # Zendesk 自己的 locale code，拼在 path 里，如 /en-us/
-      pagination: {type: cursor, page_size: 30}   # Phase 2.7: JSON:API cursor 分页，见 zendesk_base.py 顶部注释
-      rate_limit_ms: 500   # 连续 10 次请求 500ms 间隔全部 200，未观察到限流；采用同等节奏
-      detail_mode: inline   # 列表 body 字段已含完整正文 HTML，无需再请求详情
-      has_update_time: true
-      strategy: watermark   # 支持 ?sort_by=updated_at&sort_order=desc 排序，适合水位线轮询；
-        # 两个 category 各自独立维护水位线（crawl_state.category = latest_announcements /
-        # listings_delistings，见 src/collectors/zendesk_base.py）
+      pagination: {type: query_page, page_size: 65, max_pages: 5}   # daily 增量默认只
+        # 翻前 5 页；--force-full 忽略这个上限，翻到 totalPage 为止
+      rate_limit_ms: 500
+      detail_mode: separate_page   # 列表不含正文，需单独请求详情页解析 zendesk-html div
+      has_update_time: false
+      strategy: full_scan
       field_mapping:
-        article_id: id
-        title: title
-        content: body   # HTML 字符串
-        post_time: created_at   # ISO8601 UTC，如 2026-05-16T07:54:53Z
-        update_time: updated_at   # ISO8601 UTC；抽样确认与 created_at 存在真实差异，见下方样本
-        category: section_id   # 数值，直接落库进 announcements.raw_category，不做运行时转换；
-          # 映射表见 config/category_mapping.yaml（Phase 2.6 已用真实 sections.json 验证 latest_
-          # announcements 的 4 个值，Phase 2.7 补验证 listings_delistings 的 4 个值）。section_id
-          # 跨 category 唯一，两个 category 混在同一个 raw_category 命名空间不会冲突
-      # update_time 可靠性抽样（10 条，按 updated_at desc 排序）：
-      #   57976712091673 created 2026-05-16T07:54:53Z updated 2026-05-16T12:10:01Z
-      #   57945631674777 created 2026-05-15T07:01:59Z updated 2026-05-16T07:53:25Z
-      #   57951574367385 created 2026-05-15T09:46:36Z updated 2026-05-15T16:41:57Z
-      #   57946096497945 created 2026-05-15T07:14:11Z updated 2026-05-15T11:03:56Z
-      #   57945912065177 created 2026-05-15T07:08:37Z updated 2026-05-15T07:29:50Z
-      #   57944849662361 created 2026-05-15T06:41:46Z updated 2026-05-15T07:05:30Z
-      #   57828906693401 created 2026-05-12T02:20:25Z updated 2026-05-12T09:19:32Z
-      #   57831404063001 created 2026-05-12T03:28:00Z updated 2026-05-12T06:15:42Z
-      #   57774849676825 created 2026-05-10T09:51:44Z updated 2026-05-11T01:48:48Z
-      #   57773585831833 created 2026-05-10T08:55:04Z updated 2026-05-10T15:04:49Z
-      # 全部存在真实差异，非恒等，确认 watermark 可靠。
-      # 分类观察值（section 下 name）：Latest updates / Futures events / Spot events / Reward distribution
-      # 时间格式：ISO8601 字符串，Z 后缀（UTC）
+        article_id: documentId   # 新文章是小写字母数字 slug，旧文章（新系统里仍能查到）是
+          # Zendesk 数字 ID 字符串，两种格式都按字符串原样存
+        title: name
+        content: (详情页 <div class="zendesk-html"> 内层 HTML，非列表字段)
+        post_time: createdAt   # unix 毫秒时间戳
+        category: sectionId   # 数值，直接落库进 raw_category；跟旧 Zendesk section_id 同一套体系
+      # 真实样本（Spot events section，2026-07-14 抓取）：
+      #   l3v3t1vvcpzqq2vza2y0upyb createdAt=1783848600000 (2026-07-12T09:30:00Z)
+      #     "edgeX (EDGE) is live on WE-Launch—share 8,000 EDGE in airdrops!"
+      #   jardouvu207hhp7lbfvclxmo createdAt=1783589400000 (2026-07-09T09:30:00Z)
+      #     "Uniswap (UNI) WE-Launch..."
+      # 与用户截图日期（北京时间 2026/07/12 17:30、2026/07/09 17:30 = UTC+8）精确对上。
     FR:
+      locale_path: "fr"
       categories:
         latest_announcements:
-          endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/fr/categories/18540264809497/articles.json"
+          endpoint: "https://www.weex.com/fr/help/categories/18540264809497"
         listings_delistings:
-          endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/fr/categories/44507081559193/articles.json"
+          endpoint: "https://www.weex.com/fr/help/categories/44507081559193"
         p2p_announcement:
-          endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/fr/sections/49365180202777/articles.json"
+          endpoint: "https://www.weex.com/fr/help/sections/49365180202777"
       method: GET
       headers: {}
-      locale_param: "path"   # locale code "fr"（Zendesk locales.json 确认存在，default_locale 是 zh-cn）
-      pagination: {type: cursor, page_size: 30}   # Phase 2.7: JSON:API cursor 分页，见 zendesk_base.py 顶部注释
+      pagination: {type: query_page, page_size: 65, max_pages: 5}
       rate_limit_ms: 500
-      detail_mode: inline
-      has_update_time: true
-      strategy: watermark   # 机制与 EN 完全一致，样本 id 56988097353881 created 2026-04-15T07:01:05Z / updated 2026-04-15T07:10:07Z 同样存在差异
+      detail_mode: separate_page
+      has_update_time: false
+      strategy: full_scan
       field_mapping:
-        article_id: id
-        title: title
-        content: body
-        post_time: created_at
-        update_time: updated_at
-        category: section_id
+        article_id: documentId
+        title: name
+        content: (详情页 <div class="zendesk-html"> 内层 HTML，非列表字段)
+        post_time: createdAt
+        category: sectionId
   bingx:
     # ============================================================
     # 侦察结论（Phase 1，2026-07-13）：✅ 通，EN/VN。Nuxt 3 SSR（不是 SPA），

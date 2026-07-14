@@ -24,7 +24,6 @@ import yaml
 from src.collectors.base import BaseCollector, RunStats
 from src.collectors.bitunix import BitunixCollector
 from src.collectors.weex import WeexCollector
-from src.collectors.zendesk_base import ZendeskCollector
 from src.collectors.zoomex import ZoomexCollector
 from src.db.connection import DEFAULT_DB_PATH, get_connection, init_db
 
@@ -36,11 +35,13 @@ DEFAULT_SOURCES_PATH = Path(__file__).resolve().parents[2] / "config" / "sources
 CollectorBuilder = Callable[[str, dict[str, Any]], list[BaseCollector]]
 
 
-def _zendesk_builder(collector_cls: type[ZendeskCollector]) -> CollectorBuilder:
-    """Bitunix/Weex 共用：一个 locale 配置块下，如果有 categories.<name>（各自的
+def _categorized_collector_builder(collector_cls: type[BaseCollector]) -> CollectorBuilder:
+    """Bitunix（ZendeskCollector）/Weex（2026-07-14 起改为独立的页面解析实现，见
+    weex.py）共用：一个 locale 配置块下，如果有 categories.<name>（各自的
     endpoint），每个 category 展开成一个 collector 实例（跟 zoomex 的 menu_id 模式一致）；
-    没有 categories 结构（如 Bitunix，单分类）时按原来的方式一个 locale 一个实例，
-    crawl_state.category 恒为 ''，行为不变。"""
+    没有 categories 结构（如 Bitunix 早期，单分类）时按原来的方式一个 locale 一个实例，
+    crawl_state.category 恒为 ''，行为不变。要求 collector_cls 的构造函数签名是
+    `(locale, config)` 或 `(locale, config, category_key)`，不要求继承同一个基类。"""
 
     def build(locale: str, cfg: dict[str, Any]) -> list[BaseCollector]:
         categories = cfg.get("categories")
@@ -68,8 +69,8 @@ def _zoomex_builder(locale: str, cfg: dict[str, Any]) -> list[BaseCollector]:
 
 
 COLLECTOR_BUILDERS: dict[str, CollectorBuilder] = {
-    "bitunix": _zendesk_builder(BitunixCollector),
-    "weex": _zendesk_builder(WeexCollector),
+    "bitunix": _categorized_collector_builder(BitunixCollector),
+    "weex": _categorized_collector_builder(WeexCollector),
     "zoomex": _zoomex_builder,
 }
 
