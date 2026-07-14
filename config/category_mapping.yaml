@@ -1,0 +1,97 @@
+# ============================================================
+# 各源原生分类（announcements.raw_category）→ 我方标签的映射表。
+# 我方标签取值：campaign / product / listing / delisting / other（与 schema.sql
+# announcements.category / insights.category 的 CHECK 约束一致，2026-07-14 起
+# delisting 独立成一类，不再落入 listing，见 CLAUDE.md 推送规则表）。
+#
+# Phase 3 分类打标第一层（原生分类映射）读取本文件；命中不了的（映射到 other 或
+# 无映射）再走第二层标题关键词匹配，详见 phasePrompts.md Phase 3。
+#
+# 【Phase 2.6 订正，2026-07-14】首版（本文件 Phase 2.5 创建时）的 key 是人类可读
+# section name，但 announcements.raw_category 落库的是源端原始值（Bitunix/Weex 是
+# 数值 section_id，Zoomex 是数值 menu_id）——Phase 3 拿 raw_category 去查这张表会
+# 一条都命中不了（"18540264809497" 查不到 "Latest Announcements"），第一层映射会
+# 静默全线 miss，全部落到关键词层和 LLM 层，分类准确率和成本都会跟着崩。改为直接用
+# raw_category 的原始值做 key，零运行时转换、零字符串匹配脆弱性；人类可读名称写成
+# 行内注释，仅供人工核对，不参与匹配。
+#
+# 同时把 Phase 2.5 版本里未经验证、抄自网站前台菜单名的 bitunix/weex 映射值全部
+# 作废，改用真实请求验证：
+#   GET https://support.bitunix.com/api/v2/help_center/en-us/sections.json?per_page=100
+#   GET https://weexsupport.zendesk.com/api/v2/help_center/en-us/sections.json?per_page=100
+# 抽真实采集结果核对（data/competitor_intel.db 里 Bitunix EN 1534 条、Weex EN 1038 条
+# 实际出现的 raw_category 值），确认下面每一个 section_id 都是真实在用的分类，不是
+# 凭空列出的候选项。Zendesk section_id 跨 locale 一致（同一分类在 EN/FR/ID 下 id 不变，
+# 已用 bitunix_FR.json / weex_FR.json fixture 交叉验证），所以同一份 bitunix/weex 映射
+# 对该源全部 locale 都适用，不需要按 locale 拆分。
+# ============================================================
+
+bitunix:   # category_id=13760946490649（"Announcements"）下的全部 8 个 section，
+           # 逐一对照真实采集到的 8 个 raw_category 值（746/228/216/115/111/108/8/2 条）
+  "13762039477017": campaign    # Events and Activities
+  "16707858318105": product     # Products and Services
+  "17983093824153": product     # Derivatives & Perpetual Futures
+  "57068501750297": product     # Earn
+  "39073446124953": product     # Copy Trading
+  "13762037166105": listing     # New Listings
+  "47601070306585": delisting   # Delisting
+  "13762058994073": other       # Maintenance and Upgrade
+
+weex:      # category_id=18540264809497（"Latest Announcements"）下的全部 4 个 section，
+           # 逐一对照真实采集到的 4 个 raw_category 值（349/253/233/203 条，合计=1038=全量）
+  "18540506359065": campaign    # Futures events
+  "33143373088665": campaign    # Spot events
+  "18540491393305": campaign    # Reward distribution
+  "18540289930137": other       # Latest updates
+  # 【新发现，2026-07-14，超出本次映射修复范围，需要单独决策】weexsupport.zendesk.com
+  # 还有一个独立分类 category_id=44507081559193「Listings/Delistings」，下辖 4 个
+  # section：New spot listings (18540509241753) / New futures listings
+  # (47660531875481) / Spot delisting/maintenance (37576213158553) / Futures
+  # delisting/maintenance (47660551001369)——当前 sources.yaml 的 weex endpoint 只拉
+  # 「Latest Announcements」这一个分类，完全没有覆盖这 4 个 section，也就是说 Weex 的
+  # 上架/下架公告目前根本没有被采集。这不是本次 category_mapping.yaml 映射修复能解决的
+  # （需要新增一个采集 endpoint，改动 sources.yaml + collector，类似 Phemex 当初补
+  # Activities/Newsletter 那次），是否现在就补、还是留给批次 3/4 顺手处理，需要跟
+  # Bitunix/Weex 批次的原始验收范围对齐后再定，先如实记录、不擅自扩大改动范围。
+
+bingx:     # 12 个分区的 sectionId 数值来自 Phase 1 补充侦察对 __NUXT_DATA__ 的真实反查
+           # （见 config/sources.yaml bingx EN 块注释），非猜测；BingX 采集器尚未实现
+           # （批次 3），这里先把映射准备好，实现时不需要重新反查
+  "11257060320143": campaign    # Latest Promotions
+  "16083161267343": campaign    # EventX
+  "11256997796495": product     # Product Updates
+  "11257060005007": listing     # Spot Listing
+  "11257015822991": listing     # Futures Listing
+  "13117025062927": listing     # Innovation Listing
+  "11257015847311": delisting   # Delisting
+  "360004917494": other         # Latest Announcements（首屏聚合视图本身的 id，非文章真实归属分区，理论上不会出现在
+                                 # per-article 的 raw_category 里，保留以防万一）
+  "11257016265487": other       # Asset Maintenance
+  "11523620946319": other       # System Maintenance
+  "11257028004239": other       # Funding Rate
+  "11257028024847": other       # Crypto Scout
+
+phemex:    # 【Phase 2.6 订正，2026-07-14】sources.yaml 原 field_mapping.category 写的是
+           # `category.name`（解析后的响应字段）。Phase 1 侦察时其实已经记录了这个字段是
+           # locale 相关的翻译文本（sources.yaml phemex FR 块注释：category_id 438 对应
+           # name:'Nouvelles'，跟 EN 432 的 'News' 不是同一个字符串，i18n 各 locale 独立
+           # 编号），但当时没有连到"这会让 category_mapping.yaml 按名称查表全部落空"这个
+           # 后果上。如果 raw_category 真的存 category.name，这张表就得每个 locale 各写
+           # 一份、还要覆盖所有语言的翻译文本，Bitunix/Weex 那次用人类可读名称当 key 踩过的
+           # 坑会在 Phemex 批次重演。Phemex 采集器尚未实现（批次 3），建议 raw_category 改存
+           # "抓取时用的哪个 categories.* 子源 key"（news/activities/newsletter，locale
+           # 无关，本来就是 sources.yaml 配置里的字面量，采集时天然知道，不需要解析响应
+           # 字段），本文件的 key 提前按这个设计写：
+  "news": other
+  "activities": campaign
+  "newsletter": other
+
+lbank: null   # 无 per-item category（raw_category 恒 NULL），全部走标题关键词 + LLM
+
+zoomex:    # menu_id 来自 Phase 1 headless browser 真实侦察（getAllMenu 响应），非猜测；
+           # 已用真实采集结果交叉验证：EN new_product_announcement 40 条 raw_category
+           # 全部等于 "123"，跟 menu_id: 123 完全对上
+  "145": campaign    # Platform Events
+  "69": campaign      # Exclusive Events（仅 EN-Asia 有数据）
+  "123": product      # New Product Announcement
+  "26": other         # Platform Announcement

@@ -125,6 +125,29 @@ def test_reinsert_same_content_is_unchanged_and_does_not_duplicate(conn):
     assert get_content_history(conn, first.uid) == []
 
 
+def test_unchanged_content_but_raw_category_moved_updates_raw_category_only(conn):
+    """正文没变但源端分类归属变了（如 Zendesk 后台把文章挪到另一个 section）：
+    status 仍是 unchanged，不进 content_history、不重置 push_status，只补正
+    raw_category，否则会一直停在第一次抓到的旧分类上（Phase 2.6 订正）。"""
+    kwargs = dict(source="Bitunix", locale="EN", article_id="4004", content="same content")
+
+    first = upsert_announcement(
+        conn, **kwargs, raw_category="111", fetched_at="2026-07-10T00:00:00Z"
+    )
+    row = get_announcement(conn, first.uid)
+    conn.execute("UPDATE announcements SET push_status = 'pushed' WHERE uid = ?", (first.uid,))
+
+    second = upsert_announcement(
+        conn, **kwargs, raw_category="222", fetched_at="2026-07-11T00:00:00Z"
+    )
+
+    assert second.status == "unchanged"
+    row = get_announcement(conn, first.uid)
+    assert row["raw_category"] == "222"
+    assert row["push_status"] == "pushed"  # 分区变动不是内容变更，不应重新触发推送
+    assert get_content_history(conn, first.uid) == []  # 也不该产生历史记录
+
+
 # ---------------------------------------------------------------- 变更检测 ----
 
 def test_content_change_is_detected_and_archived_to_history(conn):

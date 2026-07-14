@@ -124,6 +124,7 @@ class ZoomexCollector(BaseCollector):
             post_time=item.post_time,
             update_time=item.update_time,
             category=None,  # Phase 3 之前不分类
+            raw_category=str(self.menu_id),
             group_id=f"zoomex_{article_id}",
             source_endpoint=self.config.get("endpoint"),
         )

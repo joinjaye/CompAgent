@@ -192,21 +192,20 @@ Bitunix(EN/FR/ID), Weex(EN/FR), BingX(EN/VN), Phemex(EN/FR), Lbank(EN/VN/ID), Zo
 
 ---
 
-## Phase 3｜清洗、跨语言归组、分类打标
+## Phase 3｜跨语言归组、分类打标
+
+> 清洗已在 Phase 2.5 前移到采集层（`src/parsers/html_text.py` + `src/parsers/slate_json.py`，
+> 由各 collector 的 `normalize()` 调用），入库的 `content` 已经是清洗后的纯文本，
+> `content_hash` 的语义是「清洗后正文的 SHA256」。Phase 3 不再包含清洗这一步，
+> 职责收窄为跨语言归组 + 分类打标 + 地区独占标记，见 CLAUDE.md「Phase 2.5 完成情况」。
 
 交付物：`src/pipeline/`
 验收：随机抽 30 条人工核对，分类准确率 ≥ 90%；同一活动的多语言版本 group_id 一致
 
 ```
-实现清洗与打标流水线，作用于 announcements 表中 status in (new, changed) 的记录。
+实现跨语言归组与分类打标流水线，作用于 announcements 表中 status in (new, changed) 的记录。
 
-【1. 清洗】
-- HTML 转纯文本（保留段落结构）
-- 去导航栏、页脚、免责声明等模板内容
-- 压缩多余空白
-- 保留正文里的表格结构（活动奖池信息经常在表格里，丢了等于丢了核心数据）
-
-【2. 跨语言归组（group_id）】
+【1. 跨语言归组（group_id）】
 同一交易所、不同 locale 的同一条公告归为一组。按优先级尝试：
 a) 该站自身的 article_id 在多语言下是否相同（Phase 1 探测结果应已记录在 sources.yaml）—— 若相同直接用
 b) 若不同，匹配条件：
@@ -216,23 +215,33 @@ b) 若不同，匹配条件：
 归组结果写 group_id。
 注意：group_id 的用途是分析层的跨区域对比和地区独占识别，不用于推送去重（推送按 locale 分群，各群独立）。
 
-【3. 分类打标】
-类别：campaign / product / listing / other
-- 第一层：规则匹配
-  · Phase 1 记录的各站原生 category 映射（比如某站 type=3 就是 listing）
-  · 标题关键词匹配（listing / launchpool / new coin / competition / trading contest / maintenance / system upgrade ...）
-- 第二层：规则命中不了的，走 LLM 分类
+【2. 分类打标】
+类别：campaign / product / listing / delisting / other（2026-07-14 起 delisting 独立成一类，
+不再落入 listing，见 CLAUDE.md 推送规则表）
+- 第一层：raw_category 映射（读 config/category_mapping.yaml，Phase 2.5 已把各源原生分类
+  的原始值存进 announcements.raw_category，不用再现抓 section_id/menu_id）
+  · Bitunix/Weex：raw_category 是 Zendesk section_id（数值字符串），映射表的 key 是人类可读
+    section name，需要先转换（查 Phase 1 侦察记录的对照表或 /categories/{id}/sections.json）
+  · BingX：raw_category 是 sectionId，用 Phase 1 反查的 sectionId 对照表直接映射
+  · Phemex/Zoomex：raw_category 已经是可读值（子源名/menu_id），直接查表
+  · Lbank：raw_category 恒为 NULL，跳过此层，直接进第二层
+- 第二层：标题关键词匹配（适用于第一层映射到 other 或无映射的）
+  · listing 关键词：list / listing / launchpool / new coin / 上线 / 上架
+  · delisting 关键词：delist / delisting / 下架 / 退市
+  · campaign 关键词：competition / contest / trading / reward / bonus / airdrop / 活动 / 奖励
+  · product 关键词：update / upgrade / launch / feature / 更新 / 升级 / 新功能
+- 第三层：前两层都未命中的，走 LLM 分类
   · 输入：title + content 前 500 字
   · 输出：JSON { "category": "...", "confidence": 0.0-1.0, "reason": "..." }
-  · 明确允许输出 other，不要为了填满三个类而强行归类
+  · 明确允许输出 other，不要为了填满几个类而强行归类
   · LLM 结果按 content_hash 缓存，同一内容不重复调用
 
-【4. 地区独占标记】
+【3. 地区独占标记】
 扫描所有 group：若某 group 只在非 EN 的单一 locale 出现（比如只有 VN 版），标 is_region_exclusive=true。
 这是重要情报——竞品只在某个区域做的活动，说明该区域是其重点。
 
-【5. eval 脚本】
-输出一个 eval 脚本：随机抽样 30 条，打印 title / 原生 category / 我方 category / 分类依据（规则 or LLM + reason），方便人工校验。
+【4. eval 脚本】
+输出一个 eval 脚本：随机抽样 30 条，打印 title / raw_category / 我方 category / 分类依据（规则 or LLM + reason），方便人工校验。
 ```
 
 ---

@@ -1,4 +1,4 @@
--- 竞品情报平台 SQLite schema
+-- 竞品情报平台 SQLite schema（schema 版本 v2，见 CLAUDE.md「Phase 2.5 完成情况」）
 -- 所有时间字段统一使用 UTC ISO8601 字符串（如 2026-07-13T02:30:00Z），不使用 SQLite 原生 DATETIME。
 -- SQLite 是唯一真相源；飞书多维表只是同步出去的业务视图。
 
@@ -17,7 +17,16 @@ CREATE TABLE IF NOT EXISTS announcements (
     article_id           TEXT NOT NULL,      -- 源站原生文章 ID
     url                  TEXT,
     title                TEXT,
-    content              TEXT,               -- 清洗后正文（Phase 3 之前可能是原始正文）
+    content              TEXT,               -- 清洗后正文。Phase 2.5 起清洗前移到采集层，
+                                              -- content_hash 的语义即「清洗后正文的 SHA256」
+                                              -- （不再是原始 HTML 的 hash）
+    raw_category         TEXT,               -- 源站原生分类的原始值，不做任何映射转换（数值型
+                                              -- 转字符串存）：Bitunix/Weex 是 Zendesk section_id，
+                                              -- Zoomex 是 menu_id，BingX 是 sectionId，Phemex 是抓取
+                                              -- 子源名（news/activities/newsletter）；Lbank 恒 NULL
+                                              -- （源端无 per-item 分类）。映射到 campaign/product/
+                                              -- listing/delisting/other 是 Phase 3 的事，见
+                                              -- config/category_mapping.yaml
     content_hash         TEXT,               -- SHA256(content)，变更检测用
     post_time            TEXT,               -- 发布时间，UTC ISO8601
     update_time          TEXT,               -- 源端更新时间（如有），UTC ISO8601
@@ -25,7 +34,7 @@ CREATE TABLE IF NOT EXISTS announcements (
     status               TEXT NOT NULL DEFAULT 'new'
                          CHECK (status IN ('new', 'changed', 'unchanged')),
     category             TEXT
-                         CHECK (category IS NULL OR category IN ('campaign', 'product', 'listing', 'other')),
+                         CHECK (category IS NULL OR category IN ('campaign', 'product', 'listing', 'delisting', 'other')),
     is_region_exclusive  BOOLEAN NOT NULL DEFAULT 0,
     push_status          TEXT NOT NULL DEFAULT 'pending'
                          CHECK (push_status IN ('pending', 'pushed', 'skipped')),
@@ -67,7 +76,7 @@ CREATE TABLE IF NOT EXISTS insights (
     related_uids   TEXT,   -- JSON 数组，回链 announcements.uid
     source         TEXT,
     category       TEXT
-                  CHECK (category IS NULL OR category IN ('campaign', 'product', 'listing', 'other')),
+                  CHECK (category IS NULL OR category IN ('campaign', 'product', 'listing', 'delisting', 'other')),
     summary        TEXT,
     zmx_diff       TEXT,
     diff_type      TEXT

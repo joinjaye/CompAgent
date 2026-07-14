@@ -49,6 +49,7 @@ def upsert_announcement(
     update_time: Optional[str] = None,
     fetched_at: Optional[str] = None,
     category: Optional[str] = None,
+    raw_category: Optional[str] = None,
     is_region_exclusive: bool = False,
     source_endpoint: Optional[str] = None,
     group_id: Optional[str] = None,
@@ -66,7 +67,7 @@ def upsert_announcement(
     fetched_at = fetched_at or utcnow_iso()
 
     row = conn.execute(
-        "SELECT content_hash, fetched_at FROM announcements WHERE uid = ?",
+        "SELECT content_hash, fetched_at, raw_category FROM announcements WHERE uid = ?",
         (uid,),
     ).fetchone()
 
@@ -75,13 +76,13 @@ def upsert_announcement(
             """
             INSERT INTO announcements (
                 uid, group_id, source, locale, article_id, url, title, content,
-                content_hash, post_time, update_time, fetched_at, status,
+                raw_category, content_hash, post_time, update_time, fetched_at, status,
                 category, is_region_exclusive, push_status, source_endpoint
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, 'pending', ?)
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, 'pending', ?)
             """,
             (
                 uid, group_id, source, locale, article_id, url, title, content,
-                content_hash, post_time, update_time, fetched_at,
+                raw_category, content_hash, post_time, update_time, fetched_at,
                 category, bool(is_region_exclusive), source_endpoint,
             ),
         )
@@ -99,14 +100,24 @@ def upsert_announcement(
         conn.execute(
             """
             UPDATE announcements
-            SET url = ?, title = ?, content = ?, content_hash = ?,
+            SET url = ?, title = ?, content = ?, raw_category = ?, content_hash = ?,
                 post_time = ?, update_time = ?, fetched_at = ?, status = 'changed',
                 push_status = 'pending', source_endpoint = ?
             WHERE uid = ?
             """,
-            (url, title, content, content_hash, post_time, update_time, fetched_at, source_endpoint, uid),
+            (url, title, content, raw_category, content_hash, post_time, update_time, fetched_at, source_endpoint, uid),
         )
         return UpsertResult(uid=uid, status="changed")
+
+    if row["raw_category"] != raw_category:
+        # 正文没变但源端分类归属变了（如 Zendesk 后台把文章挪到另一个 section）。
+        # 这不是内容变更，不进 content_history、不动 status/push_status，只补正
+        # raw_category，否则会一直停在第一次抓到的旧分类上，见 CLAUDE.md「Phase 2.6」。
+        conn.execute(
+            "UPDATE announcements SET fetched_at = ?, status = 'unchanged', raw_category = ? WHERE uid = ?",
+            (fetched_at, raw_category, uid),
+        )
+        return UpsertResult(uid=uid, status="unchanged")
 
     conn.execute(
         "UPDATE announcements SET fetched_at = ?, status = 'unchanged' WHERE uid = ?",

@@ -12,6 +12,7 @@ from typing import Optional
 
 from src.collectors.base import BaseCollector, NormalizedAnnouncement, RawItem
 from src.collectors.http import fetch_json, rate_limit_seconds
+from src.parsers.html_text import html_to_text
 from src.parsers.zendesk import get_next_page, parse_articles
 
 
@@ -63,10 +64,11 @@ class ZendeskCollector(BaseCollector):
             article_id=article_id,
             url=item.url,
             title=item.title,
-            content=item.content,
+            content=html_to_text(item.content),  # Zendesk body 是原始 HTML，采集层清洗为纯文本
             post_time=item.post_time,
             update_time=item.update_time,
             category=None,  # Phase 3 之前不分类，见 CLAUDE.md「category 可为 NULL」
+            raw_category=str(item.category_raw) if item.category_raw is not None else None,
             group_id=f"{self.group_id_prefix}_{article_id}",
             source_endpoint=self.config.get("endpoint"),
         )

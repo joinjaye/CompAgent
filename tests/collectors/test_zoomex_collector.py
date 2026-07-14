@@ -137,6 +137,16 @@ def test_normalize_builds_group_id_and_leaves_url_and_category_none():
     assert ann.category is None
 
 
+def test_normalize_raw_category_is_menu_id():
+    from src.collectors.base import RawItem
+
+    collector = _collector()  # menu_id=26
+    raw = RawItem(article_id=4116, title="t", content="c")
+    ann = collector.normalize(raw)
+
+    assert ann.raw_category == "26"
+
+
 # ---------------------------------------------------------------- 全量翻页 ----
 
 def test_fetch_list_walks_all_pages_regardless_of_since(db_path, monkeypatch):

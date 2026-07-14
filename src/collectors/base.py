@@ -48,6 +48,7 @@ class NormalizedAnnouncement:
     post_time: Optional[str] = None
     update_time: Optional[str] = None
     category: Optional[str] = None
+    raw_category: Optional[str] = None
     group_id: Optional[str] = None
     source_endpoint: Optional[str] = None
 
@@ -155,6 +156,7 @@ class BaseCollector(ABC):
                     post_time=ann.post_time,
                     update_time=ann.update_time,
                     category=ann.category,
+                    raw_category=ann.raw_category,
                     source_endpoint=ann.source_endpoint,
                     group_id=ann.group_id,
                 )

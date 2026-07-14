@@ -67,7 +67,9 @@ sources:
         content: body   # HTML 字符串
         post_time: created_at   # ISO8601 UTC，Z 后缀
         update_time: updated_at   # ISO8601 UTC；另有 edited_at（仅内容编辑），updated_at 是超集信号
-        category: section_id   # 需另查 /categories/{id}/sections.json 拿人类可读名称
+        category: section_id   # 数值，直接落库进 announcements.raw_category，不做运行时转换。
+          # Zendesk section_id 跨 locale 一致（已用 bitunix_FR.json 交叉验证），映射表见
+          # config/category_mapping.yaml（Phase 2.6 已用真实 sections.json 验证过全部 8 个值）
       # update_time 可靠性抽样（30 条，EN，节选 5 条，完整见 recon 记录）：
       #   59923371883417  created 2026-07-11T00:45:26Z  updated 2026-07-13T00:24:06Z  差异
       #   59908400363161  created 2026-07-10T10:08:39Z  updated 2026-07-10T10:13:53Z  差异
@@ -147,7 +149,11 @@ sources:
         content: body   # HTML 字符串
         post_time: created_at   # ISO8601 UTC，如 2026-05-16T07:54:53Z
         update_time: updated_at   # ISO8601 UTC；抽样确认与 created_at 存在真实差异，见下方样本
-        category: section_id   # 数值，需另查 .../sections/{id}.json 拿 name 做人类可读分类
+        category: section_id   # 数值，直接落库进 announcements.raw_category，不做运行时转换；
+          # 映射表见 config/category_mapping.yaml（Phase 2.6 已用真实 sections.json 验证全部
+          # 4 个值）。同时发现 weexsupport.zendesk.com 还有一个独立分类 category_id=
+          # 44507081559193「Listings/Delistings」（4 个 section），当前 endpoint 未覆盖，
+          # 详见 category_mapping.yaml weex 块注释——是否补采集本文件不擅自决定
       # update_time 可靠性抽样（10 条，按 updated_at desc 排序）：
       #   57976712091673 created 2026-05-16T07:54:53Z updated 2026-05-16T12:10:01Z
       #   57945631674777 created 2026-05-15T07:01:59Z updated 2026-05-16T07:53:25Z
@@ -210,6 +216,18 @@ sources:
     # 同时确认：sitemap（en/sitemap-support.xml）里的 URL 是扁平的
     # /support/articles/{articleId}，不带分区 segment，逻辑上与 Phemex 一致，
     # 天然覆盖全部 12 个分区，全量回填不需要按分区单独跑 sitemap。
+    #
+    # 【设计要点，供批次 3 实现 BingX collector 时用，2026-07-14 记录】首屏 ~20 条
+    # 跨分区聚合视图**不能**当日常增量的数据源用，只能当"取 sectionId"的辅助信息来源
+    # （sitemap 的 URL 不带分区信息，sectionId 只有首屏/详情页才有）。原因：首屏窗口是
+    # 固定 20 条，一旦当天新增公告超过 20 条，多出来的会被挤出窗口、**永久漏采**（不是
+    # "变更检测不到"，是新增条目从未进过 fetch_list 的返回值）。正确的日常增量做法：
+    # `fetch_list()` 拉 sitemap 全量 URL 集合，跟 DB 里 `source='BingX'` 已有的
+    # `article_id` 集合求差集，差集即新增文章；差集为空的 URL 不需要请求详情页（省网络）。
+    # sitemap diff 只能发现"新增"，发现不了"存量文章被编辑但 URL 不变"的场景——如果需要
+    # 覆盖这种变更，仍要靠 full_scan 的语义（对已入库文章定期重新请求详情页比对
+    # content_hash），可以用首屏 ~20 条兼顾"最近编辑"这个子集（大概率覆盖最新变更），
+    # 不需要对全部历史文章都重新请求详情页。
     # ============================================================
     EN:
       endpoint: "https://bingx.com/en/support/notice-center"
@@ -227,7 +245,11 @@ sources:
         content: body   # 仅详情页有，HTML 字符串
         post_time: createTime   # ISO8601 字符串，带 +08:00 偏移
         update_time: updateTime   # 抽样恒等于 createTime，不可靠，仅记录不作水位线
-        category: sectionId   # 数值，用下方对照表转人类可读名称；已确认首屏本身跨分区，无需另查
+        category: sectionId   # 数值，直接落库进 announcements.raw_category，不做运行时转换；
+          # 已确认首屏本身跨分区，无需另查；映射表见 config/category_mapping.yaml（用下方
+          # 反查确认过的对照表 ID 直接做 key，Phase 2.6 订正——不要在 collector 里现查
+          # 人类可读名称再匹配字符串，见 category_mapping.yaml 顶部注释里 Bitunix/Weex
+          # 踩过的坑）
       # update_time 可靠性抽样（20 条列表条目，全部相等，节选 3 条）：
       #   16806751482255  create 2026-07-12T10:58:07.000+08:00  update 相同
       #   16795550869391  create 2026-07-11T00:41:23.000+08:00  update 相同
@@ -327,7 +349,17 @@ sources:
         content: content   # 详情页 preloadedData.pageData.content，HTML 正文
         post_time: publishedTime   # 朴素字符串 'YYYY-MM-DD HH:MM:SS'，无显式时区，数值上与 UTC 的 createdAt 接近，按 UTC 处理；另有 i18n.createdAt 是标准 ISO8601 UTC
         update_time: i18n.updatedAt   # ISO8601 UTC，抽样显示只是秒级发布噪音，不用于水位线
-        category: category.name   # 固定值，取决于抓取时用的哪个 categories.* endpoint（News/Activities/Newsletter），无需逐条解析；另有 categoryKey，如 "AnnouncementCategory432"
+        category: category.name   # ⚠️ Phase 2.6 订正：不要真的把这个字段存进
+          # announcements.raw_category——category.name 是 locale 相关的翻译文本
+          # （下方 FR 块已经记录 name:'Nouvelles' 跟 EN 的 'News' 不是同一个字符串，
+          # i18n 各 locale 独立编号），照抄的话 config/category_mapping.yaml 就得
+          # 每个 locale 各写一份、还要覆盖所有语言翻译，重演 Bitunix/Weex 用人类
+          # 可读名称当 key 踩过的坑。批次 3 实现时改成落库"抓取时用的哪个
+          # categories.* 子源 key"（news/activities/newsletter，locale 无关，
+          # sources.yaml 配置里的字面量，采集时天然知道，不需要解析这个响应字段）。
+          # category_mapping.yaml 已经按这个设计提前写好（phemex 块用
+          # news/activities/newsletter 做 key）。另有 categoryKey，如
+          # "AnnouncementCategory432"，同样是 locale 相关，不适合做 key
       # update_time 可靠性抽样（8 条，createdAt vs updatedAt vs publishedTime，UTC）：
       #   new-contract-listing-gnsusdt  created 2023-08-09T01:55:49.196Z  updated 2023-08-09T01:55:49.210Z（+14ms）
       #   phemex-will-delist-4-trading-pairs-on-december-5-2025  created 2025-12-03T06:45:39.825Z  updated 2025-12-03T06:54:22.969Z（+8m43s，发布流程内)
@@ -361,7 +393,7 @@ sources:
         content: content
         post_time: publishedTime
         update_time: i18n.updatedAt
-        category: category.name   # 同 EN：取决于抓取时用的哪个 categories.* endpoint
+        category: category.name   # 同 EN：⚠️ 同样不要直接落库，见上方 EN 块订正说明
       # 分类观察值：News（total 1641）/ Activities（id 448，total 158）/ Newsletter（id 458，total 4）
   lbank:
     # ============================================================
@@ -376,8 +408,17 @@ sources:
     # 这两个字段列表页没有（列表页只有 contentShowTime，与 detail updateTime
     # 不完全相同，抽样发现最多相差 ~22 分钟，不能替代）。
     # 抽样 8 条 detail 页 createTime vs updateTime：7/8 存在真实差异（另 1 条
-    # 相等）——判定 strategy: watermark，但需基于 detail 页的 updateTime，
-    # 不能只用列表页字段。
+    # 相等），detail 页字段本身是可靠的。
+    # 【Phase 2.5 订正，2026-07-14】首版侦察据此判定 strategy: watermark，但这个
+    # 判断只看了"updateTime 字段是否可靠"，没考虑"能否只拉增量"——Lbank 列表页
+    # 翻页未逆向（见下方"未验证/待办"），每轮采集实际只能稳定拿到默认聚合视图
+    # 固定的最新 10 条，不存在"用 since 只请求增量"的空间，watermark 策略的核心
+    # 前提（可控翻页范围）不成立。改判 strategy: full_scan：每轮固定拉这 10 条，
+    # 用 content_hash 做变更检测；detail 页 updateTime 仍然落库（可靠、有信息量），
+    # 只是不参与"要不要继续翻页"的决策，跟 Zoomex 的 high_watermark 是同一类
+    # "仅供观测，不参与采集决策"（见本文件 zoomex 块注释）。与 README/phasePrompts.md
+    # 原始设计以及 CLAUDE.md 数据源现状表保持一致（CLAUDE.md 之前把这行错记成了
+    # watermark，本次一并订正）。
     # 10 次连续请求 500ms 间隔，全部 200，无限流/Cloudflare 拦截。
     # robots.txt 允许 /support/announcement 与 /support/articles/*，只禁止
     # /my/*、/wallet/* 和追踪 query 参数。
@@ -422,7 +463,7 @@ sources:
       rate_limit_ms: 500
       detail_mode: html   # SSR HTML，正文数据是内嵌在 RSC script 里的转义 JSON，不是独立 JSON API
       has_update_time: true   # 仅 detail 页有可靠 updateTime；列表页 contentShowTime 不可靠替代
-      strategy: watermark   # 基于 detail 页 updateTime，抽样 8 条 7 条有真实差异
+      strategy: full_scan   # Phase 2.5 订正：翻页未逆向、每轮只能拿固定 10 条，watermark 前提不成立，见上方订正说明；detail 页 updateTime 仍落库，仅供观测不参与翻页决策
       field_mapping:
         article_id: noticeId   # 另有 code（长数字字符串），用于 detail 页 URL slug，二者等价
         title: title
@@ -453,7 +494,7 @@ sources:
       rate_limit_ms: 500
       detail_mode: html
       has_update_time: true
-      strategy: watermark   # 机制与 EN 相同，noticeId/code 跨 locale 一致
+      strategy: full_scan   # 机制与 EN 相同，noticeId/code 跨 locale 一致；full_scan 理由同 EN 见上方订正说明
       field_mapping:
         article_id: noticeId
         title: title
@@ -470,7 +511,7 @@ sources:
       rate_limit_ms: 500
       detail_mode: html
       has_update_time: true
-      strategy: watermark
+      strategy: full_scan   # full_scan 理由同 EN 见上方订正说明
       field_mapping:
         article_id: noticeId
         title: title
@@ -545,6 +586,16 @@ sources:
     #   分类映射：Platform Announcement 类比 news/other 综合公告；New Product
     #   Announcement 对应 product；Platform Events 对应 campaign；Exclusive
     #   Events（仅 EN-Asia 有数据）也归入 campaign 范畴。
+    #   【Phase 2 批次 2 实测澄清】上面这句"strategy: watermark"描述的是
+    #   crawl_state.high_watermark 会被正常写入（gmtUpdatedAt 数据可靠），但实现
+    #   批次 2 时发现列表接口排序不可靠（同页内 gmtUpdatedAt 非单调，见
+    #   src/collectors/zoomex.py 顶部注释），不能依赖"遇到 update_time <= since
+    #   就提前退出翻页"这套 watermark 的核心机制。所以 ZoomexCollector 每轮都会
+    #   翻完全部页，增量效果改由 needs_detail()（逐条比对 DB 里已存的 update_time）
+    #   实现，不依赖 high_watermark。也就是说 high_watermark 仅供观测/监控用
+    #   （能看出"最近一次采集看到的最大更新时间"），不参与采集是否要继续翻页的
+    #   决策——跟 Bitunix/Weex 那种"watermark 真正驱动早停翻页"的用法不是一回事，
+    #   Phase 8 监控逻辑设计时不要假设二者行为一致。
     # ============================================================
     EN:
       categories:

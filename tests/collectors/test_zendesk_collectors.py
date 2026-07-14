@@ -78,18 +78,39 @@ def test_bitunix_normalize_maps_fields_and_builds_group_id():
     assert ann.article_id == "59923371883417"  # 转成 str
     assert ann.group_id == "bitunix_59923371883417"
     assert ann.category is None  # Phase 3 之前不分类
+    assert ann.raw_category == "13762037166105"  # section_id 原样保留，转成字符串
     assert ann.source_endpoint == BITUNIX_CFG["endpoint"]
     assert ann.post_time == "2026-07-11T00:45:26Z"
     assert ann.update_time == "2026-07-13T00:24:06Z"
 
 
+def test_bitunix_normalize_cleans_html_content_to_plain_text():
+    collector = BitunixCollector("EN", BITUNIX_CFG)
+    raw = RawItem(article_id=1, content="<div>hello <strong>world</strong></div>")
+
+    ann = collector.normalize(raw)
+
+    assert ann.content == "hello world"
+    assert "<" not in ann.content
+
+
+def test_bitunix_normalize_raw_category_none_when_category_raw_missing():
+    collector = BitunixCollector("EN", BITUNIX_CFG)
+    raw = RawItem(article_id=1, content="c")
+
+    ann = collector.normalize(raw)
+
+    assert ann.raw_category is None
+
+
 def test_weex_normalize_uses_weex_group_id_prefix():
     collector = WeexCollector("FR", WEEX_CFG)
-    raw = RawItem(article_id=57976712091673, title="t", content="c")
+    raw = RawItem(article_id=57976712091673, title="t", content="c", category_raw=18540264809497)
     ann = collector.normalize(raw)
 
     assert ann.source == "Weex"
     assert ann.group_id == "weex_57976712091673"
+    assert ann.raw_category == "18540264809497"
 
 
 # ---------------------------------------------------------------- 幂等 ----
@@ -120,6 +141,24 @@ def test_bitunix_first_run_inserts_all_then_second_run_is_idempotent(db_path, mo
     with get_connection(db_path) as conn:
         row_count_after = conn.execute("SELECT COUNT(*) c FROM announcements").fetchone()["c"]
     assert row_count_after == row_count_before  # 未产生重复行
+
+
+def test_bitunix_run_persists_plain_text_content_and_raw_category(db_path, monkeypatch):
+    payload = _load_single_page_fixture("bitunix_EN.json")
+    monkeypatch.setattr("src.collectors.zendesk_base.fetch_json", lambda url, **kw: payload)
+
+    collector = BitunixCollector("EN", BITUNIX_CFG)
+    with get_connection(db_path) as conn:
+        collector.run(conn)
+
+    first_article = payload["articles"][0]
+    uid = compute_uid("Bitunix", "EN", str(first_article["id"]))
+    with get_connection(db_path) as conn:
+        row = conn.execute(
+            "SELECT content, raw_category FROM announcements WHERE uid = ?", (uid,)
+        ).fetchone()
+    assert "<" not in row["content"]
+    assert row["raw_category"] == str(first_article["section_id"])
 
 
 def test_weex_first_run_inserts_all_then_second_run_is_idempotent(db_path, monkeypatch):
