@@ -25,7 +25,7 @@ from src.db.operations import compute_uid
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
 BASE_CFG = {
-    "pagination": {"type": "offset", "param": "page", "page_size_param": "per_page", "page_size": 100},
+    "pagination": {"type": "cursor", "page_size": 100},
     "rate_limit_ms": 0,
     "detail_mode": "inline",
     "strategy": "watermark",
@@ -111,6 +111,53 @@ def test_weex_normalize_uses_weex_group_id_prefix():
     assert ann.source == "Weex"
     assert ann.group_id == "weex_57976712091673"
     assert ann.raw_category == "18540264809497"
+
+
+# ---------------------------------------------------------------- 多分类（Phase 2.7） ----
+
+def test_zendesk_collector_defaults_to_empty_category_for_backward_compat():
+    """不传 category_key（Bitunix 单分类源、以及批次 1 时代的调用方式）时
+    crawl_state.category 恒为 ''，跟批次 1 的行为完全一致。"""
+    collector = BitunixCollector("EN", BITUNIX_CFG)
+    assert collector.category == ""
+
+
+def test_zendesk_collector_accepts_explicit_category_key():
+    collector = WeexCollector("EN", WEEX_CFG, category_key="listings_delistings")
+    assert collector.category == "listings_delistings"
+
+
+def test_two_weex_categories_maintain_independent_crawl_state(db_path, monkeypatch):
+    """Weex 的 latest_announcements / listings_delistings 各自独立维护水位线，
+    互不覆盖（crawl_state PK 是 (source, locale, category)，Phase 2 批次 2 就是为
+    这种场景加的这一列）。"""
+    payload_a = _load_single_page_fixture("weex_EN.json")
+    payload_b = _load_single_page_fixture("bitunix_EN.json")  # 借用另一份 fixture 模拟第二个分类
+
+    def fake_fetch(url, **kw):
+        return payload_a if "announcements" in url else payload_b
+
+    monkeypatch.setattr("src.collectors.zendesk_base.fetch_json", fake_fetch)
+
+    cfg_a = {**WEEX_CFG, "endpoint": "https://weexsupport.zendesk.com/.../announcements/articles.json"}
+    cfg_b = {**WEEX_CFG, "endpoint": "https://weexsupport.zendesk.com/.../listings/articles.json"}
+    collector_a = WeexCollector("EN", cfg_a, category_key="latest_announcements")
+    collector_b = WeexCollector("EN", cfg_b, category_key="listings_delistings")
+
+    with get_connection(db_path) as conn:
+        stats_a = collector_a.run(conn)
+        stats_b = collector_b.run(conn)
+
+    assert stats_a.new == len(payload_a["articles"])
+    assert stats_b.new == len(payload_b["articles"])
+
+    with get_connection(db_path) as conn:
+        from src.db.operations import get_crawl_state
+
+        state_a = get_crawl_state(conn, "Weex", "EN", category="latest_announcements")
+        state_b = get_crawl_state(conn, "Weex", "EN", category="listings_delistings")
+    assert state_a is not None and state_b is not None
+    assert state_a["high_watermark"] != state_b["high_watermark"]  # 两份不同 fixture，水位线应该不同
 
 
 # ---------------------------------------------------------------- 幂等 ----
@@ -209,3 +256,65 @@ def test_force_full_rerun_detects_manually_tampered_content_hash(db_path, monkey
         ).fetchone()
     assert row["status"] == "changed"
     assert row["content_hash"] != "tampered-hash"
+
+
+# ---------------------------------------------------------------- cursor 分页（Phase 2.7） ----
+
+def test_fetch_list_follows_cursor_across_multiple_pages(db_path, monkeypatch):
+    """经典 offset 分页在 Weex listings_delistings（3199 条）上因为 Zendesk 的
+    page=100 硬限制而 400，改成 cursor 分页后需要验证多页真的会被翻完、且不依赖
+    响应里那个有 bug 的 links.next（见 zendesk_base.py 顶部注释）。"""
+    page1 = {
+        "articles": [
+            {"id": 1, "title": "a", "body": "<p>a</p>", "created_at": "2026-01-01T00:00:00Z",
+             "updated_at": "2026-01-02T00:00:00Z", "section_id": 111, "html_url": "https://x/1"},
+        ],
+        "meta": {"has_more": True, "after_cursor": "CURSOR_1"},
+    }
+    page2 = {
+        "articles": [
+            {"id": 2, "title": "b", "body": "<p>b</p>", "created_at": "2026-01-01T00:00:00Z",
+             "updated_at": "2026-01-03T00:00:00Z", "section_id": 111, "html_url": "https://x/2"},
+        ],
+        "meta": {"has_more": False, "after_cursor": None},
+    }
+    calls = []
+
+    def fake_fetch(url, **kw):
+        calls.append(url)
+        return page1 if "page%5Bafter%5D" not in url else page2
+
+    monkeypatch.setattr("src.collectors.zendesk_base.fetch_json", fake_fetch)
+
+    collector = BitunixCollector("EN", BITUNIX_CFG)
+    items = collector.fetch_list(since=None)
+
+    assert len(calls) == 2
+    assert "page%5Bsize%5D=100" in calls[0]
+    assert "page%5Bafter%5D=CURSOR_1" in calls[1]  # 自己拼的 URL，不是抄 links.next
+    assert sorted(int(i.article_id) for i in items) == [1, 2]
+
+
+def test_fetch_list_stops_at_watermark_without_requesting_further_pages(db_path, monkeypatch):
+    page1 = {
+        "articles": [
+            {"id": 1, "title": "new", "body": "c", "created_at": "2026-01-01T00:00:00Z",
+             "updated_at": "2026-01-05T00:00:00Z", "section_id": 111, "html_url": "https://x/1"},
+            {"id": 2, "title": "old", "body": "c", "created_at": "2026-01-01T00:00:00Z",
+             "updated_at": "2026-01-01T00:00:00Z", "section_id": 111, "html_url": "https://x/2"},
+        ],
+        "meta": {"has_more": True, "after_cursor": "CURSOR_1"},
+    }
+    calls = []
+
+    def fake_fetch(url, **kw):
+        calls.append(url)
+        return page1
+
+    monkeypatch.setattr("src.collectors.zendesk_base.fetch_json", fake_fetch)
+
+    collector = BitunixCollector("EN", BITUNIX_CFG)
+    items = collector.fetch_list(since="2026-01-02T00:00:00Z")
+
+    assert len(calls) == 1  # 遇到 update_time <= since 立刻停止，不该再翻页
+    assert [i.article_id for i in items] == [1]

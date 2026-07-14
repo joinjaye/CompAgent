@@ -56,7 +56,7 @@ sources:
       method: GET
       headers: {}
       locale_param: "path"   # Zendesk 自己的 locale code，如 en-us / fr / id，拼在 path 里
-      pagination: {type: offset, param: page, page_size_param: per_page, page_size: 100}
+      pagination: {type: cursor, page_size: 100}   # Phase 2.7: JSON:API cursor 分页，见 zendesk_base.py 顶部注释
       rate_limit_ms: 500
       detail_mode: inline   # 列表 body 字段已含完整正文 HTML（实测 34-55KB），无需再请求详情
       has_update_time: true
@@ -90,7 +90,7 @@ sources:
       method: GET
       headers: {}
       locale_param: "path"
-      pagination: {type: offset, param: page, page_size_param: per_page, page_size: 100}
+      pagination: {type: cursor, page_size: 100}   # Phase 2.7: JSON:API cursor 分页，见 zendesk_base.py 顶部注释
       rate_limit_ms: 500
       detail_mode: inline
       has_update_time: true
@@ -107,7 +107,7 @@ sources:
       method: GET
       headers: {}
       locale_param: "path"
-      pagination: {type: offset, param: page, page_size_param: per_page, page_size: 100}
+      pagination: {type: cursor, page_size: 100}   # Phase 2.7: JSON:API cursor 分页，见 zendesk_base.py 顶部注释
       rate_limit_ms: 500
       detail_mode: inline
       has_update_time: true
@@ -132,17 +132,50 @@ sources:
     # 带 utm/gad 追踪参数的 URL 和 register 页，与本接口无关。
     # 注意：这是第三方 Zendesk 托管接口而非 Weex 自建 API，理论上存在 Weex
     # 未来迁移掉 Zendesk 的风险，但目前是真实可用的live机制。
+    #
+    # 【Phase 2.7 补充侦察，2026-07-14】用 GET .../categories.json 枚举了 Weex
+    # Zendesk 全部 9 个顶层 category（Phase 2.6 只反查过 category_id 已知的
+    # section，看不到平级的其它 category，这次是主动枚举）。完整核查结论表见
+    # CLAUDE.md「Phase 2.7 完成情况」，摘要：
+    #   - Latest Announcements（已覆盖）+ Listings/Delistings（本次新增覆盖）
+    #     两个是真正的公告类内容。
+    #   - About WEEX / FAQ / Copy Trading / App Download / Quick Buy/OTC /
+    #     User Guide 共 6 个是静态客服文档/术语词典/ToS，不在采集范围内。
+    #   - P2P Trading（33 篇）待定：其中 section "P2P Announcement"
+    #     (id=49365180202777) 全是区域专属活动/新增法币支持这类 campaign 性质
+    #     内容，跟公告没有本质区别；但同一 category 下另外 3 个 section 是纯
+    #     FAQ。如果要收，需要按 section 粒度单独拉（不是整个 category），这是
+    #     一个新的采集粒度，本次未擅自决定，留给用户拍板。
     # ============================================================
     EN:
-      endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/en-us/categories/18540264809497/articles.json"
+      categories:
+        latest_announcements:
+          endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/en-us/categories/18540264809497/articles.json"
+        listings_delistings:   # Phase 2.7 新增：category_id=44507081559193，之前完全没有被采集，
+          # 见 config/category_mapping.yaml weex 块注释和 CLAUDE.md「Phase 2.7」的 categories.json
+          # 核查表。真实采集当天 total=3199（比 latest_announcements 的 1038 还多），4 个 section
+          # 全部是逐条上架/下架公告（真实标题样本："Initial listing: RARERIAL (RL) now available
+          # on WEEX!"、"Starpower (STAR) now available on WEEX!"），不是噪音
+          endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/en-us/categories/44507081559193/articles.json"
+        p2p_announcement:   # Phase 2.7 新增：不是整个 category，是 category_id=49344046693529
+          # 「P2P Trading」下的一个 section（section_id=49365180202777），用 Zendesk 的
+          # /sections/{id}/articles.json 端点单独拉（真实请求验证过，跟 /categories/{id}/
+          # articles.json 一样支持 cursor 分页），不拉整个 P2P Trading category——同 category
+          # 下另外 3 个 section（Start P2P trading / P2P merchant guide / P2P Order Appeal）
+          # 是纯 FAQ，混进来会是噪音。真实采集当天 total=17，抽样标题全是区域专属活动/新增
+          # 法币支持（"[Vietnam Exclusive] P2P flash sale: Buy USDT at 20% off"），公告性质
+          # 跟 latest_announcements 没有本质区别。见 CLAUDE.md「Phase 2.7」用户确认记录。
+          endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/en-us/sections/49365180202777/articles.json"
       method: GET
       headers: {}   # 匿名可访问，无需鉴权头；仅用普通浏览器 User-Agent 测试过
       locale_param: "path"   # Zendesk 自己的 locale code，拼在 path 里，如 /en-us/
-      pagination: {type: offset, param: page, page_size_param: per_page, page_size: 30}
+      pagination: {type: cursor, page_size: 30}   # Phase 2.7: JSON:API cursor 分页，见 zendesk_base.py 顶部注释
       rate_limit_ms: 500   # 连续 10 次请求 500ms 间隔全部 200，未观察到限流；采用同等节奏
       detail_mode: inline   # 列表 body 字段已含完整正文 HTML，无需再请求详情
       has_update_time: true
-      strategy: watermark   # 支持 ?sort_by=updated_at&sort_order=desc 排序，适合水位线轮询
+      strategy: watermark   # 支持 ?sort_by=updated_at&sort_order=desc 排序，适合水位线轮询；
+        # 两个 category 各自独立维护水位线（crawl_state.category = latest_announcements /
+        # listings_delistings，见 src/collectors/zendesk_base.py）
       field_mapping:
         article_id: id
         title: title
@@ -150,10 +183,9 @@ sources:
         post_time: created_at   # ISO8601 UTC，如 2026-05-16T07:54:53Z
         update_time: updated_at   # ISO8601 UTC；抽样确认与 created_at 存在真实差异，见下方样本
         category: section_id   # 数值，直接落库进 announcements.raw_category，不做运行时转换；
-          # 映射表见 config/category_mapping.yaml（Phase 2.6 已用真实 sections.json 验证全部
-          # 4 个值）。同时发现 weexsupport.zendesk.com 还有一个独立分类 category_id=
-          # 44507081559193「Listings/Delistings」（4 个 section），当前 endpoint 未覆盖，
-          # 详见 category_mapping.yaml weex 块注释——是否补采集本文件不擅自决定
+          # 映射表见 config/category_mapping.yaml（Phase 2.6 已用真实 sections.json 验证 latest_
+          # announcements 的 4 个值，Phase 2.7 补验证 listings_delistings 的 4 个值）。section_id
+          # 跨 category 唯一，两个 category 混在同一个 raw_category 命名空间不会冲突
       # update_time 可靠性抽样（10 条，按 updated_at desc 排序）：
       #   57976712091673 created 2026-05-16T07:54:53Z updated 2026-05-16T12:10:01Z
       #   57945631674777 created 2026-05-15T07:01:59Z updated 2026-05-16T07:53:25Z
@@ -169,11 +201,17 @@ sources:
       # 分类观察值（section 下 name）：Latest updates / Futures events / Spot events / Reward distribution
       # 时间格式：ISO8601 字符串，Z 后缀（UTC）
     FR:
-      endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/fr/categories/18540264809497/articles.json"
+      categories:
+        latest_announcements:
+          endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/fr/categories/18540264809497/articles.json"
+        listings_delistings:
+          endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/fr/categories/44507081559193/articles.json"
+        p2p_announcement:
+          endpoint: "https://weexsupport.zendesk.com/api/v2/help_center/fr/sections/49365180202777/articles.json"
       method: GET
       headers: {}
       locale_param: "path"   # locale code "fr"（Zendesk locales.json 确认存在，default_locale 是 zh-cn）
-      pagination: {type: offset, param: page, page_size_param: per_page, page_size: 30}
+      pagination: {type: cursor, page_size: 30}   # Phase 2.7: JSON:API cursor 分页，见 zendesk_base.py 顶部注释
       rate_limit_ms: 500
       detail_mode: inline
       has_update_time: true

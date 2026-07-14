@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from src.parsers.zendesk import get_next_page, parse_articles
+from src.parsers.zendesk import get_next_cursor, parse_articles
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
@@ -84,12 +84,25 @@ def test_time_fields_are_passed_through_as_utc_iso8601_z_suffix():
         assert item["update_time"].endswith("Z")
 
 
-# ---------------------------------------------------------------- 分页 ----
+# ---------------------------------------------------------------- 分页（cursor，Phase 2.7） ----
 
-def test_get_next_page_returns_url_from_payload():
+def test_get_next_cursor_returns_after_cursor_when_has_more():
+    payload = {"meta": {"has_more": True, "after_cursor": "abc123"}}
+    assert get_next_cursor(payload) == "abc123"
+
+
+def test_get_next_cursor_returns_none_when_no_more_results():
+    payload = {"meta": {"has_more": False, "after_cursor": "abc123"}}
+    assert get_next_cursor(payload) is None
+
+
+def test_get_next_cursor_missing_meta_returns_none():
+    # 经典 offset 分页的旧 fixture（next_page 字段，没有 meta）应该被当成
+    # "没有更多结果" 处理——不是 cursor 分页响应形状，不能假装解析出下一页。
     payload = _load("bitunix_EN.json")
-    assert get_next_page(payload) == payload["next_page"]
+    assert "meta" not in payload
+    assert get_next_cursor(payload) is None
 
 
-def test_get_next_page_missing_key_returns_none():
-    assert get_next_page({}) is None
+def test_get_next_cursor_empty_payload_returns_none():
+    assert get_next_cursor({}) is None

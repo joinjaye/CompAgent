@@ -43,16 +43,19 @@ weex:      # category_id=18540264809497（"Latest Announcements"）下的全部 
   "33143373088665": campaign    # Spot events
   "18540491393305": campaign    # Reward distribution
   "18540289930137": other       # Latest updates
-  # 【新发现，2026-07-14，超出本次映射修复范围，需要单独决策】weexsupport.zendesk.com
-  # 还有一个独立分类 category_id=44507081559193「Listings/Delistings」，下辖 4 个
-  # section：New spot listings (18540509241753) / New futures listings
-  # (47660531875481) / Spot delisting/maintenance (37576213158553) / Futures
-  # delisting/maintenance (47660551001369)——当前 sources.yaml 的 weex endpoint 只拉
-  # 「Latest Announcements」这一个分类，完全没有覆盖这 4 个 section，也就是说 Weex 的
-  # 上架/下架公告目前根本没有被采集。这不是本次 category_mapping.yaml 映射修复能解决的
-  # （需要新增一个采集 endpoint，改动 sources.yaml + collector，类似 Phemex 当初补
-  # Activities/Newsletter 那次），是否现在就补、还是留给批次 3/4 顺手处理，需要跟
-  # Bitunix/Weex 批次的原始验收范围对齐后再定，先如实记录、不擅自扩大改动范围。
+  # 【Phase 2.7 新增】category_id=44507081559193「Listings/Delistings」下的全部 4 个
+  # section，真实请求 GET .../categories/44507081559193/sections.json 反查确认 id，
+  # 真实采集当天 total=3199（4 个 section 合计）。之前完全没被采集（详见 CLAUDE.md
+  # 「Phase 2.7」），本次已在 sources.yaml 补上 categories.listings_delistings endpoint。
+  "18540509241753": listing     # New spot listings
+  "47660531875481": listing     # New futures listings
+  "37576213158553": delisting   # Spot delisting/maintenance
+  "47660551001369": delisting   # Futures delisting/maintenance
+  # 【Phase 2.7 新增，用户确认后采集】category_id=49344046693529「P2P Trading」下的
+  # section "P2P Announcement"（section_id=49365180202777），不是整个 category（同
+  # category 下另外 3 个 section 是纯 FAQ，没有采集）。真实采集 EN total=17 / FR
+  # total=6，抽样标题全是区域专属活动/新增法币支持，映射到 campaign。
+  "49365180202777": campaign    # P2P Announcement
 
 bingx:     # 12 个分区的 sectionId 数值来自 Phase 1 补充侦察对 __NUXT_DATA__ 的真实反查
            # （见 config/sources.yaml bingx EN 块注释），非猜测；BingX 采集器尚未实现

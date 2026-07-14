@@ -40,6 +40,31 @@ def test_html_to_text_preserves_table_structure_from_real_weex_fixture():
     assert "300 ≤ X < 3,000\t1" in text
 
 
+def test_html_to_text_table_cell_wrapped_in_nested_p_tag_is_not_dropped():
+    """Phase 2.7 回归测试：真实 Weex 上币公告（article_id=56648741969433）的表格
+    单元格用 <td><p>text</p></td> 包裹（不是 <td>text</td> 直接文本节点）。
+    最初的实现里，<p> 作为块级标签会触发顶层 _flush()，把单元格文字提前推到
+    self.blocks，导致 _end_cell() 拿到空 buffer——整行变成一串空 tab
+    （"\t\t\t\t"），单元格内容反而以独立段落的形式出现在表格之外。"""
+    html = (
+        "<table><tr>"
+        "<td><p>Trading pair</p></td>"
+        "<td><p>Launch time</p></td>"
+        "</tr><tr>"
+        "<td><p>ADIUSDT</p></td>"
+        "<td><p>Apr 4, 2026</p></td>"
+        "</tr></table>"
+    )
+    assert html_to_text(html) == "Trading pair\tLaunch time\nADIUSDT\tApr 4, 2026"
+
+
+def test_html_to_text_genuinely_empty_cells_still_produce_tabs():
+    """空单元格（源站本来就没填内容，如中奖名单待公布的占位表格）应该原样保留成
+    空字符串占位，不是本次修的 bug——区别于"内容被 <p> 误吞掉"的场景。"""
+    html = "<table><tr><td>Rank</td><td> </td><td>500 USDT</td></tr></table>"
+    assert html_to_text(html) == "Rank\t\t500 USDT"
+
+
 # ---------------------------------------------------------------- 表格（手写样本） ----
 
 def test_html_to_text_table_rows_newline_separated_cells_tab_separated():

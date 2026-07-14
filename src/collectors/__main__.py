@@ -6,8 +6,9 @@
 COLLECTOR_BUILDERS 目前只登记了已实现的交易所（Bitunix / Weex / Zoomex）；sources.yaml
 里其余尚未实现的 source 会被跳过，不报错——后续批次实现后在这里补登记即可。
 
-多分类源（如 Zoomex 每个 locale 下的 3-4 个 menu_id）一个 builder 会展开成多个
-collector 实例，用 --category 可以只跑其中一个分类（如调试/复核用）。
+多分类源（如 Zoomex 每个 locale 下的 3-4 个 menu_id、Weex 从 Phase 2.7 起的 2 个
+Zendesk category）一个 builder 会展开成多个 collector 实例，用 --category 可以只跑
+其中一个分类（如调试/复核用）。
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ import yaml
 from src.collectors.base import BaseCollector, RunStats
 from src.collectors.bitunix import BitunixCollector
 from src.collectors.weex import WeexCollector
+from src.collectors.zendesk_base import ZendeskCollector
 from src.collectors.zoomex import ZoomexCollector
 from src.db.connection import DEFAULT_DB_PATH, get_connection, init_db
 
@@ -34,11 +36,22 @@ DEFAULT_SOURCES_PATH = Path(__file__).resolve().parents[2] / "config" / "sources
 CollectorBuilder = Callable[[str, dict[str, Any]], list[BaseCollector]]
 
 
-def _single_collector_builder(collector_cls: type[BaseCollector]) -> CollectorBuilder:
-    """单分类源（Bitunix/Weex）：一个 locale 配置块对应一个 collector 实例。"""
+def _zendesk_builder(collector_cls: type[ZendeskCollector]) -> CollectorBuilder:
+    """Bitunix/Weex 共用：一个 locale 配置块下，如果有 categories.<name>（各自的
+    endpoint），每个 category 展开成一个 collector 实例（跟 zoomex 的 menu_id 模式一致）；
+    没有 categories 结构（如 Bitunix，单分类）时按原来的方式一个 locale 一个实例，
+    crawl_state.category 恒为 ''，行为不变。"""
 
     def build(locale: str, cfg: dict[str, Any]) -> list[BaseCollector]:
-        return [collector_cls(locale, cfg)]
+        categories = cfg.get("categories")
+        if not categories:
+            return [collector_cls(locale, cfg)]
+        collectors: list[BaseCollector] = []
+        for category_key, category_cfg in categories.items():
+            merged_cfg = {**cfg, "endpoint": category_cfg["endpoint"]}
+            merged_cfg.pop("categories", None)
+            collectors.append(collector_cls(locale, merged_cfg, category_key))
+        return collectors
 
     return build
 
@@ -55,8 +68,8 @@ def _zoomex_builder(locale: str, cfg: dict[str, Any]) -> list[BaseCollector]:
 
 
 COLLECTOR_BUILDERS: dict[str, CollectorBuilder] = {
-    "bitunix": _single_collector_builder(BitunixCollector),
-    "weex": _single_collector_builder(WeexCollector),
+    "bitunix": _zendesk_builder(BitunixCollector),
+    "weex": _zendesk_builder(WeexCollector),
     "zoomex": _zoomex_builder,
 }
 

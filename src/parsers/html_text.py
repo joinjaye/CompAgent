@@ -110,6 +110,18 @@ class _HtmlTextExtractor(HTMLParser):
         if text:
             self.blocks.append(text)
 
+    def _block_boundary(self) -> None:
+        """块级标签（p/div/br 等）的起止边界。单元格内部（_in_cell）不能直接调用
+        _flush()——那样会把单元格文字提前推进顶层 self.blocks，导致 _end_cell() 拿到
+        的 buffer 是空的（表格塌成一堆空 tab）。这是 Phase 2.7 用真实 Weex 上币公告
+        （article_id=56648741969433，<td><p>Trading pair</p></td> 这种 cell 内嵌 <p>
+        的表格）实测发现的：单元格里的块级边界只插入一个空格分隔（避免"line1line2"
+        连读），不产生新的顶层 block；单元格外部行为不变。"""
+        if self._in_cell:
+            self._buffer.append(" ")
+        else:
+            self._flush()
+
     # -- 表格 ------------------------------------------------------------
 
     def _start_table(self) -> None:
@@ -164,7 +176,7 @@ class _HtmlTextExtractor(HTMLParser):
         elif tag in ("td", "th"):
             self._start_cell()
         elif tag in _BLOCK_TAGS:
-            self._flush()
+            self._block_boundary()
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, Optional[str]]]) -> None:
         # 自闭合标签（如 <br/>）：起止事件都触发一次，行为等价于 handle_starttag。
@@ -184,7 +196,7 @@ class _HtmlTextExtractor(HTMLParser):
         elif tag in ("td", "th"):
             self._end_cell()
         elif tag in _BLOCK_TAGS:
-            self._flush()
+            self._block_boundary()
 
     def handle_data(self, data: str) -> None:
         if self._skipping():
