@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import json
 import ssl
 import time
 import urllib.error
@@ -51,12 +52,36 @@ def load_sources(path: Path | str = DEFAULT_SOURCES_PATH) -> dict[str, Any]:
 def _build_url(cfg: dict[str, Any]) -> str:
     endpoint = cfg["endpoint"]
     pagination = cfg.get("pagination") or {}
-    if pagination.get("type") == "offset" and pagination.get("page_size_param"):
-        page_param = pagination.get("param", "page")
-        size_param = pagination["page_size_param"]
+    page_param = pagination.get("param", "page")
+    size_param = pagination.get("page_size_param")
+    if page_param.startswith("body:"):
+        return endpoint  # 分页参数走 POST body，不改 URL，见 _build_body
+    if pagination.get("type") == "offset" and size_param:
         sep = "&" if "?" in endpoint else "?"
         return f"{endpoint}{sep}{page_param}=1&{size_param}={PROBE_PAGE_SIZE}"
     return endpoint
+
+
+def _build_body(cfg: dict[str, Any]) -> bytes | None:
+    """有的源（如 Zoomex）不是 GET+query，而是 POST+JSON body 传分页和 locale
+    （pagination.param / locale_param 都带 "body:" 前缀标记）。其余源维持
+    GET，返回 None 表示不发送 body。
+    """
+    pagination = cfg.get("pagination") or {}
+    page_param = pagination.get("param", "")
+    if not page_param.startswith("body:"):
+        return None
+    size_param = pagination.get("page_size_param", "")
+    body: dict[str, Any] = {
+        page_param.removeprefix("body:"): 1,
+        size_param.removeprefix("body:"): PROBE_PAGE_SIZE,
+    }
+    locale_param = cfg.get("locale_param", "")
+    if locale_param.startswith("body:") and cfg.get("lang_code"):
+        body[locale_param.removeprefix("body:")] = cfg["lang_code"]
+    if cfg.get("menu_id") is not None:
+        body["parentId"] = cfg["menu_id"]
+    return json.dumps(body).encode()
 
 
 def _marker_key(field_mapping: dict[str, Any]) -> str | None:
@@ -71,9 +96,9 @@ def _marker_key(field_mapping: dict[str, Any]) -> str | None:
     return key.rsplit(".", 1)[-1]
 
 
-def _fetch(url: str, headers: dict[str, str]) -> tuple[int | None, str]:
+def _fetch(url: str, headers: dict[str, str], body: bytes | None = None) -> tuple[int | None, str]:
     req_headers = {"User-Agent": DEFAULT_USER_AGENT, **headers}
-    request = urllib.request.Request(url, headers=req_headers)
+    request = urllib.request.Request(url, data=body, headers=req_headers)
     try:
         with urllib.request.urlopen(
             request, timeout=DEFAULT_TIMEOUT_S, context=_SSL_CONTEXT
@@ -91,7 +116,8 @@ def probe_one(source: str, locale: str, cfg: dict[str, Any]) -> ProbeResult:
         return ProbeResult(source, locale, "BLOCKED", None, 0, reason)
 
     url = _build_url(cfg)
-    http_code, body = _fetch(url, cfg.get("headers") or {})
+    request_body = _build_body(cfg)
+    http_code, body = _fetch(url, cfg.get("headers") or {}, request_body)
 
     if http_code is None or http_code >= 400:
         return ProbeResult(
@@ -117,6 +143,23 @@ def probe_one(source: str, locale: str, cfg: dict[str, Any]) -> ProbeResult:
     )
 
 
+def _expand_categories(locale: str, cfg: dict[str, Any]) -> list[tuple[str, dict[str, Any]]]:
+    """有的源（如 Phemex）一个 locale 下拆了多个分类子 endpoint（cfg["categories"]），
+    每个子分类共享同一套 method/headers/field_mapping 等，只有 endpoint 不同。
+    把 categories 展开成多个独立的探测目标，label 形如 "EN:activities"。
+    没有 categories 的源保持原样，label 就是 locale 本身。
+    """
+    categories = cfg.get("categories")
+    if not categories:
+        return [(locale, cfg)]
+    targets = []
+    for category_name, category_cfg in categories.items():
+        merged = {**cfg, **category_cfg}
+        merged.pop("categories", None)
+        targets.append((f"{locale}:{category_name}", merged))
+    return targets
+
+
 def probe_all(
     sources: dict[str, Any],
     source_filter: str | None = None,
@@ -126,9 +169,10 @@ def probe_all(
         if source_filter and source != source_filter:
             continue
         for locale, cfg in locales.items():
-            result = probe_one(source, locale, cfg)
-            results.append(result)
-            if result.status != "BLOCKED":
-                rate_limit_ms = cfg.get("rate_limit_ms") or DEFAULT_RATE_LIMIT_MS
-                time.sleep(rate_limit_ms / 1000)
+            for label, target_cfg in _expand_categories(locale, cfg):
+                result = probe_one(source, label, target_cfg)
+                results.append(result)
+                if result.status != "BLOCKED":
+                    rate_limit_ms = target_cfg.get("rate_limit_ms") or DEFAULT_RATE_LIMIT_MS
+                    time.sleep(rate_limit_ms / 1000)
     return results

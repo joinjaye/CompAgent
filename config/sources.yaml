@@ -194,13 +194,29 @@ sources:
     # strategy: full_scan，用 content_hash 做变更检测。
     # 10 次连续请求 500ms 间隔全部 200，无限流。robots.txt 除个别硬编码文章和
     # 追踪 query 外未禁止 support 路径。
+    #
+    # 【补充侦察，2026-07-13 同日】核查首屏 ~20 条是否只覆盖 12 个分区之一
+    # （担心只拿到 "Latest Announcements" 单一分区）。用 Python 把
+    # __NUXT_DATA__ 当合法 JSON 解析（它就是一个扁平数组，整数值是同数组
+    # 内的索引引用，可以直接 json.loads 再按下标取值，不需要专门的 devalue
+    # 库），还原出 20 条首屏文章各自的 sectionId 索引，再反查 12 个分区定义
+    # 对象拿到人类可读名称。结果：这 20 条实际分布在 Latest Promotions /
+    # Asset Maintenance / Product Updates / Delisting / Futures Listing 共
+    # 5 个不同分区——首屏本来就是跨分区聚合，并非单分区过滤。判定：担心的
+    # 覆盖缺口不成立，不需要逐 sectionId 单独抓取。
+    # 12 个分区的 sectionId 数值也已全部反查确认（见下方"分区 sectionId 对照
+    # 表"），可直接用于 category 字段的人类可读名称映射，不需要另外请求
+    # sections[] 列表接口。
+    # 同时确认：sitemap（en/sitemap-support.xml）里的 URL 是扁平的
+    # /support/articles/{articleId}，不带分区 segment，逻辑上与 Phemex 一致，
+    # 天然覆盖全部 12 个分区，全量回填不需要按分区单独跑 sitemap。
     # ============================================================
     EN:
       endpoint: "https://bingx.com/en/support/notice-center"
       method: GET
       headers: {}
       locale_param: "path"
-      pagination: {type: none, note: "首屏仅最新~20条，翻页为客户端交互未逆向；完整历史用 sitemap（en/sitemap-support.xml，7829 URL）枚举 /support/articles/{articleId} 详情页替代"}
+      pagination: {type: none, note: "首屏仅最新~20条，翻页为客户端交互未逆向；已确认首屏是跨分区聚合（非单分区），完整历史用 sitemap（en/sitemap-support.xml，7829 URL，已确认覆盖全部 12 个分区）枚举 /support/articles/{articleId} 详情页替代"}
       rate_limit_ms: 500
       detail_mode: separate_api   # 列表页只有 title，正文需另请求详情页；详情页本身也是 SSR HTML 内嵌 JSON，非 REST JSON API
       has_update_time: true   # 字段存在，但抽样显示恒等于 post_time，不可靠
@@ -211,14 +227,22 @@ sources:
         content: body   # 仅详情页有，HTML 字符串
         post_time: createTime   # ISO8601 字符串，带 +08:00 偏移
         update_time: updateTime   # 抽样恒等于 createTime，不可靠，仅记录不作水位线
-        category: sectionId   # 需另查 sections[] 列表取人类可读名称
+        category: sectionId   # 数值，用下方对照表转人类可读名称；已确认首屏本身跨分区，无需另查
       # update_time 可靠性抽样（20 条列表条目，全部相等，节选 3 条）：
       #   16806751482255  create 2026-07-12T10:58:07.000+08:00  update 相同
       #   16795550869391  create 2026-07-11T00:41:23.000+08:00  update 相同
       #   16182985468559  create 2026-05-20T16:25:44.000+08:00  update 相同
-      # 分类观察值：Latest Announcements / Latest Promotions / Product Updates /
-      #   Asset Maintenance / System Maintenance / Spot Listing / Futures Listing /
-      #   Innovation Listing / Funding Rate / Delisting / Crypto Scout / EventX
+      # 分区 sectionId 对照表（2026-07-13 从 __NUXT_DATA__ 反查确认）：
+      #   360004917494 Latest Announcements（首屏聚合视图本身，非文章真实归属分区）
+      #   11257060320143 Latest Promotions / 11256997796495 Product Updates /
+      #   11257016265487 Asset Maintenance / 11523620946319 System Maintenance /
+      #   11257060005007 Spot Listing / 11257015822991 Futures Listing /
+      #   13117025062927 Innovation Listing / 11257028004239 Funding Rate /
+      #   11257015847311 Delisting / 11257028024847 Crypto Scout /
+      #   16083161267343 EventX
+      # 首屏 20 条抽样实测分布（2026-07-13）：Latest Promotions / Asset
+      #   Maintenance / Product Updates / Delisting / Futures Listing 共
+      #   5 个分区都出现过，证实首屏是跨分区聚合，非单分区。
       # 时间格式：ISO8601 字符串，显式 +08:00 偏移（非 UTC）
       # 详情页 endpoint 模式："https://bingx.com/en/support/articles/{articleId}"
     VN:
@@ -254,13 +278,45 @@ sources:
     # createdAt/updatedAt 字段抽样 8 条，差异都在 0-28 秒内，判定为 CMS
     # 发布流程噪音而非真实内容变更 -> strategy: full_scan + content_hash。
     # 10 次连续请求 500ms 间隔全部 200，无限流/Cloudflare。
+    #
+    # 【补充侦察，2026-07-13 同日】最初只配置了 News 分类的 endpoint，
+    # Activities（campaign 标签的核心来源）和 Newsletter 被遗漏。已实测补齐：
+    #   - EN activities: https://phemex.com/announcements/activities
+    #     window.preloadedData.pageData.category = {id:442, name:'Activities'}，
+    #     total:476，结构与 News 完全一致（同一套 preloadedData schema）。
+    #   - EN newsletter: https://phemex.com/announcements/newsletter
+    #     category = {id:452, name:'Newsletter'}，total:12，结构一致。
+    #   - FR activities: total:158；FR newsletter: total:4。
+    #   fixture: tests/fixtures/phemex_{EN,FR}_{activities,newsletter}.html
+    #
+    #   sitemap 覆盖性核查（关键结论：sitemap 已经覆盖全部 3 个分类，不需要
+    #   按分类单独枚举 sitemap）：实测下载 sitemap_output/sitemap_Announcement.xml
+    #   （30MB，22250 个 <loc>），EN 去重后 3485 条 unique /announcements/{slug}
+    #   URL，FR 1834 条。对比：EN News(2927) + Activities(476) + Newsletter(12)
+    #   = 3415，与 sitemap 的 3485 高度吻合（差值来自少量历史/待验证条目）；
+    #   FR News(1641)+Activities(158)+Newsletter(4)=1803，与 sitemap 1834 同样吻合。
+    #   抽样验证：activities 分类下的文章 slug（如
+    #   epic-launch-50000-phemex-futures-lucky-draw-6th-trade-spin-is-20260611062604）
+    #   和 newsletter 分类下的文章 slug（phemex-pulse-newsletter-april-2022）均能在
+    #   sitemap 里找到——因为所有分类文章共享同一个扁平 /announcements/{slug} 路径，
+    #   不带分类 segment，sitemap 天然是全量的。Phase 2 全量回填仍然只需要一份
+    #   sitemap，无需按分类单独下载。
     # ============================================================
     EN:
-      endpoint: "https://phemex.com/announcements/news"   # 另有 /announcements/activities、/announcements/newsletter 两个分类
+      categories:
+        news:
+          endpoint: "https://phemex.com/announcements/news"
+          category_id: 432
+        activities:
+          endpoint: "https://phemex.com/announcements/activities"
+          category_id: 442   # campaign 标签的核心来源，Phase 1 首版遗漏，2026-07-13 补齐
+        newsletter:
+          endpoint: "https://phemex.com/announcements/newsletter"
+          category_id: 452
       method: GET
       headers: {}
       locale_param: "path"
-      pagination: {type: none, note: "列表页 query 参数不生效，翻页为客户端行为；完整文章列表用 sitemap_output/sitemap_Announcement.xml（EN 3467 条 URL）替代"}
+      pagination: {type: none, note: "列表页 query 参数不生效，翻页为客户端行为；完整文章列表（含全部 3 个分类）用 sitemap_output/sitemap_Announcement.xml（EN 3485 条去重 URL，已验证覆盖 News/Activities/Newsletter）替代"}
       rate_limit_ms: 500
       detail_mode: inline   # 详情页 window.preloadedData.pageData 已含完整正文，一次请求即可
       has_update_time: true   # 字段存在，但抽样显示只是发布流程级别的秒级噪音，不可靠
@@ -271,21 +327,30 @@ sources:
         content: content   # 详情页 preloadedData.pageData.content，HTML 正文
         post_time: publishedTime   # 朴素字符串 'YYYY-MM-DD HH:MM:SS'，无显式时区，数值上与 UTC 的 createdAt 接近，按 UTC 处理；另有 i18n.createdAt 是标准 ISO8601 UTC
         update_time: i18n.updatedAt   # ISO8601 UTC，抽样显示只是秒级发布噪音，不用于水位线
-        category: category.name   # 另有 categoryKey，如 "AnnouncementCategory432"
+        category: category.name   # 固定值，取决于抓取时用的哪个 categories.* endpoint（News/Activities/Newsletter），无需逐条解析；另有 categoryKey，如 "AnnouncementCategory432"
       # update_time 可靠性抽样（8 条，createdAt vs updatedAt vs publishedTime，UTC）：
       #   new-contract-listing-gnsusdt  created 2023-08-09T01:55:49.196Z  updated 2023-08-09T01:55:49.210Z（+14ms）
       #   phemex-will-delist-4-trading-pairs-on-december-5-2025  created 2025-12-03T06:45:39.825Z  updated 2025-12-03T06:54:22.969Z（+8m43s，发布流程内)
       #   dydx-network-upgrade-on-january-30-2026  created 2026-01-29T08:57:18.950Z  updated 2026-01-29T09:25:09.020Z（+28m，发布流程内）
       #   其余 5 条差异均在 0-2 秒内
-      # 分类观察值：News（id 432）/ Activities（id 442）/ Newsletter（id 452）
+      # 分类观察值：News（id 432，total 2927）/ Activities（id 442，total 476）/ Newsletter（id 452，total 12）
       # 时间格式：createdAt/updatedAt 为 ISO8601 UTC（Z 后缀）；publishedTime 为朴素 'YYYY-MM-DD HH:MM:SS'（按 UTC 处理）
       # 详情页 endpoint 模式："https://phemex.com/announcements/{slug}"
     FR:
-      endpoint: "https://phemex.com/fr/announcements/news"   # 另有 /fr/announcements/activities（id 448）、/fr/announcements/newsletter（id 458）
+      categories:
+        news:
+          endpoint: "https://phemex.com/fr/announcements/news"
+          category_id: 438   # 实测 tests/fixtures/phemex_FR.html 确认，name:'Nouvelles'（与 EN 432 不同，i18n 独立编号）
+        activities:
+          endpoint: "https://phemex.com/fr/announcements/activities"
+          category_id: 448
+        newsletter:
+          endpoint: "https://phemex.com/fr/announcements/newsletter"
+          category_id: 458
       method: GET
       headers: {}
       locale_param: "path"
-      pagination: {type: none, note: "同 EN；完整列表用同一个 sitemap_Announcement.xml 里的 FR hreflang 链接（1816 条 URL）"}
+      pagination: {type: none, note: "同 EN；完整列表（含全部 3 个分类）用同一个 sitemap_Announcement.xml 里的 FR hreflang 链接（1834 条去重 URL，已验证覆盖 News/Activities/Newsletter）"}
       rate_limit_ms: 500
       detail_mode: inline
       has_update_time: true
@@ -296,7 +361,8 @@ sources:
         content: content
         post_time: publishedTime
         update_time: i18n.updatedAt
-        category: category.name
+        category: category.name   # 同 EN：取决于抓取时用的哪个 categories.* endpoint
+      # 分类观察值：News（total 1641）/ Activities（id 448，total 158）/ Newsletter（id 458，total 4）
   lbank:
     # ============================================================
     # 侦察结论（Phase 1，2026-07-13）：✅ 通，所有 3 个 locale。
@@ -321,6 +387,31 @@ sources:
     # 用 headless browser 或继续找客户端分页请求）；列表页原始 payload 未
     # 观察到 per-item 的 category 字段（只有页面级 tabs 列表），按 tab 筛选后
     # 是否带 category 字段未验证。
+    #
+    # 【补充侦察，2026-07-13 同日】尝试确认默认页面（首页 10 条）之外，7 个
+    # 页面级 tab（LBank VIP / New Listings / Event Announcements / System
+    # Upgrades & Maintenance / Platform Updates / Delisting Information /
+    # Fiat）能否单独抓取。
+    #   - 找到了完整分类代码树：每个 tab 对应一个 code（如 CO00000053=New
+    #     Listings、CO00000058=Event Announcements、CO00000064=System
+    #     Upgrades & Maintenance、CO00000069=Platform Updates、
+    #     CO00000129=LBank VIP、CO00000057=Delisting Information、
+    #     CO00000063=Fiat），且每个顶层 tab 下还有子分类（如 New Listings
+    #     下有 Spot/Futures/Copy Trading Listings 三个子码），来自页面里
+    #     `noticeCategories` 这棵完整分类树，可直接用于 Phase 3 的 category
+    #     字段人类可读名称映射。
+    #   - 但实测 curl 三种 URL 均确认**不返回文章列表**（只返回分类导航壳，
+    #     0 条 noticeId）：父分类页 `/support/sections/CO00000053`、叶子子
+    #     分类页 `/support/sections/CO00000054`、以及首页对应的聚合视图
+    #     `/support/sections/latest-news/notice`。也测试了在默认首页 URL
+    #     后加 `?categoryCode=CO00000053` 查询参数，返回的 `latestNews.
+    #     page.categoryCode` 仍然是 `null`（参数被忽略），结果和不加参数时
+    #     完全一样。
+    #   - 结论：按 tab 筛选文章列表**不是**简单 URL 参数能做到的，真实的
+    #     筛选请求发生在客户端 hydration 之后（未在页面源码里找到对应的
+    #     REST/GraphQL 调用），维持 Phase 1 原判断——只能稳定拿到默认聚合
+    #     视图的最新 10 条，按 tab 筛选需要 headless browser 才能抓到真实
+    #     的客户端请求。
     # ============================================================
     EN:
       endpoint: "https://www.lbank.com/support/announcement"
@@ -338,7 +429,7 @@ sources:
         content: content   # 列表页已含完整正文（HTML 实体转义的纯文本）
         post_time: contentShowTime   # 列表页字段，unix ms；detail 页对应 createTime，也是 unix ms
         update_time: updateTime   # 仅存在于 detail 页（/support/articles/{code}），需二次请求
-        category: null   # 列表页原始 payload 未观察到 per-item category，只有页面级 tabs；待验证
+        category: null   # 列表页原始 payload 未观察到 per-item category；已找到完整 tab 分类代码树（见上方补充侦察）但尚无法按 tab 单独抓取，暂时留空
       # detail 页 endpoint 模式："https://www.lbank.com/support/articles/{code}"
       # update_time 可靠性抽样（8 条 detail 页，createTime vs updateTime，UTC）：
       #   2076511040740261888  create 2026-03-02 06:05:15  update 2026-07-13 03:59:09  差异
@@ -389,7 +480,7 @@ sources:
         category: null
   zoomex:  # 我方基线，非竞品
     # ============================================================
-    # 侦察结论（Phase 1，2026-07-13）：BLOCKED，所有 5 个 locale。
+    # 侦察结论（Phase 1，2026-07-13）：BLOCKED（详见下方"补充侦察"，本次已解除）。
     # help.zoomex.com/{locale}/... 是纯客户端渲染的 Nuxt 3 SPA。已尝试：
     #   1. 直接请求列表页/详情页 HTML —— 服务端只返回通用 SPA 壳（538555 字节，
     #      5 个 locale 完全 md5 一致），正文靠客户端 JS 运行时渲染，curl 拿不到。
@@ -408,100 +499,182 @@ sources:
     #      —— 同样只返回通用壳，说明该页面依赖运行时 JS，Google 索引是通过无头
     #      浏览器渲染的。
     # robots.txt（www.zoomex.com）：User-agent: * / Disallow: 空，未禁止任何路径。
-    # 建议方案：需要 headless browser（Playwright/Puppeteer）实际加载页面并
-    # 拦截运行时对 api2.zoomex.com 发出的 XHR/fetch 请求，才能拿到真实 endpoint；
-    # 或者因为 Zoomex 是我方产品，直接找内部研发要 api2.zoomex.com 公告接口的
-    # 真实文档，而不是从外部逆向。
     # Fixture: tests/fixtures/zoomex_EN.html（5 个 locale md5 相同，只保留一份
     # 作为"确认是同一个空壳"的证据，未重复存 4 份重复文件）。
+    #
+    # 【补充侦察，2026-07-13 同日，headless browser 解除阻塞】
+    # 真实 API 响应快照见 tests/fixtures/zoomex_menu.json（getAllMenu）、
+    # zoomex_EN_platform_announcement.json（getArticleListByMenuId 列表）、
+    # zoomex_article_detail.json（getArticleById 详情）。
+    # 用 Playwright 写了一次性侦察脚本（跑完已删除，不是长期脚本）打开
+    # help.zoomex.com/en/article/3858 和 www.zoomex.com/en/help/26，拦截所有对
+    # api2.zoomex.com 的请求，找到了真实公告 API：
+    #   - POST /gw/pub/v1/helpCenter/getAllMenu  body: {}
+    #     返回完整分类树。顶层只有 4 个 mountArticle=true 的菜单（不是猜测，是
+    #     实际返回的全部内容）：
+    #       26  Platform Announcement       （EN/FR/EN-Asia/VN/ID 五个 locale 都有标题）
+    #       69  Exclusive Events            （只有 ko-KR/en-AS 有标题，我们范围内只有 EN-Asia 有数据）
+    #       123 New Product Announcement    （五个 locale 都有标题）
+    #       145 Platform Events             （五个 locale 都有标题）
+    #   - POST /gw/pub/v1/helpCenter/getArticleListByMenuId
+    #     body: {"lang":"<locale code>","pageSize":N,"pageNum":N,"parentId":<menuId>}
+    #     真正的分页公告列表接口，实测 pageNum=1/2 返回的 article id 完全不同
+    #     （不像其它源那样翻页参数被忽略），是本项目目前唯一原生支持服务端翻页
+    #     的源。每条 article 的 contents[] 数组里已经内嵌了全部 locale 的 title
+    #     （但不含正文），lang 参数实际影响 totalCount（不同 locale 有不同的
+    #     已发布文章子集，不是同一批文章换个标题）。
+    #   - POST /gw/pub/v1/helpCenter/getArticleById  body: {"id":"<articleId>"}
+    #     详情接口，contents[] 数组内每个 locale 有完整 content 字段（注意：不是
+    #     HTML，是类似 Slate.js 的富文本 JSON，如
+    #     `[{"type":"paragraph","children":[{"text":"..."}]}]`，需要专门的递归
+    #     提取纯文本/转 HTML 的 parser，Phase 2 需要写）。
+    #   全部 3 个接口均为匿名公开访问，不需要任何 cookie/session/签名——直接用
+    #   Python urllib（无浏览器上下文）重放同样的请求也是 200，说明这不是靠
+    #   浏览器会话才能访问的接口，日常采集不需要 headless browser，只是"找到
+    #   endpoint"这一步用了一次 headless。
+    #   10 次连续请求 500ms 间隔全部 200，无限流；robots.txt 未禁止。
+    #   实测 5 个 locale × 4 个 menuId 的 totalCount（pageSize=1 探测）：
+    #     menuId 26  Platform Announcement:      EN 552 / FR 266 / EN-Asia 126 / VN 433 / ID 56
+    #     menuId 69  Exclusive Events:            EN 0   / FR 0   / EN-Asia 65  / VN 0   / ID 0
+    #     menuId 123 New Product Announcement:   EN 40  / FR 16  / EN-Asia 3   / VN 35  / ID 7
+    #     menuId 145 Platform Events:             EN 101 / FR 75  / EN-Asia 121 / VN 68  / ID 53
+    #   update_time 可靠性抽样（menuId 26，EN，10 条列表条目的 gmtCreatedAt vs
+    #   gmtUpdatedAt，unix ms）：10/10 全部存在真实差异（例：article 4116
+    #   created 1783931588556 updated 1783939844802，相差约 2.3 小时）——
+    #   判定 strategy: watermark，用 gmtUpdatedAt 做水位线。
+    #   分类映射：Platform Announcement 类比 news/other 综合公告；New Product
+    #   Announcement 对应 product；Platform Events 对应 campaign；Exclusive
+    #   Events（仅 EN-Asia 有数据）也归入 campaign 范畴。
     # ============================================================
     EN:
-      endpoint: null
-      method: null
-      headers: {}
-      locale_param: "path"   # 已确认 URL 结构 www.zoomex.com/{locale}/help/{catalogId}
-      pagination: {}
-      rate_limit_ms: null   # 未做，页面本身无数据，测限流无意义
-      detail_mode: blocked   # SPA，无法静态获取正文；见上方侦察记录
-      blocked_reason: "纯客户端渲染 Nuxt 3 SPA，服务端只返回通用壳，静态分析未还原出公告 API，需 headless browser 或内部 API 文档"
-      has_update_time: null
-      strategy: null       # 待定，需先解决 detail_mode 才能判断
+      categories:
+        platform_announcement:
+          menu_id: 26
+        new_product_announcement:
+          menu_id: 123
+        platform_events:
+          menu_id: 145
+      endpoint: "https://api2.zoomex.com/gw/pub/v1/helpCenter/getArticleListByMenuId"
+      detail_endpoint: "https://api2.zoomex.com/gw/pub/v1/helpCenter/getArticleById"   # body: {"id": "<articleId>"}
+      method: POST
+      headers: {"Content-Type": "application/json"}
+      locale_param: "body:lang"   # 请求体里的 lang 字段，值 "en-US"（不是 URL path，与其它源不同）
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30}
+      rate_limit_ms: 500   # 10 次连续请求 500ms 间隔全部 200，无限流
+      detail_mode: separate_api   # 列表接口只有 title，正文（content，富文本 JSON）需另调 getArticleById
+      has_update_time: true   # gmtUpdatedAt，抽样 10 条全部与 gmtCreatedAt 存在真实差异
+      strategy: watermark
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
-        category: null
+        article_id: article.id   # 跨 locale 一致（同一篇文章不同语言版本共享同一个 articleId），可直接做 group_id
+        title: contents[lang].title   # 列表接口 contents[] 数组里按 lang 匹配的那一项
+        content: contents[lang].content   # 仅 getArticleById 详情接口有；富文本 JSON 字符串，需专门 parser 转纯文本/HTML
+        post_time: article.gmtCreatedAt   # unix 毫秒
+        update_time: article.gmtUpdatedAt   # unix 毫秒，抽样确认可靠
+        category: null   # 固定值，取决于抓取时用的哪个 categories.* menu_id，无需逐条解析
+      lang_code: "en-US"
     FR:
-      endpoint: null
-      method: null
-      headers: {}
-      locale_param: "path"   # 路由确认为 fr-FR，即 /fr-FR/help/{catalogId}
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: blocked
-      blocked_reason: "同 EN：纯客户端渲染 SPA，服务端只返回通用壳，未找到可用 API"
-      has_update_time: null
-      strategy: null
+      categories:
+        platform_announcement:
+          menu_id: 26
+        new_product_announcement:
+          menu_id: 123
+        platform_events:
+          menu_id: 145
+      endpoint: "https://api2.zoomex.com/gw/pub/v1/helpCenter/getArticleListByMenuId"
+      detail_endpoint: "https://api2.zoomex.com/gw/pub/v1/helpCenter/getArticleById"
+      method: POST
+      headers: {"Content-Type": "application/json"}
+      locale_param: "body:lang"
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30}
+      rate_limit_ms: 500
+      detail_mode: separate_api
+      has_update_time: true
+      strategy: watermark
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
+        article_id: article.id
+        title: contents[lang].title
+        content: contents[lang].content
+        post_time: article.gmtCreatedAt
+        update_time: article.gmtUpdatedAt
         category: null
+      lang_code: "fr-FR"
     EN-Asia:
-      endpoint: null
-      method: null
-      headers: {}
-      locale_param: "path"   # 路由确认为 en-AS（与 en/en-US 不同），/en-AS/help/{catalogId}
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: blocked
-      blocked_reason: "同 EN：纯客户端渲染 SPA，服务端只返回通用壳，未找到可用 API"
-      has_update_time: null
-      strategy: null
+      categories:
+        platform_announcement:
+          menu_id: 26
+        exclusive_events:
+          menu_id: 69   # 目前只有 EN-Asia 在这个分类下有数据（其它 4 个 locale total=0）
+        new_product_announcement:
+          menu_id: 123
+        platform_events:
+          menu_id: 145
+      endpoint: "https://api2.zoomex.com/gw/pub/v1/helpCenter/getArticleListByMenuId"
+      detail_endpoint: "https://api2.zoomex.com/gw/pub/v1/helpCenter/getArticleById"
+      method: POST
+      headers: {"Content-Type": "application/json"}
+      locale_param: "body:lang"
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30}
+      rate_limit_ms: 500
+      detail_mode: separate_api
+      has_update_time: true
+      strategy: watermark
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
+        article_id: article.id
+        title: contents[lang].title
+        content: contents[lang].content
+        post_time: article.gmtCreatedAt
+        update_time: article.gmtUpdatedAt
         category: null
+      lang_code: "en-AS"
     VN:
-      endpoint: null
-      method: null
-      headers: {}
-      locale_param: "path"   # 路由确认为 vi-VN，/vi-VN/help/{catalogId}
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: blocked
-      blocked_reason: "同 EN：纯客户端渲染 SPA，服务端只返回通用壳，未找到可用 API"
-      has_update_time: null
-      strategy: null
+      categories:
+        platform_announcement:
+          menu_id: 26
+        new_product_announcement:
+          menu_id: 123
+        platform_events:
+          menu_id: 145
+      endpoint: "https://api2.zoomex.com/gw/pub/v1/helpCenter/getArticleListByMenuId"
+      detail_endpoint: "https://api2.zoomex.com/gw/pub/v1/helpCenter/getArticleById"
+      method: POST
+      headers: {"Content-Type": "application/json"}
+      locale_param: "body:lang"
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30}
+      rate_limit_ms: 500
+      detail_mode: separate_api
+      has_update_time: true
+      strategy: watermark
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
+        article_id: article.id
+        title: contents[lang].title
+        content: contents[lang].content
+        post_time: article.gmtCreatedAt
+        update_time: article.gmtUpdatedAt
         category: null
+      lang_code: "vi-VN"
     ID:
-      endpoint: null
-      method: null
-      headers: {}
-      locale_param: "path"   # 路由确认为 id-ID，/id-ID/help/{catalogId}
-      pagination: {}
-      rate_limit_ms: null
-      detail_mode: blocked
-      blocked_reason: "同 EN：纯客户端渲染 SPA，服务端只返回通用壳，未找到可用 API"
-      has_update_time: null
-      strategy: null
+      categories:
+        platform_announcement:
+          menu_id: 26
+        new_product_announcement:
+          menu_id: 123
+        platform_events:
+          menu_id: 145
+      endpoint: "https://api2.zoomex.com/gw/pub/v1/helpCenter/getArticleListByMenuId"
+      detail_endpoint: "https://api2.zoomex.com/gw/pub/v1/helpCenter/getArticleById"
+      method: POST
+      headers: {"Content-Type": "application/json"}
+      locale_param: "body:lang"
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30}
+      rate_limit_ms: 500
+      detail_mode: separate_api
+      has_update_time: true
+      strategy: watermark
       field_mapping:
-        article_id: null
-        title: null
-        content: null
-        post_time: null
-        update_time: null
+        article_id: article.id
+        title: contents[lang].title
+        content: contents[lang].content
+        post_time: article.gmtCreatedAt
+        update_time: article.gmtUpdatedAt
         category: null
+      lang_code: "id-ID"

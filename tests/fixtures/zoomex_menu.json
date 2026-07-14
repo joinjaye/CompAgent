@@ -1,0 +1,305 @@
+{
+  "result": [
+    {
+      "menu": {
+        "id": 26,
+        "degree": 1,
+        "parentMenuId": 0,
+        "menuType": 0,
+        "order": 2,
+        "display": true,
+        "gmtCreated": 1646735417695,
+        "gmtUpdated": 1773748821970,
+        "creator": 0,
+        "creatorName": "",
+        "updater": 0,
+        "updaterName": "",
+        "mountArticle": true
+      },
+      "titles": [
+        {
+          "id": 1875,
+          "menuId": 26,
+          "lang": "en-US",
+          "menuTitle": "Platform Announcement"
+        },
+        {
+          "id": 1876,
+          "menuId": 26,
+          "lang": "ko-KR",
+          "menuTitle": "공지"
+        },
+        {
+          "id": 1877,
+          "menuId": 26,
+          "lang": "zh-TW",
+          "menuTitle": "平台公告"
+        },
+        {
+          "id": 1878,
+          "menuId": 26,
+          "lang": "ja-JP",
+          "menuTitle": "お客様へのお知らせ"
+        },
+        {
+          "id": 1879,
+          "menuId": 26,
+          "lang": "ru-RU",
+          "menuTitle": "Объявление платформы"
+        },
+        {
+          "id": 1880,
+          "menuId": 26,
+          "lang": "de-DE",
+          "menuTitle": "Plattform-Ankündigung"
+        },
+        {
+          "id": 1881,
+          "menuId": 26,
+          "lang": "es-MX",
+          "menuTitle": "Anuncio de Plataforma"
+        },
+        {
+          "id": 1882,
+          "menuId": 26,
+          "lang": "vi-VN",
+          "menuTitle": "Thông báo từ nền tảng giao dịch"
+        },
+        {
+          "id": 1883,
+          "menuId": 26,
+          "lang": "fr-FR",
+          "menuTitle": "Annonce de la plateforme"
+        },
+        {
+          "id": 1884,
+          "menuId": 26,
+          "lang": "id-ID",
+          "menuTitle": "Platform Announcement"
+        },
+        {
+          "id": 1885,
+          "menuId": 26,
+          "lang": "pt-BR",
+          "menuTitle": "Anúncio da Plataforma"
+        },
+        {
+          "id": 1886,
+          "menuId": 26,
+          "lang": "en-AS",
+          "menuTitle": "Platform Announcement"
+        }
+      ]
+    },
+    {
+      "menu": {
+        "id": 69,
+        "degree": 1,
+        "parentMenuId": 0,
+        "menuType": 0,
+        "order": 5,
+        "display": true,
+        "gmtCreated": 1686568671354,
+        "gmtUpdated": 1773748303509,
+        "creator": 0,
+        "creatorName": "",
+        "updater": 0,
+        "updaterName": "",
+        "mountArticle": true
+      },
+      "titles": [
+        {
+          "id": 1862,
+          "menuId": 69,
+          "lang": "ko-KR",
+          "menuTitle": "한정 이벤트"
+        },
+        {
+          "id": 1863,
+          "menuId": 69,
+          "lang": "en-AS",
+          "menuTitle": "Exclusive Events"
+        }
+      ]
+    },
+    {
+      "menu": {
+        "id": 123,
+        "degree": 1,
+        "parentMenuId": 0,
+        "menuType": 0,
+        "order": 13,
+        "display": true,
+        "gmtCreated": 1698213905730,
+        "gmtUpdated": 1773748576079,
+        "creator": 0,
+        "creatorName": "",
+        "updater": 0,
+        "updaterName": "",
+        "mountArticle": true
+      },
+      "titles": [
+        {
+          "id": 1864,
+          "menuId": 123,
+          "lang": "en-US",
+          "menuTitle": "New Product Announcement "
+        },
+        {
+          "id": 1865,
+          "menuId": 123,
+          "lang": "ko-KR",
+          "menuTitle": "제품 관련"
+        },
+        {
+          "id": 1866,
+          "menuId": 123,
+          "lang": "zh-TW",
+          "menuTitle": "新产品公告"
+        },
+        {
+          "id": 1867,
+          "menuId": 123,
+          "lang": "ja-JP",
+          "menuTitle": "新機能・新サービス"
+        },
+        {
+          "id": 1868,
+          "menuId": 123,
+          "lang": "es-MX",
+          "menuTitle": "Anuncio de nuevos productos"
+        },
+        {
+          "id": 1869,
+          "menuId": 123,
+          "lang": "ru-RU",
+          "menuTitle": "Обновления продуктов"
+        },
+        {
+          "id": 1870,
+          "menuId": 123,
+          "lang": "vi-VN",
+          "menuTitle": "Phát hành sản phẩm mới"
+        },
+        {
+          "id": 1871,
+          "menuId": 123,
+          "lang": "fr-FR",
+          "menuTitle": "Nouvel annonce produit"
+        },
+        {
+          "id": 1872,
+          "menuId": 123,
+          "lang": "en-AS",
+          "menuTitle": "New Product Announcement"
+        },
+        {
+          "id": 1873,
+          "menuId": 123,
+          "lang": "id-ID",
+          "menuTitle": "New Product Announcement "
+        },
+        {
+          "id": 1874,
+          "menuId": 123,
+          "lang": "pt-BR",
+          "menuTitle": "Anúncio de Novo Produto"
+        }
+      ]
+    },
+    {
+      "menu": {
+        "id": 145,
+        "degree": 1,
+        "parentMenuId": 0,
+        "menuType": 1,
+        "order": 33,
+        "display": true,
+        "gmtCreated": 1773740287458,
+        "gmtUpdated": 1773740330442,
+        "creator": 0,
+        "creatorName": "",
+        "updater": 0,
+        "updaterName": "",
+        "mountArticle": true
+      },
+      "titles": [
+        {
+          "id": 1850,
+          "menuId": 145,
+          "lang": "en-US",
+          "menuTitle": "Platform Events"
+        },
+        {
+          "id": 1851,
+          "menuId": 145,
+          "lang": "en-AS",
+          "menuTitle": "Platform Events"
+        },
+        {
+          "id": 1852,
+          "menuId": 145,
+          "lang": "ko-KR",
+          "menuTitle": "진행 중인 이벤트 "
+        },
+        {
+          "id": 1853,
+          "menuId": 145,
+          "lang": "zh-TW",
+          "menuTitle": "全平台活動"
+        },
+        {
+          "id": 1854,
+          "menuId": 145,
+          "lang": "de-DE",
+          "menuTitle": " Plattform Veranstaltungen"
+        },
+        {
+          "id": 1855,
+          "menuId": 145,
+          "lang": "ja-JP",
+          "menuTitle": "開催中のイベント"
+        },
+        {
+          "id": 1856,
+          "menuId": 145,
+          "lang": "ru-RU",
+          "menuTitle": " События платформы"
+        },
+        {
+          "id": 1857,
+          "menuId": 145,
+          "lang": "es-MX",
+          "menuTitle": "Eventos de Plataforma"
+        },
+        {
+          "id": 1858,
+          "menuId": 145,
+          "lang": "vi-VN",
+          "menuTitle": "Sự kiện của nền tảng giao dịch"
+        },
+        {
+          "id": 1859,
+          "menuId": 145,
+          "lang": "fr-FR",
+          "menuTitle": "Evenéments de la plateforme"
+        },
+        {
+          "id": 1860,
+          "menuId": 145,
+          "lang": "id-ID",
+          "menuTitle": "Aktivitas Terbaru"
+        },
+        {
+          "id": 1861,
+          "menuId": 145,
+          "lang": "pt-BR",
+          "menuTitle": "Eventos da Plataforma"
+        }
+      ]
+    }
+  ],
+  "ret_code": 0,
+  "ret_msg": "ok",
+  "time_now": "1783956335817"
+}
