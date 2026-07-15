@@ -12,9 +12,14 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
-from src.analysis.zmx_index import ZmxArticle
+if TYPE_CHECKING:
+    # zmx_baseline.py 反过来要 import 本模块的 build_extraction_prompt（提取 prompt
+    # 复用这里的 render()/BuiltPrompt），运行时互相 import 会循环，这里只在类型检查时
+    # 导入（配合文件顶部 `from __future__ import annotations`，注解本身在运行时是
+    # 字符串，不需要真的把类拿到）。
+    from src.analysis.zmx_baseline import ZmxBaselineEntry
 
 _PLACEHOLDER_RE = re.compile(r"\{([A-Z][A-Z0-9_]*)\}")
 
@@ -52,9 +57,13 @@ USER_CAMPAIGN_TEMPLATE = """\
 正文：content
 仅 status=changed 时追加一行：变更前正文：old_content）
 
-【Zoomex 基线（同类目、同地区，近 90 天相关度最高的 {ZMX_COUNT} 条）】
+【Zoomex 基线（同类目、同地区，近 90 天玩法类型总览，共 {ZMX_COUNT} 条，覆盖各已知
+玩法类型，不是按相关度排序的检索结果——缺席某个玩法类型不代表判断置信度低，判断的
+是"这些类型里有没有跟本批次雷同/缺失的"）】
 {ZMX_BLOCK}
-（每条格式：[Zindex] UID: zmx_uid | post_time | 标题：title | 摘要：content_preview）
+（每条格式：[Zindex] 类型：mechanism_type | UID: zmx_uid | 标题：title | 机制：
+key_mechanics | 奖励：reward_range | 目标用户：target_users | 时间：
+start_date~end_date）
 {ZMX_NOTE}
 
 【分析任务】
@@ -107,8 +116,11 @@ USER_PRODUCT_TEMPLATE = """\
 【产品更新公告列表】
 {ARTICLES_BLOCK}
 
-【Zoomex 基线（同类目、同地区，近 90 天相关度最高的 {ZMX_COUNT} 条）】
+【Zoomex 基线（同类目、同地区，近 90 天玩法类型总览，共 {ZMX_COUNT} 条，覆盖各已知
+功能类型，不是按相关度排序的检索结果）】
 {ZMX_BLOCK}
+（每条格式：[Zindex] 类型：mechanism_type | UID: zmx_uid | 标题：title | 机制：
+key_mechanics | 目标用户：target_users）
 {ZMX_NOTE}
 
 【分析任务】
@@ -158,8 +170,10 @@ USER_LISTING_TEMPLATE = """\
 【上币公告列表】
 {ARTICLES_BLOCK}
 
-【Zoomex 基线（近 90 天上币记录，相关度最高的 {ZMX_COUNT} 条）】
+【Zoomex 基线（近 90 天上币类型总览，共 {ZMX_COUNT} 条，不是按相关度排序的检索结果）】
 {ZMX_BLOCK}
+（每条格式：[Zindex] 类型：mechanism_type | UID: zmx_uid | 标题：title | 机制：
+key_mechanics | 时间：start_date~end_date）
 {ZMX_NOTE}
 
 【分析任务】
@@ -248,21 +262,21 @@ _TEMPLATES: dict[str, tuple[str, str]] = {
     "delisting": (SYSTEM_DELISTING, USER_DELISTING_TEMPLATE),
 }
 
-# category -> (zmx_count==0 时的提示文案, 0<命中数<min_hits 时的提示文案模板)
+# category -> zmx_count==0 时的提示文案。原来还有一档"命中数 < min_hits → 置信度
+# 可能较低"，那是针对 TF-IDF 检索"可能没搜全"设计的；改成结构化基线注入
+# （get_baseline_digest 尽力覆盖全部已知 mechanism_type）后不再有"搜索没搜全"这层
+# 不确定性，只保留"完全没有基线数据"这一档。
 _ZMX_ZERO_NOTE = {
     "campaign": "注意：当前 Zoomex 基线数据不足，无法进行差异判断，zmx_comparison 的 diff_type 必须填「不适用」。",
     "product": "注意：当前 Zoomex 基线数据不足，zmx_comparison 的 diff_type 必须填「不适用」。",
     "listing": "注意：Zoomex 上币基线数据不足，diff_type 必须填「不适用」。",
 }
-_ZMX_LIMITED_NOTE_TMPL = "注意：当前 Zoomex 基线数据有限（仅 {n} 条），差异判断的置信度可能较低。"
 
 
-def build_zmx_note(category: str, zmx_count: int, min_hits: int) -> str:
+def build_zmx_note(category: str, zmx_count: int) -> str:
     """category=delisting 不带 ZMX 部分，不应该调用本函数。"""
     if zmx_count == 0:
         return _ZMX_ZERO_NOTE[category]
-    if zmx_count < min_hits:
-        return _ZMX_LIMITED_NOTE_TMPL.format(n=zmx_count)
     return ""
 
 
@@ -285,12 +299,14 @@ def build_articles_block(rows: list, old_content_by_uid: dict[str, Optional[str]
     return "\n\n".join(parts) if parts else "（本批次无公告，不应该发生）"
 
 
-def build_zmx_block(hits: list[ZmxArticle]) -> str:
-    if not hits:
-        return "（无匹配的 Zoomex 基线记录）"
+def build_zmx_block(entries: list["ZmxBaselineEntry"]) -> str:
+    if not entries:
+        return "（无 Zoomex 基线记录）"
     lines = [
-        f"[Z{i}] UID: {hit.uid} | {hit.post_time} | 标题：{hit.title} | 摘要：{hit.content_preview}"
-        for i, hit in enumerate(hits, start=1)
+        f"[Z{i}] 类型：{e.mechanism_type} | UID: {e.uid} | 标题：{e.title} | "
+        f"机制：{e.key_mechanics or '无'} | 奖励：{e.reward_range or '无'} | "
+        f"目标用户：{e.target_users or '无'} | 时间：{e.start_date or '?'}~{e.end_date or '?'}"
+        for i, e in enumerate(entries, start=1)
     ]
     return "\n".join(lines)
 
@@ -309,8 +325,7 @@ def build_prompt(
     batch_date: str,
     rows: list,
     old_content_by_uid: dict[str, Optional[str]],
-    zmx_hits: Optional[list[ZmxArticle]] = None,
-    min_hits_for_full_confidence: int = 3,
+    zmx_hits: Optional[list["ZmxBaselineEntry"]] = None,
     article_content_chars: int = 4000,
 ) -> BuiltPrompt:
     if category not in _TEMPLATES:
@@ -336,10 +351,101 @@ def build_prompt(
         hits = zmx_hits or []
         variables["ZMX_COUNT"] = str(len(hits))
         variables["ZMX_BLOCK"] = build_zmx_block(hits)
-        variables["ZMX_NOTE"] = build_zmx_note(category, len(hits), min_hits_for_full_confidence)
+        variables["ZMX_NOTE"] = build_zmx_note(category, len(hits))
 
     user = render(user_template, variables)
     return BuiltPrompt(system=system, user=user)
+
+
+# ============================================================
+# zmx-extract-v1
+#
+# 跟上面四套（竞品公告 -> 分析）不同，这一套的输入是 Zoomex（我方）自己的公告，
+# 任务是把公告结构化提取成 mechanism_type/key_mechanics/reward_range/target_users/
+# start_date/end_date 六个字段，不做任何跟竞品的比较判断——比较判断留给上面四套
+# prompt 在拿到 zmx_baseline 结构化结果后再做。三个 category（campaign/product/
+# listing）共用同一套模板，字段形状相同，category 只是上下文变量。见
+# src/analysis/zmx_baseline.py。
+# ============================================================
+
+SYSTEM_ZMX_EXTRACT = (
+    "你是负责梳理 Zoomex（我方）自身活动/产品/上币公告的助手，任务是把公告结构化"
+    "提取成简短字段，供后续跟竞品做对比参考，不做任何竞品比较判断。输出必须是合法 "
+    "JSON，不包含任何 markdown 标记或解释文字。"
+)
+
+USER_ZMX_EXTRACT_TEMPLATE = """\
+【类目】{CATEGORY}
+【地区/语言】{LOCALE}
+
+【已使用过的玩法类型标签】
+{EXISTING_LABELS}
+（如果本批次里有语义相同的玩法，请直接复用上面列出的同一个标签；仅措辞不同、玩法
+本质相同时不要新建近义标签；确实是新玩法时才新建标签。）
+
+【待提取公告列表】
+{ARTICLES_BLOCK}
+（每条格式：
+[index] UID: uid
+标题：title
+正文：content）
+
+【提取任务】
+请输出以下结构的 JSON：
+
+{
+  "articles": [
+    {
+      "uid": "（原样照抄，不得修改）",
+      "mechanism_type": "玩法类型标签，简短（4-8 个汉字），优先复用上面列出的已有标签；无法判断类型时填「其他」",
+      "key_mechanics": "玩法机制一句话，门槛/规则从正文提取，不可编造",
+      "reward_range": "奖励范围，如「5-50 USDT」「最高 5000 USDT 奖池」，正文未提供填 null",
+      "target_users": "目标用户群，如「所有用户」「新注册用户」，正文未提供填 null",
+      "start_date": "起始日期，格式 YYYY-MM-DD，正文未提供填 null",
+      "end_date": "结束日期，格式 YYYY-MM-DD，正文未提供填 null"
+    }
+  ]
+}
+
+【强制规则】
+1. uid 字段原样照抄，不得改动任何字符
+2. mechanism_type 不得为空字符串，无法判断时填「其他」
+3. 不得使用 LLM 自身知识补充正文未提及的信息
+4. 整个输出必须是合法 JSON，不加任何注释（// 或 /* */ 均不允许）
+"""
+
+
+def build_extraction_articles_block(rows: list, max_chars: int = 4000) -> str:
+    """rows 是 announcements 的行（需要 uid/title/content 列）。"""
+    parts: list[str] = []
+    for i, row in enumerate(rows, start=1):
+        content = (row["content"] or "")[:max_chars]
+        parts.append(f"[{i}] UID: {row['uid']}\n标题：{row['title']}\n正文：{content}")
+    return "\n\n".join(parts) if parts else "（本批次无公告，不应该发生）"
+
+
+def build_existing_labels_block(labels: list[str]) -> str:
+    if not labels:
+        return "（暂无已使用过的标签，这是第一批提取）"
+    return "、".join(labels)
+
+
+def build_extraction_prompt(
+    *,
+    category: str,
+    locale: str,
+    rows: list,
+    existing_labels: list[str],
+    article_content_chars: int = 4000,
+) -> BuiltPrompt:
+    variables = {
+        "CATEGORY": category,
+        "LOCALE": locale,
+        "EXISTING_LABELS": build_existing_labels_block(existing_labels),
+        "ARTICLES_BLOCK": build_extraction_articles_block(rows, max_chars=article_content_chars),
+    }
+    user = render(USER_ZMX_EXTRACT_TEMPLATE, variables)
+    return BuiltPrompt(system=SYSTEM_ZMX_EXTRACT, user=user)
 
 
 # ============================================================

@@ -15,12 +15,18 @@ import logging
 import re
 import sqlite3
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any, Optional
 
 from src.analysis.config import LlmCredentials
-from src.analysis.zmx_index import ZmxArticle
 from src.collectors.http import fetch as http_fetch
 from src.db.operations import utcnow_iso
+
+if TYPE_CHECKING:
+    # zmx_baseline.py 反过来要 import 这个模块的 call_llm/compute_cache_key 等
+    # （提取逻辑复用同一套 LLM 调用 + 缓存基础设施），运行时互相 import 会循环，
+    # 这里只在类型检查时导入（配合文件顶部 `from __future__ import annotations`，
+    # 注解本身在运行时是字符串，不需要真的把类拿到）。
+    from src.analysis.zmx_baseline import ZmxBaselineEntry
 
 logger = logging.getLogger(__name__)
 
@@ -108,7 +114,7 @@ class AnalysisResult:
     issues: list[str] = field(default_factory=list)
 
 
-def _strip_code_fences(text: str) -> str:
+def strip_code_fences(text: str) -> str:
     return _CODE_FENCE_RE.sub("", text.strip()).strip()
 
 
@@ -117,7 +123,7 @@ def validate_and_normalize(
     *,
     category: str,
     related_uids: set[str],
-    zmx_hits: Optional[list[ZmxArticle]] = None,
+    zmx_hits: Optional[list[ZmxBaselineEntry]] = None,
 ) -> AnalysisResult:
     """入库前校验，规则见 CLAUDE.md Phase 4 / phasePrompts.md 第四步：
 
@@ -130,7 +136,7 @@ def validate_and_normalize(
     issues: list[str] = []
 
     try:
-        data = json.loads(_strip_code_fences(raw_text))
+        data = json.loads(strip_code_fences(raw_text))
     except (json.JSONDecodeError, TypeError) as e:
         logger.error("LLM 响应 JSON 解析失败，本批次分析字段全部置 NULL：%s", e)
         return AnalysisResult(valid=False, issues=[f"json_parse_failed: {e}"])

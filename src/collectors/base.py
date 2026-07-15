@@ -11,6 +11,7 @@ import logging
 import sqlite3
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
 from src.db.operations import get_crawl_state, set_crawl_state, upsert_announcement
@@ -61,6 +62,7 @@ class RunStats:
     changed: int = 0
     unchanged: int = 0
     failed: int = 0
+    skipped_by_date: int = 0  # lookback_days 过滤掉的条目数（full_scan 策略），不是静默丢弃
 
     @property
     def total(self) -> int:
@@ -117,14 +119,26 @@ class BaseCollector(ABC):
         """把 RawItem 转成落库字段：article_id 转 str、拼 group_id 等（时间已经是 UTC
         ISO8601，见 fetch_list 的约定，这里不需要再转）。"""
 
-    def run(self, conn: sqlite3.Connection, *, force_full: bool = False) -> RunStats:
+    def run(
+        self, conn: sqlite3.Connection, *, force_full: bool = False, lookback_days: Optional[int] = None
+    ) -> RunStats:
         """跑一轮采集并落库。
 
         force_full=True 时：(1) 忽略已存的 high_watermark，强制从头拉取；(2) 跳过
         needs_detail() 的增量判断，对拉到的每一条都重新请求详情——两者都是为了人工
         复核（如验证「手动改 content_hash 后能否被识别为 changed」）：正常增量运行下，
         未真正变更的旧条目本来就不会被重新拉取/重新校验，需要 force_full 才能强制
-        重新过一遍全部条目。
+        重新过一遍全部条目。force_full 时 lookback_days 完全不生效（语义上"全量核查"
+        不该被日期窗口限制）。
+
+        lookback_days：只保留 update_time/post_time 落在最近 N 天内的条目，解决两类
+        真实问题：(1) watermark 策略源（如 Bitunix）在 crawl_state 为空（首次运行/空库）
+        时，since=None 会导致早停条件永远不触发、翻页翻到底——等价于一次全量历史回填，
+        给它播种一个 cutoff 下限能避免这个情况；(2) full_scan 策略源（Weex/BingX/Phemex/
+        Lbank）完全不做任何日期过滤，只靠 pagination.max_pages 圈一个固定页数窗口，这个
+        窗口对应的时间跨度可能是"今天"也可能是"过去两年"（取决于该分类的发布频率），
+        过滤后能让"daily 增量"这个语义名副其实。默认 None 完全不影响现有行为（不传时
+        逐字节兼容修改前的历史调用）。
         """
         self.force_full = force_full
         stats = RunStats(source=self.source_name, locale=self.locale)
@@ -133,12 +147,30 @@ class BaseCollector(ABC):
             state = get_crawl_state(conn, self.source_name, self.locale, category=self.category)
             since = state["high_watermark"] if state else None
 
+        cutoff = None
+        if lookback_days is not None and not force_full:
+            cutoff = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime(
+                "%Y-%m-%dT%H:%M:%SZ"
+            )
+            if since is None:
+                since = cutoff
+
         try:
             items = self.fetch_list(since)
         except Exception:
             logger.exception("拉取列表失败：%s/%s", self.source_name, self.locale)
             stats.failed += 1
             return stats
+
+        if cutoff is not None and self.strategy == "full_scan":
+            kept = []
+            for raw in items:
+                item_date = raw.update_time or raw.post_time
+                if item_date is None or item_date >= cutoff:
+                    kept.append(raw)
+                else:
+                    stats.skipped_by_date += 1
+            items = kept
 
         max_update_time = since
         for raw in items:

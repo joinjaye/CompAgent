@@ -34,7 +34,7 @@ from src.analysis.llm import (
     validate_and_normalize,
 )
 from src.analysis.prompts import build_prompt
-from src.analysis.zmx_index import build_index
+from src.analysis.zmx_baseline import get_baseline_digest
 from src.db.connection import DEFAULT_DB_PATH, connect
 from src.db.operations import get_content_history, utcnow_iso
 
@@ -194,7 +194,7 @@ def run(
         credentials = load_cursor_credentials() if provider == "cursor_agent" else load_llm_credentials()
         credentials.validate()
 
-    zmx_cfg = cfg.get("zmx_index", {})
+    zmx_cfg = cfg.get("zmx_baseline", {})
     trunc_cfg = cfg.get("content_truncation", {})
     prompt_versions = cfg.get("prompt_versions", {})
     max_tokens_by_category = llm_cfg.get("max_tokens_by_category", {})
@@ -237,18 +237,16 @@ def run(
 
         zmx_hits = []
         if key.category != "delisting":
-            index = build_index(
+            zmx_hits = get_baseline_digest(
                 conn, category=key.category, locale=key.locale,
                 lookback_days=zmx_cfg.get("lookback_days", 90),
-                preview_chars=trunc_cfg.get("zmx_preview_chars", 400),
+                max_entries=zmx_cfg.get("max_entries_per_batch", 20),
+                max_examples_per_type=zmx_cfg.get("max_examples_per_type", 2),
             )
-            query_text = " ".join(r["title"] or "" for r in rows)
-            zmx_hits = index.search(query_text, top_k=zmx_cfg.get("top_k", 5))
 
         prompt = build_prompt(
             key.category, source=key.source, locale=key.locale, batch_date=batch_date,
             rows=rows, old_content_by_uid=old_content_map, zmx_hits=zmx_hits,
-            min_hits_for_full_confidence=zmx_cfg.get("min_hits_for_full_confidence", 3),
             article_content_chars=trunc_cfg.get("article_content_chars", 4000),
         )
 

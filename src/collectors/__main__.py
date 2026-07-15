@@ -143,6 +143,18 @@ def main() -> None:
         action="store_true",
         help="忽略已存的 high_watermark，强制全量重跑（watermark 策略的源用于人工复核）",
     )
+    parser.add_argument(
+        "--lookback-days",
+        type=int,
+        default=None,
+        help=(
+            "只保留 update_time/post_time 落在最近 N 天内的条目，替代无限回填。"
+            "watermark 策略源（如 Bitunix）在 crawl_state 为空时用它播种 since 下限，"
+            "避免首次运行等价于全量历史回填；full_scan 策略源（Weex/BingX/Phemex/Lbank）"
+            "用它过滤掉 pagination 窗口里过旧的条目。不传则保留现状（无日期限制）。"
+            "对 --force-full 无效。"
+        ),
+    )
     parser.add_argument("--db-path", default=str(DEFAULT_DB_PATH))
     parser.add_argument("--sources-path", default=str(DEFAULT_SOURCES_PATH))
     args = parser.parse_args()
@@ -162,16 +174,22 @@ def main() -> None:
             if collector.category:
                 label += f"/{collector.category}"
             logger.info("开始采集 %s", label)
-            stats = collector.run(conn, force_full=args.force_full)
+            stats = collector.run(conn, force_full=args.force_full, lookback_days=args.lookback_days)
             all_stats.append(stats)
             logger.info(
-                "完成 %s：new=%d changed=%d unchanged=%d failed=%d",
-                label, stats.new, stats.changed, stats.unchanged, stats.failed,
+                "完成 %s：new=%d changed=%d unchanged=%d failed=%d skipped_by_date=%d",
+                label, stats.new, stats.changed, stats.unchanged, stats.failed, stats.skipped_by_date,
             )
 
-    print(f"{'source':<10} {'locale':<8} {'new':<6} {'changed':<8} {'unchanged':<10} {'failed':<6}")
+    print(
+        f"{'source':<10} {'locale':<8} {'new':<6} {'changed':<8} {'unchanged':<10} "
+        f"{'failed':<6} {'skipped_by_date':<15}"
+    )
     for s in all_stats:
-        print(f"{s.source:<10} {s.locale:<8} {s.new:<6} {s.changed:<8} {s.unchanged:<10} {s.failed:<6}")
+        print(
+            f"{s.source:<10} {s.locale:<8} {s.new:<6} {s.changed:<8} {s.unchanged:<10} "
+            f"{s.failed:<6} {s.skipped_by_date:<15}"
+        )
 
     total_failed = sum(s.failed for s in all_stats)
     if total_failed > 0:

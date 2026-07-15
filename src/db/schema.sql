@@ -1,4 +1,6 @@
--- 竞品情报平台 SQLite schema（schema 版本 v3，见 CLAUDE.md「Phase 4 完成情况」）
+-- 竞品情报平台 SQLite schema（schema 版本 v3，见 CLAUDE.md「Phase 4 完成情况」；
+-- zmx_baseline 表是之后纯新增的表，不改动任何既有表的列/约束，不需要走 migrate 脚本，
+-- 见 CLAUDE.md「Zoomex 基线改造」小节）
 -- 所有时间字段统一使用 UTC ISO8601 字符串（如 2026-07-13T02:30:00Z），不使用 SQLite 原生 DATETIME。
 -- SQLite 是唯一真相源；飞书多维表只是同步出去的业务视图。
 
@@ -114,6 +116,34 @@ CREATE TABLE IF NOT EXISTS llm_cache (
     response     TEXT NOT NULL,   -- 原始 LLM 响应 JSON 字符串
     created_at   TEXT NOT NULL
 );
+
+-- ============================================================
+-- zmx_baseline（Zoomex 结构化基线，Phase 4 之后补丁新增）
+-- 一行 = 一条 Zoomex 公告（campaign/product/listing）的结构化提取结果，供竞品批次
+-- 分析的 zmx_comparison 环节按 category×locale 注入"类型覆盖"基线，取代原来的
+-- TF-IDF 原文检索（src/analysis/zmx_index.py，已下线）。delisting 不建基线（跟
+-- prompts.py 的 delisting 模板一致，没有 zmx_comparison 部分）。提取本身是独立
+-- 维护步骤（python -m src.analysis.zmx_baseline），只处理近 90 天窗口内的 Zoomex
+-- 公告，不做全量历史回填，见 CLAUDE.md 对应小节。
+-- ============================================================
+CREATE TABLE IF NOT EXISTS zmx_baseline (
+    source_uid           TEXT PRIMARY KEY REFERENCES announcements (uid) ON DELETE CASCADE,
+    locale                TEXT NOT NULL,
+    category               TEXT NOT NULL CHECK (category IN ('campaign', 'product', 'listing')),
+    mechanism_type          TEXT NOT NULL,  -- LLM 自由生成的玩法类型标签（不是固定枚举）
+    title                    TEXT,
+    key_mechanics            TEXT,
+    reward_range             TEXT,
+    target_users             TEXT,
+    start_date               TEXT,          -- YYYY-MM-DD，可为 NULL
+    end_date                 TEXT,
+    content_hash             TEXT NOT NULL, -- 提取时对应的 announcements.content_hash，增量判断用
+    extraction_version       TEXT NOT NULL, -- 如 "zmx-extract-v1"，改提取 prompt 要递增
+    extracted_at             TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_zmx_baseline_cat_locale
+    ON zmx_baseline (category, locale);
 
 -- ============================================================
 -- crawl_state（采集水位线）

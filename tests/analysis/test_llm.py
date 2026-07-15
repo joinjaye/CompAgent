@@ -18,7 +18,7 @@ from src.analysis.llm import (
     set_cached_response,
     validate_and_normalize,
 )
-from src.analysis.zmx_index import ZmxArticle
+from src.analysis.zmx_baseline import ZmxBaselineEntry
 
 
 def test_validate_and_normalize_json_parse_failure_returns_invalid():
@@ -97,8 +97,12 @@ def test_validate_and_normalize_delisting_always_not_applicable_even_with_eviden
 
 def test_validate_and_normalize_maps_evidence_indices_to_zmx_uids():
     hits = [
-        ZmxArticle(uid="z1", title="t1", content_preview="p1", post_time="2026-01-01T00:00:00Z", similarity_score=0.5),
-        ZmxArticle(uid="z2", title="t2", content_preview="p2", post_time="2026-01-02T00:00:00Z", similarity_score=0.6),
+        ZmxBaselineEntry(uid="z1", title="t1", mechanism_type="入金活动", key_mechanics=None,
+                          reward_range=None, target_users=None, start_date=None, end_date=None,
+                          post_time="2026-01-01T00:00:00Z"),
+        ZmxBaselineEntry(uid="z2", title="t2", mechanism_type="交易赛", key_mechanics=None,
+                          reward_range=None, target_users=None, start_date=None, end_date=None,
+                          post_time="2026-01-02T00:00:00Z"),
     ]
     raw = json.dumps({
         "batch_summary": "s",

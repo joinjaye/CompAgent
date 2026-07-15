@@ -1,0 +1,550 @@
+
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); color: var(--text-primary); }
+
+.dash { padding: 0 0 2rem; }
+
+/* Top bar */
+.topbar { display: flex; align-items: center; justify-content: space-between; padding: 1rem 1.25rem 0; border-bottom: 0.5px solid var(--border); }
+.topbar-left { display: flex; align-items: baseline; gap: 10px; }
+.topbar-title { font-size: 15px; font-weight: 500; }
+.topbar-date { font-size: 12px; color: var(--text-muted); }
+.topbar-right { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text-success); display: inline-block; }
+
+/* Locale tabs */
+.locale-tabs { display: flex; gap: 0; padding: 0 1.25rem; border-bottom: 0.5px solid var(--border); margin-top: 0; overflow-x: auto; }
+.locale-tab { padding: 10px 14px; font-size: 13px; font-weight: 400; color: var(--text-secondary); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: color 0.15s; user-select: none; }
+.locale-tab:hover { color: var(--text-primary); }
+.locale-tab.active { color: var(--text-accent); border-bottom: 2px solid var(--text-accent); font-weight: 500; }
+.locale-tab.global { color: var(--text-muted); }
+.locale-tab.global.active { color: var(--text-accent); }
+
+/* Section label */
+.section-label { font-size: 11px; font-weight: 500; color: var(--text-muted); letter-spacing: 0.04em; text-transform: uppercase; padding: 1.25rem 1.25rem 0.5rem; }
+
+/* Overview cards */
+.overview-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; padding: 0 1.25rem; }
+.stat-card { background: var(--surface-1); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 0.75rem 0.875rem; }
+.stat-label { font-size: 11px; color: var(--text-muted); margin-bottom: 4px; }
+.stat-value { font-size: 22px; font-weight: 500; line-height: 1.1; }
+.stat-value.accent { color: var(--text-accent); }
+.stat-value.warn { color: var(--text-warning); }
+.stat-value.success { color: var(--text-success); }
+.stat-delta { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+/* Highlights */
+.highlights-list { padding: 0 1.25rem; display: flex; flex-direction: column; gap: 6px; }
+.highlight-card { background: var(--surface-1); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 0.7rem 0.875rem; display: flex; align-items: flex-start; gap: 10px; cursor: pointer; transition: border-color 0.15s; }
+.highlight-card:hover { border-color: var(--border-strong); }
+.highlight-card.danger-border { border-left: 3px solid var(--fill-danger); border-radius: 0 var(--radius) var(--radius) 0; }
+.hl-source { font-size: 11px; font-weight: 500; background: var(--bg-accent); color: var(--text-accent); padding: 2px 7px; border-radius: 10px; white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
+.hl-body { flex: 1; min-width: 0; }
+.hl-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hl-summary { font-size: 12px; color: var(--text-secondary); margin-top: 2px; line-height: 1.45; }
+.hl-meta { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+.tag { font-size: 11px; padding: 1px 7px; border-radius: 10px; font-weight: 400; }
+.tag-missing { background: var(--bg-danger); color: var(--text-danger); }
+.tag-diff { background: var(--bg-warning); color: var(--text-warning); }
+.tag-same { background: var(--surface-1); color: var(--text-muted); border: 0.5px solid var(--border); }
+.tag-exclusive { background: var(--bg-pro); color: var(--text-pro); }
+.tag-campaign { background: var(--bg-accent); color: var(--text-accent); }
+.tag-product { background: var(--bg-success); color: var(--text-success); }
+.tag-listing { background: var(--bg-warning); color: var(--text-warning); }
+.tag-delisting { background: var(--bg-danger); color: var(--text-danger); }
+.hl-time { font-size: 11px; color: var(--text-muted); }
+.priority-high { width: 6px; height: 6px; border-radius: 50%; background: var(--fill-danger); flex-shrink: 0; margin-top: 5px; }
+
+/* CEX section */
+.cex-header { display: flex; align-items: center; justify-content: space-between; padding: 0 1.25rem; }
+.cex-filter { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.filter-btn { font-size: 11px; padding: 3px 10px; border-radius: 10px; border: 0.5px solid var(--border); background: transparent; color: var(--text-secondary); cursor: pointer; transition: all 0.12s; user-select: none; }
+.filter-btn:hover { border-color: var(--border-strong); color: var(--text-primary); }
+.filter-btn.active { background: var(--fill-accent); color: var(--on-accent); border-color: var(--fill-accent); }
+
+.cex-tabs { display: flex; gap: 0; padding: 0 1.25rem; border-bottom: 0.5px solid var(--border); margin-bottom: 0; }
+.cex-tab { padding: 7px 12px; font-size: 12px; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; transition: color 0.12s; }
+.cex-tab:hover { color: var(--text-primary); }
+.cex-tab.active { color: var(--text-primary); border-bottom: 2px solid var(--border-stronger); font-weight: 500; }
+
+.cex-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.cex-table thead th { padding: 7px 1.25rem; text-align: left; font-size: 11px; font-weight: 400; color: var(--text-muted); border-bottom: 0.5px solid var(--border); position: sticky; top: 0; background: var(--surface-2); }
+.cex-table tbody tr { border-bottom: 0.5px solid var(--border); cursor: pointer; transition: background 0.1s; }
+.cex-table tbody tr:hover { background: var(--surface-1); }
+.cex-table tbody td { padding: 8px 1.25rem; }
+.cex-table .td-source { width: 80px; }
+.cex-table .td-title { max-width: 260px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; color: var(--text-primary); }
+.cex-table .td-time { width: 80px; color: var(--text-muted); }
+.cex-table .td-tag { width: 90px; }
+.source-pill { font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 10px; background: var(--surface-1); border: 0.5px solid var(--border); color: var(--text-secondary); }
+
+/* Insights bar */
+.insights-bar { margin: 0.5rem 1.25rem 0; background: var(--surface-1); border: 0.5px solid var(--border); border-radius: var(--radius); padding: 0.7rem 0.875rem; font-size: 13px; color: var(--text-secondary); line-height: 1.6; }
+.insights-bar strong { color: var(--text-primary); font-weight: 500; }
+
+/* Global tab modules */
+.global-section { padding: 0 1.25rem; }
+.global-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.global-card { background: var(--surface-1); border: 0.5px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.global-card-header { padding: 0.6rem 0.875rem; border-bottom: 0.5px solid var(--border); font-size: 12px; font-weight: 500; color: var(--text-secondary); }
+.global-full { grid-column: 1 / -1; }
+.rank-row { display: flex; align-items: center; padding: 7px 0.875rem; border-bottom: 0.5px solid var(--border); gap: 10px; font-size: 12px; }
+.rank-row:last-child { border-bottom: none; }
+.rank-num { width: 18px; color: var(--text-muted); font-size: 11px; flex-shrink: 0; }
+.rank-bar-wrap { flex: 1; background: var(--surface-0); border-radius: 2px; height: 5px; overflow: hidden; }
+.rank-bar { height: 5px; border-radius: 2px; background: var(--fill-accent); }
+.rank-count { width: 30px; text-align: right; color: var(--text-muted); font-size: 11px; }
+.rank-source { width: 60px; }
+.missing-row { display: flex; align-items: center; padding: 7px 0.875rem; border-bottom: 0.5px solid var(--border); gap: 8px; font-size: 12px; }
+.missing-row:last-child { border-bottom: none; }
+.missing-title { flex: 1; color: var(--text-primary); font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.region-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.region-table th { padding: 6px 0.875rem; text-align: left; font-size: 11px; font-weight: 400; color: var(--text-muted); border-bottom: 0.5px solid var(--border); }
+.region-table td { padding: 6px 0.875rem; border-bottom: 0.5px solid var(--border); }
+.region-table tr:last-child td { border-bottom: none; }
+.locale-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 2px; }
+.locale-dot.en { background: var(--fill-accent); }
+.locale-dot.fr { background: var(--fill-success); }
+.locale-dot.vn { background: var(--fill-warning); }
+.locale-dot.id { background: var(--fill-pro); }
+.locale-dot.asia { background: var(--fill-danger); }
+.excl-badge { font-size: 10px; padding: 1px 5px; border-radius: 6px; background: var(--bg-pro); color: var(--text-pro); }
+
+/* Placeholder */
+.placeholder-card { margin: 0 1.25rem; background: var(--surface-1); border: 0.5px dashed var(--border-strong); border-radius: var(--radius); padding: 1.5rem; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 13px; }
+
+/* Tab pane */
+.tab-pane { display: none; flex-direction: column; gap: 1rem; padding-top: 0.25rem; }
+.tab-pane.active { display: flex; }
+
+/* Scrollable table wrapper */
+.table-wrap { overflow-x: auto; }
+</style>
+
+<h2 class="sr-only">Phase 7 竞品情报看板线框图</h2>
+
+<div class="dash">
+  <div class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-title">竞品情报看板</span>
+      <span class="topbar-date">2026-07-15</span>
+    </div>
+    <div class="topbar-right">
+      <span class="status-dot"></span>
+      <span>上次更新 02:18 UTC</span>
+    </div>
+  </div>
+
+  <div class="locale-tabs" id="localeTabs">
+    <div class="locale-tab active" data-tab="en">EN</div>
+    <div class="locale-tab" data-tab="fr">FR</div>
+    <div class="locale-tab" data-tab="vn">VN</div>
+    <div class="locale-tab" data-tab="id">ID</div>
+    <div class="locale-tab" data-tab="asia">EN-Asia</div>
+    <div class="locale-tab global" data-tab="global">全局视角</div>
+  </div>
+
+  <!-- EN / FR / VN / ID / Asia share same layout, data swaps -->
+  <div id="pane-en" class="tab-pane active">
+
+    <div>
+      <div class="section-label">今日概览</div>
+      <div class="overview-grid">
+        <div class="stat-card">
+          <div class="stat-label">今日抓取</div>
+          <div class="stat-value">312</div>
+          <div class="stat-delta">5 源 × EN</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">新增</div>
+          <div class="stat-value accent">28</div>
+          <div class="stat-delta">↑ 较昨日 +4</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">内容变更</div>
+          <div class="stat-value warn">6</div>
+          <div class="stat-delta">规则/奖励改动</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">已推送</div>
+          <div class="stat-value success">11</div>
+          <div class="stat-delta">→ 飞书 EN 群</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">覆盖竞品</div>
+          <div class="stat-value">5</div>
+          <div class="stat-delta">/ 5 个活跃</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">ZMX 缺失</div>
+          <div class="stat-value" style="color:var(--text-danger)">7</div>
+          <div class="stat-delta">高优先级 3</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="section-label">今日重点 · priority 高</div>
+      <div class="highlights-list">
+        <div class="highlight-card danger-border">
+          <div class="priority-high"></div>
+          <div class="hl-source">Bitunix</div>
+          <div class="hl-body">
+            <div class="hl-title">Bitunix World Cup Trading Competition — 500,000 USDT Prize Pool</div>
+            <div class="hl-summary">赛事制活动，累计交易量排名返奖，门槛 100 USDT 入金；奖池规模是 ZMX 当前同类活动 3×</div>
+            <div class="hl-meta">
+              <span class="tag tag-missing">ZMX 缺失</span>
+              <span class="tag tag-campaign">campaign</span>
+              <span class="hl-time">09:24</span>
+            </div>
+          </div>
+        </div>
+        <div class="highlight-card danger-border">
+          <div class="priority-high"></div>
+          <div class="hl-source">Weex</div>
+          <div class="hl-body">
+            <div class="hl-title">WXT Staking 3.0 — APY 提升至 38%，新增自动复投</div>
+            <div class="hl-summary">平台币质押玩法升级，引入自动复投机制，ZMX 无对应质押产品</div>
+            <div class="hl-meta">
+              <span class="tag tag-missing">ZMX 缺失</span>
+              <span class="tag tag-product">product</span>
+              <span class="hl-time">11:05</span>
+            </div>
+          </div>
+        </div>
+        <div class="highlight-card">
+          <div class="priority-high" style="background:var(--fill-warning)"></div>
+          <div class="hl-source">BingX</div>
+          <div class="hl-body">
+            <div class="hl-title">Copy Trading — Commission Split Rules Updated</div>
+            <div class="hl-summary">跟单分成比例从 8/2 改为 7/3（跟单者获益更高），规则变更影响现有仓位</div>
+            <div class="hl-meta">
+              <span class="tag tag-diff">ZMX 玩法不同</span>
+              <span class="tag tag-product">product</span>
+              <span class="hl-time">变更 · 14:30</span>
+            </div>
+          </div>
+        </div>
+        <div class="highlight-card">
+          <div class="priority-high"></div>
+          <div class="hl-source">Lbank</div>
+          <div class="hl-body">
+            <div class="hl-title">PEPE2.0/USDT Perpetual Futures — New Listing</div>
+            <div class="hl-summary">Lbank 上线 PEPE2.0 永续合约，ZMX 尚未上线同标的</div>
+            <div class="hl-meta">
+              <span class="tag tag-missing">ZMX 缺失</span>
+              <span class="tag tag-listing">listing</span>
+              <span class="hl-time">08:00</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="cex-header">
+        <div class="section-label" style="padding:0">CEX 动态</div>
+        <div class="cex-filter" id="sourceFilter">
+          <span style="font-size:11px;color:var(--text-muted)">筛选：</span>
+          <button class="filter-btn active" data-src="all">全部</button>
+          <button class="filter-btn" data-src="Bitunix">Bitunix</button>
+          <button class="filter-btn" data-src="Weex">Weex</button>
+          <button class="filter-btn" data-src="BingX">BingX</button>
+          <button class="filter-btn" data-src="Phemex">Phemex</button>
+          <button class="filter-btn" data-src="Lbank">Lbank</button>
+        </div>
+      </div>
+      <div class="cex-tabs" id="cexTabs">
+        <div class="cex-tab active" data-cat="campaign">活动 Campaign <span style="color:var(--text-muted);font-weight:400">(12)</span></div>
+        <div class="cex-tab" data-cat="product">产品 Product <span style="color:var(--text-muted);font-weight:400">(8)</span></div>
+        <div class="cex-tab" data-cat="listing">上币 Listing <span style="color:var(--text-muted);font-weight:400">(5)</span></div>
+        <div class="cex-tab" data-cat="delisting">下架 Delisting <span style="color:var(--text-muted);font-weight:400">(3)</span></div>
+      </div>
+      <div class="table-wrap">
+        <table class="cex-table" id="cexTable">
+          <thead>
+            <tr>
+              <th class="td-source">来源</th>
+              <th>标题</th>
+              <th class="td-time">时间</th>
+              <th class="td-tag">差异标签</th>
+              <th class="td-tag">状态</th>
+            </tr>
+          </thead>
+          <tbody id="cexBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="insights-bar">
+      今日共监测到 <strong>28</strong> 条 EN 竞品动态，其中新增活动 <strong>12</strong> 个，内容变更 <strong>6</strong> 个，重点 <strong>7</strong> 个。<strong>Bitunix</strong> 本周最活跃（38 条）。ZMX 缺失高优项 <strong>3</strong> 条，建议运营关注。
+    </div>
+
+  </div>
+
+  <!-- FR pane -->
+  <div id="pane-fr" class="tab-pane">
+    <div>
+      <div class="section-label">今日概览</div>
+      <div class="overview-grid">
+        <div class="stat-card"><div class="stat-label">今日抓取</div><div class="stat-value">87</div><div class="stat-delta">3 源 × FR</div></div>
+        <div class="stat-card"><div class="stat-label">新增</div><div class="stat-value accent">9</div><div class="stat-delta">↑ 较昨日 +2</div></div>
+        <div class="stat-card"><div class="stat-label">内容变更</div><div class="stat-value warn">1</div><div class="stat-delta"></div></div>
+        <div class="stat-card"><div class="stat-label">已推送</div><div class="stat-value success">4</div><div class="stat-delta">→ 飞书 FR 群</div></div>
+        <div class="stat-card"><div class="stat-label">覆盖竞品</div><div class="stat-value">3</div><div class="stat-delta">Bitunix·Weex·Phemex</div></div>
+        <div class="stat-card"><div class="stat-label">地区独占</div><div class="stat-value" style="color:var(--text-pro)">2</div><div class="stat-delta">FR-only 公告</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="section-label">今日重点 · priority 高</div>
+      <div class="highlights-list">
+        <div class="highlight-card danger-border">
+          <div class="priority-high"></div>
+          <div class="hl-source">Weex</div>
+          <div class="hl-body">
+            <div class="hl-title">WEEX Futures — Contrat perpétuel HUMA/USDT</div>
+            <div class="hl-summary">法语地区独占上线公告，EN 尚未推送；ZMX 无 HUMA 合约</div>
+            <div class="hl-meta">
+              <span class="tag tag-missing">ZMX 缺失</span>
+              <span class="tag tag-exclusive">地区独占</span>
+              <span class="hl-time">10:15</span>
+            </div>
+          </div>
+        </div>
+        <div class="highlight-card">
+          <div class="priority-high" style="background:var(--fill-warning)"></div>
+          <div class="hl-source">Bitunix</div>
+          <div class="hl-body">
+            <div class="hl-title">Concours de Trading — Récompenses VIP pendant 30 jours</div>
+            <div class="hl-summary">与 EN 活动同类但奖励结构不同，FR 限定 VIP 权益加码</div>
+            <div class="hl-meta">
+              <span class="tag tag-diff">ZMX 玩法不同</span>
+              <span class="tag tag-campaign">campaign</span>
+              <span class="hl-time">08:40</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="insights-bar">今日共监测到 <strong>9</strong> 条 FR 竞品动态，其中新增活动 <strong>4</strong> 个，内容变更 <strong>1</strong> 个，重点 <strong>3</strong> 个。发现 <strong>2</strong> 条地区独占公告。<strong>Weex</strong> 本周 FR 最活跃。</div>
+  </div>
+
+  <!-- VN pane -->
+  <div id="pane-vn" class="tab-pane">
+    <div><div class="section-label">今日概览</div>
+    <div class="overview-grid">
+      <div class="stat-card"><div class="stat-label">今日抓取</div><div class="stat-value">61</div><div class="stat-delta">2 源 × VN</div></div>
+      <div class="stat-card"><div class="stat-label">新增</div><div class="stat-value accent">5</div><div class="stat-delta">BingX + Lbank</div></div>
+      <div class="stat-card"><div class="stat-label">内容变更</div><div class="stat-value warn">0</div><div class="stat-delta"></div></div>
+      <div class="stat-card"><div class="stat-label">已推送</div><div class="stat-value success">3</div><div class="stat-delta">→ 飞书 VN 群</div></div>
+      <div class="stat-card"><div class="stat-label">覆盖竞品</div><div class="stat-value">2</div><div class="stat-delta">BingX · Lbank</div></div>
+      <div class="stat-card"><div class="stat-label">地区独占</div><div class="stat-value" style="color:var(--text-pro)">1</div><div class="stat-delta">VN-only</div></div>
+    </div></div>
+    <div class="insights-bar">今日共监测到 <strong>5</strong> 条 VN 竞品动态，发现 <strong>1</strong> 条 Vietnam 地区独占公告（BingX P2P 限时活动），已推送至 VN 飞书群。</div>
+  </div>
+
+  <!-- ID pane -->
+  <div id="pane-id" class="tab-pane">
+    <div><div class="section-label">今日概览</div>
+    <div class="overview-grid">
+      <div class="stat-card"><div class="stat-label">今日抓取</div><div class="stat-value">73</div><div class="stat-delta">3 源 × ID</div></div>
+      <div class="stat-card"><div class="stat-label">新增</div><div class="stat-value accent">7</div><div class="stat-delta"></div></div>
+      <div class="stat-card"><div class="stat-label">内容变更</div><div class="stat-value warn">2</div><div class="stat-delta"></div></div>
+      <div class="stat-card"><div class="stat-label">已推送</div><div class="stat-value success">4</div><div class="stat-delta">→ 飞书 ID 群</div></div>
+      <div class="stat-card"><div class="stat-label">覆盖竞品</div><div class="stat-value">3</div><div class="stat-delta">Bitunix·Lbank·Zoomex</div></div>
+      <div class="stat-card"><div class="stat-label">⚠️ Lbank</div><div class="stat-value" style="color:var(--text-warning)">10</div><div class="stat-delta">窗口已满，或有遗漏</div></div>
+    </div></div>
+    <div class="insights-bar">今日共监测到 <strong>7</strong> 条 ID 竞品动态。⚠️ Lbank ID 本次 10 条全为新增，可能有更多条目被挤出 10 条窗口，建议人工复查。</div>
+  </div>
+
+  <!-- EN-Asia pane -->
+  <div id="pane-asia" class="tab-pane">
+    <div><div class="section-label">今日概览</div>
+    <div class="overview-grid">
+      <div class="stat-card"><div class="stat-label">今日抓取</div><div class="stat-value">14</div><div class="stat-delta">Zoomex EN-Asia</div></div>
+      <div class="stat-card"><div class="stat-label">新增</div><div class="stat-value accent">2</div><div class="stat-delta">Exclusive Events</div></div>
+      <div class="stat-card"><div class="stat-label">内容变更</div><div class="stat-value warn">0</div><div class="stat-delta"></div></div>
+      <div class="stat-card"><div class="stat-label">已推送</div><div class="stat-value success">0</div><div class="stat-delta">ZMX 自身数据</div></div>
+      <div class="stat-card"><div class="stat-label">覆盖竞品</div><div class="stat-value">0</div><div class="stat-delta">无竞品配置此 locale</div></div>
+      <div class="stat-card"><div class="stat-label">基线专属</div><div class="stat-value" style="color:var(--text-pro)">2</div><div class="stat-delta">Exclusive Events</div></div>
+    </div></div>
+    <div class="insights-bar">EN-Asia 当前仅 Zoomex 自身配置此 locale（Exclusive Events 专属分类）。竞品均无 EN-Asia 版本，本 tab 仅用于 ZMX 基线观察，无需推送。</div>
+  </div>
+
+  <!-- Global pane -->
+  <div id="pane-global" class="tab-pane">
+
+    <div class="global-section">
+      <div class="section-label" style="padding-left:0">各竞品活跃度 · 近 7 天</div>
+      <div class="global-card">
+        <div class="global-card-header">公告数排名</div>
+        <div class="rank-row"><span class="rank-num">1</span><span class="rank-source source-pill">Bitunix</span><div class="rank-bar-wrap"><div class="rank-bar" style="width:100%"></div></div><span class="rank-count">214</span></div>
+        <div class="rank-row"><span class="rank-num">2</span><span class="rank-source source-pill">Weex</span><div class="rank-bar-wrap"><div class="rank-bar" style="width:78%"></div></div><span class="rank-count">167</span></div>
+        <div class="rank-row"><span class="rank-num">3</span><span class="rank-source source-pill">BingX</span><div class="rank-bar-wrap"><div class="rank-bar" style="width:62%"></div></div><span class="rank-count">133</span></div>
+        <div class="rank-row"><span class="rank-num">4</span><span class="rank-source source-pill">Lbank</span><div class="rank-bar-wrap"><div class="rank-bar" style="width:41%"></div></div><span class="rank-count">88</span></div>
+        <div class="rank-row"><span class="rank-num">5</span><span class="rank-source source-pill">Phemex</span><div class="rank-bar-wrap"><div class="rank-bar" style="width:29%"></div></div><span class="rank-count">63</span></div>
+      </div>
+    </div>
+
+    <div class="global-section">
+      <div class="section-label" style="padding-left:0">ZMX 缺失汇总 · 高优先级</div>
+      <div class="global-card">
+        <div class="global-card-header">按 category 分类</div>
+        <div class="missing-row"><span class="tag tag-campaign" style="flex-shrink:0">campaign</span><span class="missing-title">Bitunix World Cup Trading Competition</span><span class="tag tag-missing" style="flex-shrink:0">ZMX 缺失</span></div>
+        <div class="missing-row"><span class="tag tag-campaign" style="flex-shrink:0">campaign</span><span class="missing-title">Phemex Mega Bonus — Deposit & Earn</span><span class="tag tag-missing" style="flex-shrink:0">ZMX 缺失</span></div>
+        <div class="missing-row"><span class="tag tag-product" style="flex-shrink:0">product</span><span class="missing-title">WXT Staking 3.0 — APY 38% + 自动复投</span><span class="tag tag-missing" style="flex-shrink:0">ZMX 缺失</span></div>
+        <div class="missing-row"><span class="tag tag-listing" style="flex-shrink:0">listing</span><span class="missing-title">PEPE2.0/USDT Perpetual — Lbank</span><span class="tag tag-missing" style="flex-shrink:0">ZMX 缺失</span></div>
+      </div>
+    </div>
+
+    <div class="global-section">
+      <div class="section-label" style="padding-left:0">跨区域活动对比 · 地区独占标记</div>
+      <div class="global-card global-full">
+        <div class="global-card-header">group 粒度 · 今日新增</div>
+        <div class="table-wrap">
+          <table class="region-table">
+            <thead>
+              <tr>
+                <th>标题（group）</th>
+                <th>来源</th>
+                <th>EN</th><th>FR</th><th>VN</th><th>ID</th><th>Asia</th>
+                <th>独占</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="font-size:12px;font-weight:500;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">World Cup Trading Competition</td>
+                <td><span class="source-pill">Bitunix</span></td>
+                <td><span class="locale-dot en"></span></td><td><span class="locale-dot fr"></span></td><td></td><td></td><td></td>
+                <td></td>
+              </tr>
+              <tr>
+                <td style="font-size:12px;font-weight:500;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">HUMA/USDT Perpetual</td>
+                <td><span class="source-pill">Weex</span></td>
+                <td></td><td><span class="locale-dot fr"></span></td><td></td><td></td><td></td>
+                <td><span class="excl-badge">FR only</span></td>
+              </tr>
+              <tr>
+                <td style="font-size:12px;font-weight:500;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Copy Trading Rule Update</td>
+                <td><span class="source-pill">BingX</span></td>
+                <td><span class="locale-dot en"></span></td><td></td><td><span class="locale-dot vn"></span></td><td></td><td></td>
+                <td></td>
+              </tr>
+              <tr>
+                <td style="font-size:12px;font-weight:500;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Vietnam P2P Flash Sale</td>
+                <td><span class="source-pill">BingX</span></td>
+                <td></td><td></td><td><span class="locale-dot vn"></span></td><td></td><td></td>
+                <td><span class="excl-badge">VN only</span></td>
+              </tr>
+              <tr>
+                <td style="font-size:12px;font-weight:500;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">PEPE2.0/USDT Perpetual Listing</td>
+                <td><span class="source-pill">Lbank</span></td>
+                <td><span class="locale-dot en"></span></td><td></td><td><span class="locale-dot vn"></span></td><td><span class="locale-dot id"></span></td><td></td>
+                <td></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="placeholder-card" style="margin-top:0.25rem">
+      <span>行业热点模块 — Phase 2 规划中，待业务定义后启动</span>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const CEX_DATA = {
+  campaign: [
+    { src: 'Bitunix', title: 'World Cup Trading Competition — 500K USDT', time: '09:24', diff: 'missing', status: 'new' },
+    { src: 'Bitunix', title: 'Referral Bonus: Invite 3 Friends +50 USDT', time: '07:10', diff: 'same', status: 'new' },
+    { src: 'Weex', title: 'Summer Trading Battle — Top 10 Share 100K', time: '11:30', diff: 'diff', status: 'new' },
+    { src: 'Phemex', title: 'Mega Bonus — Deposit & Earn Up to 8,888 USDT', time: '06:00', diff: 'missing', status: 'new' },
+    { src: 'Phemex', title: 'Lucky Draw: Trade Futures Win iPhone 16', time: '06:00', diff: 'same', status: 'new' },
+    { src: 'BingX', title: 'Zero Fee Spot Trading Week', time: '08:00', diff: 'same', status: 'changed' },
+    { src: 'Lbank', title: 'Futures Grid Bot Competition — 50K Prize', time: '08:05', diff: 'missing', status: 'new' },
+    { src: 'Bitunix', title: 'VIP Upgrade Reward: Trade More Earn More', time: '10:00', diff: 'diff', status: 'new' },
+    { src: 'Weex', title: 'Daily Check-in Bonus — WXT Airdrop', time: '00:00', diff: 'same', status: 'new' },
+    { src: 'BingX', title: 'Deposit USDT Get 20% APY Flexible Earn', time: '09:00', diff: 'diff', status: 'changed' },
+    { src: 'Phemex', title: 'New User Welcome Pack — 500 USDT Bonus', time: '06:00', diff: 'same', status: 'new' },
+    { src: 'Lbank', title: 'Spot Trading Marathon — Weekly Ranking', time: '08:10', diff: 'missing', status: 'new' },
+  ],
+  product: [
+    { src: 'Weex', title: 'WXT Staking 3.0 — APY 38%, Auto-Compound', time: '11:05', diff: 'missing', status: 'new' },
+    { src: 'BingX', title: 'Copy Trading — Commission Split Updated 7/3', time: '14:30', diff: 'diff', status: 'changed' },
+    { src: 'Bitunix', title: 'Portfolio Margin Mode — Now Available', time: '10:45', diff: 'diff', status: 'new' },
+    { src: 'Phemex', title: 'Earn: Flexible USDC Product Launched', time: '06:00', diff: 'same', status: 'new' },
+    { src: 'Lbank', title: 'Grid Bot Strategy — New Trend Mode', time: '08:00', diff: 'missing', status: 'new' },
+    { src: 'BingX', title: 'API Rate Limit Upgrade — 100 req/10s', time: '09:00', diff: 'same', status: 'new' },
+    { src: 'Bitunix', title: 'Sub-Account Management — Batch Transfer', time: '07:30', diff: 'same', status: 'new' },
+    { src: 'Weex', title: 'Mobile App 4.2 — Dark Mode & Alert Center', time: '12:00', diff: 'diff', status: 'new' },
+  ],
+  listing: [
+    { src: 'Lbank', title: 'PEPE2.0/USDT Perpetual Futures — New Listing', time: '08:00', diff: 'missing', status: 'new' },
+    { src: 'BingX', title: 'NOT/USDT Spot & Perpetual Listing', time: '10:00', diff: 'same', status: 'new' },
+    { src: 'Phemex', title: 'SHIB/USDC Perpetual Contract — Live', time: '06:00', diff: 'same', status: 'new' },
+    { src: 'Weex', title: 'HUMA/USDT Perpetual — Now Available', time: '10:15', diff: 'missing', status: 'new' },
+    { src: 'Bitunix', title: 'New Spot Pair: DOGE/EUR', time: '09:00', diff: 'diff', status: 'new' },
+  ],
+  delisting: [
+    { src: 'BingX', title: 'Delisting: LUNA2/USDT Perpetual on 2026-07-20', time: '09:00', diff: 'na', status: 'new' },
+    { src: 'Phemex', title: 'Spot Trading Halt: UST/USDT Effective Immediately', time: '06:00', diff: 'na', status: 'new' },
+    { src: 'Lbank', title: 'ARDR/USDT — Schedule for Delisting 2026-07-22', time: '08:00', diff: 'na', status: 'new' },
+  ]
+};
+
+const DIFF_LABEL = { missing: ['ZMX 缺失', 'tag-missing'], diff: ['ZMX 玩法不同', 'tag-diff'], same: ['ZMX 已有', 'tag-same'], na: ['不适用', 'tag-same'] };
+const STATUS_LABEL = { new: ['新增', '#fff', 'var(--fill-accent)'], changed: ['变更', '#fff', 'var(--fill-warning)'] };
+
+let currentCat = 'campaign';
+let currentSrc = 'all';
+
+function renderCex() {
+  const data = CEX_DATA[currentCat] || [];
+  const filtered = currentSrc === 'all' ? data : data.filter(r => r.src === currentSrc);
+  const body = document.getElementById('cexBody');
+  body.innerHTML = filtered.map(r => {
+    const [dlabel, dclass] = DIFF_LABEL[r.diff] || ['—', 'tag-same'];
+    const [slabel, scolor, sbg] = STATUS_LABEL[r.status] || ['—', '', ''];
+    return `<tr>
+      <td class="td-source"><span class="source-pill">${r.src}</span></td>
+      <td class="td-title">${r.title}</td>
+      <td class="td-time">${r.time}</td>
+      <td class="td-tag"><span class="tag ${dclass}">${dlabel}</span></td>
+      <td class="td-tag"><span class="tag" style="background:${sbg};color:${scolor};border:none">${slabel}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+document.getElementById('cexTabs').addEventListener('click', e => {
+  const t = e.target.closest('[data-cat]');
+  if (!t) return;
+  document.querySelectorAll('.cex-tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  currentCat = t.dataset.cat;
+  renderCex();
+});
+
+document.getElementById('sourceFilter').addEventListener('click', e => {
+  const t = e.target.closest('[data-src]');
+  if (!t) return;
+  document.querySelectorAll('.filter-btn').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  currentSrc = t.dataset.src;
+  renderCex();
+});
+
+document.getElementById('localeTabs').addEventListener('click', e => {
+  const t = e.target.closest('[data-tab]');
+  if (!t) return;
+  document.querySelectorAll('.locale-tab').forEach(x => x.classList.remove('active'));
+  t.classList.add('active');
+  document.querySelectorAll('.tab-pane').forEach(x => x.classList.remove('active'));
+  document.getElementById('pane-' + t.dataset.tab).classList.add('active');
+});
+
+renderCex();
+</script>
