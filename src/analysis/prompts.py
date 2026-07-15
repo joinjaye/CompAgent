@@ -340,3 +340,75 @@ def build_prompt(
 
     user = render(user_template, variables)
     return BuiltPrompt(system=system, user=user)
+
+
+# ============================================================
+# daily-digest-v1
+#
+# 不同于上面四套（每个 category×locale 一批公告 → 一次分析），这一套的输入不是
+# 公告原文，而是「当天这个 locale 已经产出的全部批次分析结果」（batch_summary +
+# zmx_diff），任务是综合归纳出一段跨类目/跨来源的当日简报，不是重新分析公告。
+# 见 src/analysis/daily_digest.py。
+# ============================================================
+
+SYSTEM_DAILY_DIGEST = (
+    "你是竞品情报平台的日报编辑，负责把当天各个类目已经产出的批次分析结果综合成一段"
+    "给运营/产品团队看的每日简报。你不会看到原始公告正文，只看到每个批次已经写好的"
+    "summary 和 ZMX 差异结论，你的任务是提炼、串联、突出重点，不是重新分析公告本身。"
+    "输出必须是合法 JSON，不包含任何 markdown 标记或解释文字。"
+)
+
+USER_DAILY_DIGEST_TEMPLATE = """\
+【日期】{BATCH_DATE}
+【地区】{LOCALE}
+【本日已产出批次数】{BATCH_COUNT}
+
+【本日批次列表】
+{BATCHES_BLOCK}
+（每条格式：
+[index] 来源：source | 类目：category | 公告数：n | diff_type | priority
+摘要：batch_summary
+ZMX 对比：zmx_diff（如有）
+）
+
+【分析任务】
+请输出以下结构的 JSON：
+{
+  "daily_summary": "3-5 句话的当日综述，串联今天各类目/来源里最重要的信号，指出运营/产品团队今天最该关注什么。禁止逐条复述每个批次，要综合归纳出跨批次的规律或对比（例如「今天多个竞品集中冲刺活动，Bitunix/BingX 均以 USDT 奖池为主，但只有 Lbank 在下架侧有动作」这类归纳性判断，不是把每条 batch_summary 抄一遍）。",
+  "priority_focus": "一句话点出今天最优先应该看的 1-2 条，引用具体来源和类目。"
+}
+
+【强制规则】
+1. 只能基于【本日批次列表】里提供的信息做归纳，不能编造列表之外的公告或结论
+2. daily_summary 必须综合多条批次，不是简单罗列或直接复制某一条 batch_summary
+3. 整个输出必须是合法 JSON
+"""
+
+
+def build_batches_block(batches: list[dict]) -> str:
+    """batches 每项需要 source/category/article_count/diff_type/priority/summary/
+    zmx_diff 字段（来自 insights 表已产出的批次，不是 announcements 原文）。"""
+    if not batches:
+        return "（本日无任何批次，不应该发生）"
+    parts = []
+    for i, b in enumerate(batches, start=1):
+        lines = [
+            f"[{i}] 来源：{b['source']} | 类目：{b['category']} | 公告数：{b['article_count']} | "
+            f"diff_type：{b.get('diff_type') or '（无）'} | priority：{b.get('priority') or '（无）'}",
+            f"摘要：{b.get('summary') or '（无）'}",
+        ]
+        if b.get("zmx_diff"):
+            lines.append(f"ZMX 对比：{b['zmx_diff']}")
+        parts.append("\n".join(lines))
+    return "\n\n".join(parts)
+
+
+def build_daily_digest_prompt(locale: str, batch_date: str, batches: list[dict]) -> BuiltPrompt:
+    variables = {
+        "LOCALE": locale,
+        "BATCH_DATE": batch_date,
+        "BATCH_COUNT": str(len(batches)),
+        "BATCHES_BLOCK": build_batches_block(batches),
+    }
+    user = render(USER_DAILY_DIGEST_TEMPLATE, variables)
+    return BuiltPrompt(system=SYSTEM_DAILY_DIGEST, user=user)
