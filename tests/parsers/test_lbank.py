@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from src.parsers.lbank import get_total_count, parse_detail_response, parse_list_response
+from src.parsers.lbank import get_total_count, parse_list_response
 
 FIXTURES_DIR = Path(__file__).resolve().parent.parent / "fixtures"
 
@@ -49,17 +49,3 @@ def test_parse_list_response_returns_empty_on_malformed_payload():
 
 def test_get_total_count_none_on_malformed_payload():
     assert get_total_count({}) is None
-
-
-def test_parse_detail_response_extracts_column_id_and_times():
-    payload = _read_fixture("lbank_api_detail_en.json")
-    detail = parse_detail_response(payload)
-    assert detail is not None
-    assert detail["column_id"] is not None
-    assert detail["create_time_ms"] is not None
-    assert detail["update_time_ms"] is not None
-
-
-def test_parse_detail_response_none_on_malformed_payload():
-    assert parse_detail_response({}) is None
-    assert parse_detail_response({"data": {}}) is None

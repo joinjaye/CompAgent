@@ -193,8 +193,8 @@ sources:
           endpoint: "https://www.weex.com/en/help/sections/49365180202777"
       method: GET
       headers: {}   # 匿名可访问，无需鉴权头；仅用普通浏览器 User-Agent 测试过
-      pagination: {type: query_page, page_size: 65, max_pages: 5}   # daily 增量默认只
-        # 翻前 5 页；--force-full 忽略这个上限，翻到 totalPage 为止
+      pagination: {type: query_page, page_size: 65, max_pages: 2}   # daily 增量默认只
+        # 翻前 2 页；--force-full 忽略这个上限，翻到 totalPage 为止
       rate_limit_ms: 500
       detail_mode: separate_page   # 列表不含正文，需单独请求详情页解析 zendesk-html div
       has_update_time: false
@@ -223,7 +223,7 @@ sources:
           endpoint: "https://www.weex.com/fr/help/sections/49365180202777"
       method: GET
       headers: {}
-      pagination: {type: query_page, page_size: 65, max_pages: 5}
+      pagination: {type: query_page, page_size: 65, max_pages: 2}
       rate_limit_ms: 500
       detail_mode: separate_page
       has_update_time: false
@@ -417,8 +417,8 @@ sources:
       method: GET
       headers: {}
       locale_param: "path"   # 详情页 URL 仍然是 phemex.com/{locale}/announcements/{slug}
-      pagination: {type: page_number, page_size: 20, max_pages: 5}   # daily 增量默认
-        # 只翻前 5 页；--force-full 忽略这个上限，翻到 rows 返回空为止
+      pagination: {type: page_number, page_size: 20, max_pages: 2}   # daily 增量默认
+        # 只翻前 2 页；--force-full 忽略这个上限，翻到 rows 返回空为止
       rate_limit_ms: 500
       detail_mode: separate_api   # 列表接口只有截断 desc，完整正文仍需详情页（window.preloadedData）
       has_update_time: true   # 字段存在，但抽样显示只是发布流程级别的秒级噪音，不可靠
@@ -461,7 +461,7 @@ sources:
       method: GET
       headers: {}
       locale_param: "path"
-      pagination: {type: page_number, page_size: 20, max_pages: 5}
+      pagination: {type: page_number, page_size: 20, max_pages: 2}
       rate_limit_ms: 500
       detail_mode: separate_api
       has_update_time: true
@@ -580,6 +580,10 @@ sources:
     EN:
       endpoint: "https://www.lbank.com/lbk-api/huamao-media-center/notice/latestList"
       detail_endpoint: "https://www.lbank.com/lbk-api/huamao-media-center/notice/content/{code}?noticeCode={code}"
+        # 【2026-07-15 简化】采集器（src/collectors/lbank.py）已不再调用这个
+        # endpoint——updateTime 对 full_scan 策略没有作用，columnId 的精度超过
+        # 下游需要的粒度。字段本身保留（字符串没有错，只是当前未被使用），供以后
+        # 需要更细粒度分类时参考，见 CLAUDE.md「Lbank 真实 API 重写」末尾追加记录。
       lang_header: "en-US"
       locale_path: ""   # 公开文章 URL 前缀（拼 group_id 之外的展示用 url 字段），EN 无前缀
       categories:
@@ -599,20 +603,24 @@ sources:
           category_code: "CO00000063"
       method: POST
       headers: {"Content-Type": "application/json"}
-      pagination: {type: page_number, page_size: 50, max_pages: 5}   # daily 增量默认
-        # 只翻前 5 页；--force-full 忽略这个上限，翻到 resultList 返回空为止
+      pagination: {type: page_number, page_size: 50, max_pages: 2}   # daily 增量默认
+        # 只翻前 2 页；--force-full 忽略这个上限，翻到 resultList 返回空为止
       rate_limit_ms: 500
-      detail_mode: separate_api   # 列表接口已含 content，详情接口只用来补 columnId/updateTime，见上方说明
-      has_update_time: true   # 详情接口 updateTime 可靠（抽样确认非重复历史数据）
+      detail_mode: separate_api   # 【2026-07-15 起字段名不再准确，见上方 detail_endpoint 注释】
+        # 详情接口已不再被调用，采集器不发这次请求；保留这个字段值不改动，避免动到
+        # probe 模块对 detail_mode 的读取语义（只有 "blocked" 是有实际行为的取值）
+      has_update_time: false   # 【2026-07-15 由 true 改为 false】详情接口本身可靠，但已不再调用，
+        # update_time 现在恒为 NULL——这是有意为之（full_scan 策略不依赖它），不是数据缺陷
       strategy: full_scan   # latestList 默认按 noticeId 降序（等价创建顺序），非 updateTime，
         # 不能安全依赖排序做提前退出翻页判断编辑变更（同 Zoomex 批次 2 教训），变更检测交给 content_hash
       field_mapping:
         article_id: noticeId   # 另有 code（长数字字符串），用于详情接口 URL/展示 URL，二者等价
         title: title   # 列表接口字段，已经是干净文本（不带高亮模板标记）
         content: content   # 列表接口字段，纯文本（偶有 HTML 实体），真实抽样确认跟详情接口正文实质一致、非截断
-        post_time: contentShowTime   # 列表接口字段，unix ms；详情接口 createTime 更精确，落库时以详情接口为准
-        update_time: updateTime   # 详情接口字段，unix ms，可靠
-        category: columnId   # 详情接口字段，叶子分类数值 id，可靠（不是 categoryCode 请求参数本身）
+        post_time: contentShowTime   # 列表接口字段，unix ms
+        update_time: updateTime   # 【2026-07-15 起不再落库，见上方 has_update_time 注释】字段名保留供参考
+        category: category_code   # 【2026-07-15 由 columnId 改为 category_code】raw_category 现在
+          # 直接落请求时用的顶层 categoryCode（如 "CO00000053"），不再是详情接口的叶子 columnId
       # 真实验证记录（2026-07-14）：
       #   pageNo=1 vs pageNo=2（pageSize=15，categoryCode=null）：noticeId 完全不重叠
       #     （page1: 17021~17009，page2: 17006~16991）
@@ -649,18 +657,18 @@ sources:
           category_code: "CO00000063"
       method: POST
       headers: {"Content-Type": "application/json"}
-      pagination: {type: page_number, page_size: 50, max_pages: 5}
+      pagination: {type: page_number, page_size: 50, max_pages: 2}
       rate_limit_ms: 500
-      detail_mode: separate_api
-      has_update_time: true
+      detail_mode: separate_api   # 详情接口已不再被调用，见 EN 块注释
+      has_update_time: false   # 2026-07-15 由 true 改为 false，见 EN 块注释
       strategy: full_scan   # 机制与 EN 相同，noticeId/code 跨 locale 一致
       field_mapping:
         article_id: noticeId
         title: title
         content: content
         post_time: contentShowTime
-        update_time: updateTime
-        category: columnId
+        update_time: updateTime   # 不再落库，见 EN 块注释
+        category: category_code   # 2026-07-15 由 columnId 改为 category_code，见 EN 块注释
     ID:
       endpoint: "https://www.lbank.com/lbk-api/huamao-media-center/notice/latestList"
       detail_endpoint: "https://www.lbank.com/lbk-api/huamao-media-center/notice/content/{code}?noticeCode={code}"
@@ -683,18 +691,18 @@ sources:
           category_code: "CO00000063"
       method: POST
       headers: {"Content-Type": "application/json"}
-      pagination: {type: page_number, page_size: 50, max_pages: 5}
+      pagination: {type: page_number, page_size: 50, max_pages: 2}
       rate_limit_ms: 500
-      detail_mode: separate_api
-      has_update_time: true
+      detail_mode: separate_api   # 详情接口已不再被调用，见 EN 块注释
+      has_update_time: false   # 2026-07-15 由 true 改为 false，见 EN 块注释
       strategy: full_scan
       field_mapping:
         article_id: noticeId
         title: title
         content: content
         post_time: contentShowTime
-        update_time: updateTime
-        category: columnId
+        update_time: updateTime   # 不再落库，见 EN 块注释
+        category: category_code   # 2026-07-15 由 columnId 改为 category_code，见 EN 块注释
   zoomex:  # 我方基线，非竞品
     # ============================================================
     # 侦察结论（Phase 1，2026-07-13）：BLOCKED（详见下方"补充侦察"，本次已解除）。
@@ -789,7 +797,7 @@ sources:
       # max_pages: daily 增量（非 --force-full）时最多翻这么多页就停，见
       # src/collectors/zoomex.py 顶部"2026-07-14 补充"说明——已知权衡：不保证捕获
       # 排在窗口外、且被源站编辑过的旧文章，靠定期 --force-full 兜底。
-      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 5}
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 2}
       rate_limit_ms: 500   # 10 次连续请求 500ms 间隔全部 200，无限流
       detail_mode: separate_api   # 列表接口只有 title，正文（content，富文本 JSON）需另调 getArticleById
       has_update_time: true   # gmtUpdatedAt，抽样 10 条全部与 gmtCreatedAt 存在真实差异
@@ -818,7 +826,7 @@ sources:
       # max_pages: daily 增量（非 --force-full）时最多翻这么多页就停，见
       # src/collectors/zoomex.py 顶部"2026-07-14 补充"说明——已知权衡：不保证捕获
       # 排在窗口外、且被源站编辑过的旧文章，靠定期 --force-full 兜底。
-      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 5}
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 2}
       rate_limit_ms: 500
       detail_mode: separate_api
       has_update_time: true
@@ -849,7 +857,7 @@ sources:
       # max_pages: daily 增量（非 --force-full）时最多翻这么多页就停，见
       # src/collectors/zoomex.py 顶部"2026-07-14 补充"说明——已知权衡：不保证捕获
       # 排在窗口外、且被源站编辑过的旧文章，靠定期 --force-full 兜底。
-      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 5}
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 2}
       rate_limit_ms: 500
       detail_mode: separate_api
       has_update_time: true
@@ -878,7 +886,7 @@ sources:
       # max_pages: daily 增量（非 --force-full）时最多翻这么多页就停，见
       # src/collectors/zoomex.py 顶部"2026-07-14 补充"说明——已知权衡：不保证捕获
       # 排在窗口外、且被源站编辑过的旧文章，靠定期 --force-full 兜底。
-      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 5}
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 2}
       rate_limit_ms: 500
       detail_mode: separate_api
       has_update_time: true
@@ -907,7 +915,7 @@ sources:
       # max_pages: daily 增量（非 --force-full）时最多翻这么多页就停，见
       # src/collectors/zoomex.py 顶部"2026-07-14 补充"说明——已知权衡：不保证捕获
       # 排在窗口外、且被源站编辑过的旧文章，靠定期 --force-full 兜底。
-      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 5}
+      pagination: {type: offset, param: "body:pageNum", page_size_param: "body:pageSize", page_size: 30, max_pages: 2}
       rate_limit_ms: 500
       detail_mode: separate_api
       has_update_time: true

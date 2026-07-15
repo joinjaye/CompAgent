@@ -24,7 +24,8 @@ from src.analysis.batch import (
     get_insight,
     list_batch_keys,
 )
-from src.analysis.config import load_analysis_config, load_llm_credentials
+from src.analysis.config import load_analysis_config, load_cursor_credentials, load_llm_credentials
+from src.analysis.cursor_agent import call_llm_cursor_agent
 from src.analysis.llm import (
     call_llm,
     compute_cache_key,
@@ -164,6 +165,7 @@ class RunReport:
     llm_calls: int = 0
     validation_failed: int = 0
     total_tokens: int = 0
+    skipped_call_cap: int = 0
     batches: list[str] = field(default_factory=list)
 
 
@@ -173,16 +175,26 @@ def run(
     sources: Optional[tuple[str, ...]] = None,
     categories: Optional[tuple[str, ...]] = None,
     dry_run: bool = False,
+    provider: Optional[str] = None,
+    max_calls: Optional[int] = None,
 ) -> RunReport:
+    """provider/max_calls 显式传参时覆盖 config/analysis.yaml 的 llm.provider /
+    llm.max_calls_per_run（CLI --provider/--max-calls 用这个覆盖来做一次性试跑，不用
+    每次改 yaml）。
+    """
     batch_date = batch_date or today_utc_date()
     sources = sources or DEFAULT_SOURCES
     cfg = load_analysis_config()
-    credentials = None if dry_run else load_llm_credentials()
+    llm_cfg = cfg.get("llm", {})
+    provider = provider or llm_cfg.get("provider", "openai_http")
+    max_calls_per_run = max_calls if max_calls is not None else llm_cfg.get("max_calls_per_run")
+
+    credentials = None
     if not dry_run:
+        credentials = load_cursor_credentials() if provider == "cursor_agent" else load_llm_credentials()
         credentials.validate()
 
     zmx_cfg = cfg.get("zmx_index", {})
-    llm_cfg = cfg.get("llm", {})
     trunc_cfg = cfg.get("content_truncation", {})
     prompt_versions = cfg.get("prompt_versions", {})
     max_tokens_by_category = llm_cfg.get("max_tokens_by_category", {})
@@ -257,15 +269,30 @@ def run(
             raw_text = cached
             tokens_used = 0
             report.cache_hits += 1
-        else:
-            raw_text, tokens_used = call_llm(
-                prompt.system, prompt.user,
-                credentials=credentials, model=credentials.model,
-                temperature=llm_cfg.get("temperature", 0),
-                max_tokens=max_tokens_by_category.get(key.category, 1500),
-                timeout_s=llm_cfg.get("timeout_s", 60),
-                max_retries=llm_cfg.get("max_retries", 3),
+        elif max_calls_per_run is not None and report.llm_calls >= max_calls_per_run:
+            # 熔断：达到调用次数上限，跳过剩余批次（不写 insight，留到下次重跑；不算失败）
+            logger.warning(
+                "达到 max_calls_per_run=%s，跳过 %s/%s/%s（下次重跑会重新尝试）",
+                max_calls_per_run, key.source, key.category, key.locale,
             )
+            report.skipped_call_cap += 1
+            report.batches.append(f"{key.source}/{key.category}/{key.locale} (skipped: call cap reached)")
+            continue
+        else:
+            if provider == "cursor_agent":
+                raw_text, tokens_used = call_llm_cursor_agent(
+                    prompt.system, prompt.user,
+                    api_key=credentials.api_key, model=credentials.model,
+                )
+            else:
+                raw_text, tokens_used = call_llm(
+                    prompt.system, prompt.user,
+                    credentials=credentials, model=credentials.model,
+                    temperature=llm_cfg.get("temperature", 0),
+                    max_tokens=max_tokens_by_category.get(key.category, 1500),
+                    timeout_s=llm_cfg.get("timeout_s", 60),
+                    max_retries=llm_cfg.get("max_retries", 3),
+                )
             set_cached_response(conn, cache_key, raw_text)
             report.llm_calls += 1
             report.total_tokens += tokens_used or 0
@@ -299,6 +326,11 @@ def main() -> None:
     parser.add_argument("--source", help="逗号分隔，默认 Bitunix,Weex")
     parser.add_argument("--category", help="逗号分隔，默认全部（campaign/product/listing/delisting）")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--provider", choices=["openai_http", "cursor_agent"],
+                         help="覆盖 config/analysis.yaml 的 llm.provider，一次性试跑用")
+    parser.add_argument("--max-calls", type=int,
+                         help="覆盖 config/analysis.yaml 的 llm.max_calls_per_run，"
+                              "达到这个调用次数后跳过剩余批次（不算失败，留到下次重跑）")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -307,11 +339,15 @@ def main() -> None:
     try:
         sources = tuple(args.source.split(",")) if args.source else None
         categories = tuple(args.category.split(",")) if args.category else None
-        report = run(conn, batch_date=args.date, sources=sources, categories=categories, dry_run=args.dry_run)
+        report = run(
+            conn, batch_date=args.date, sources=sources, categories=categories, dry_run=args.dry_run,
+            provider=args.provider, max_calls=args.max_calls,
+        )
         if not args.dry_run:
             conn.commit()
         print(f"分析批次数：analyzed={report.analyzed} derived={report.derived} "
               f"cache_hits={report.cache_hits} llm_calls={report.llm_calls} "
+              f"skipped_call_cap={report.skipped_call_cap} "
               f"validation_failed={report.validation_failed} total_tokens={report.total_tokens}")
         for b in report.batches:
             print(f"  - {b}")

@@ -5,12 +5,12 @@ HTTP 层，不发真实请求；列表/详情解析用真实抓取的 fixture
 
 覆盖：
 - fetch_list()：真分页（pageNo 递增直到 max_pages 或空页停止）、字段映射、
-  content 直接来自列表接口（不依赖详情接口）
+  content 直接来自列表接口
 - force_full 不再是 no-op：忽略 max_pages，翻到空页为止
-- fetch_detail()：只补 update_time/category_raw（columnId），不覆盖
-  content/title
-- normalize()：raw_category 优先用详情接口 columnId，详情失败时兜底退回
-  categoryCode；group_id 用 noticeId
+- fetch_detail()：【2026-07-15 简化】不再发详情请求，恒等函数（原样返回 item，
+  不改 update_time/category_raw/content/title 任何字段）
+- normalize()：raw_category 恒等于请求时用的顶层 category_code，不再依赖详情
+  接口；group_id 用 noticeId
 - run() 端到端幂等：full_scan 策略不写 crawl_state，靠 content_hash 判断
   unchanged
 """
@@ -52,10 +52,6 @@ def db_path(tmp_path):
 
 def _list_fixture() -> dict:
     return json.loads((FIXTURES / "lbank_api_latestlist_new_listings_en.json").read_text(encoding="utf-8"))
-
-
-def _detail_fixture() -> dict:
-    return json.loads((FIXTURES / "lbank_api_detail_en.json").read_text(encoding="utf-8"))
 
 
 def _empty_page() -> dict:
@@ -154,9 +150,13 @@ def test_fetch_list_returns_empty_on_malformed_response(monkeypatch):
 
 # -------------------------------------------------------------- fetch_detail ----
 
-def test_fetch_detail_only_patches_update_time_and_category(monkeypatch):
-    detail_payload = _detail_fixture()
-    monkeypatch.setattr("src.collectors.lbank.fetch_json", lambda url, **kw: detail_payload)
+def test_fetch_detail_is_a_no_op(monkeypatch):
+    # 2026-07-15 简化后 fetch_detail 不再发任何请求；如果代码回归到发请求，
+    # 这里 monkeypatch 一个会抛异常的 fetch_json 能第一时间发现。
+    def _boom(url, **kw):
+        raise AssertionError("fetch_detail 不应该发任何网络请求")
+
+    monkeypatch.setattr("src.collectors.lbank.fetch_json", _boom)
 
     collector = LbankCollector("EN", CFG, "new_listings", "CO00000053")
     raw = RawItem(
@@ -165,47 +165,38 @@ def test_fetch_detail_only_patches_update_time_and_category(monkeypatch):
     )
     result = collector.fetch_detail(raw)
 
-    assert result.title == "original title"  # 不被详情接口覆盖
-    assert result.content == "original content"  # 不被详情接口覆盖（详情接口 content 是 URL，不用）
-    assert result.update_time is not None
-    assert result.category_raw is not None
-
-
-def test_fetch_detail_handles_parse_failure_gracefully(monkeypatch):
-    monkeypatch.setattr("src.collectors.lbank.fetch_json", lambda url, **kw: {})
-
-    collector = LbankCollector("EN", CFG, "new_listings", "CO00000053")
-    raw = RawItem(article_id=1, title="old", content="old content", extra={"code": "x"})
-    result = collector.fetch_detail(raw)
-
-    assert result.title == "old"
-    assert result.content == "old content"
+    assert result is raw
+    assert result.title == "original title"
+    assert result.content == "original content"
     assert result.update_time is None
+    assert result.category_raw is None
 
 
 # ---------------------------------------------------------------- normalize ----
 
-def test_normalize_uses_detail_column_id_as_raw_category():
+def test_normalize_uses_category_code_as_raw_category():
     collector = LbankCollector("EN", CFG, "new_listings", "CO00000053")
     raw = RawItem(
         article_id=17020, title="t", content="hello",
-        post_time="2026-07-14T13:20:00Z", update_time="2026-07-14T13:20:00Z",
-        category_raw=54, extra={"code": "2077027077202116608"},
+        post_time="2026-07-14T13:20:00Z", extra={"code": "2077027077202116608"},
     )
 
     ann = collector.normalize(raw)
 
     assert ann.source == "Lbank"
     assert ann.group_id == "lbank_17020"
-    assert ann.raw_category == "54"
+    assert ann.raw_category == "CO00000053"
     assert ann.url == "https://www.lbank.com/support/articles/2077027077202116608"
     assert ann.content == "hello"
+    assert ann.update_time is None
 
 
-def test_normalize_falls_back_to_category_code_when_detail_failed():
+def test_normalize_raw_category_ignores_any_leftover_category_raw():
+    # category_raw 不再被 fetch_detail 设置，但即使某个上游意外传了值，
+    # normalize() 也不应该再读它——raw_category 恒等于顶层 category_code。
     collector = LbankCollector("EN", CFG, "new_listings", "CO00000053")
     raw = RawItem(
-        article_id=17020, title="t", content="hello", extra={"code": "abc"}, category_raw=None,
+        article_id=17020, title="t", content="hello", extra={"code": "abc"}, category_raw=54,
     )
 
     ann = collector.normalize(raw)
@@ -235,11 +226,11 @@ def test_normalize_handles_missing_content():
 
 def test_run_is_idempotent_via_content_hash(db_path, monkeypatch):
     list_fixture = _list_fixture()
-    detail_fixture = _detail_fixture()
 
     def fake_fetch(url, **kw):
-        if "detail" in url or "content" in url:
-            return detail_fixture
+        # fetch_detail 不再发请求，这里只需要处理列表接口；如果代码回归到调用
+        # 详情接口，这个 fake_fetch 没有匹配分支会自然抛 KeyError/JSONDecodeError
+        # 而不是静默返回错误数据，等同于一个隐式的回归检测。
         body = json.loads(kw["body"])
         return list_fixture if body["pageNo"] == 1 else _empty_page()
 

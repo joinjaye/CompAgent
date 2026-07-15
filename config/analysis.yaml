@@ -11,6 +11,14 @@
 # ============================================================
 
 llm:
+  provider: openai_http   # openai_http（默认，src/analysis/llm.py）| cursor_agent
+                           # （2026-07-15 新增，src/analysis/cursor_agent.py，走 cursor_sdk
+                           # 的 Agent.prompt()，不是 OpenAI 兼容协议，见该文件顶部注释）
+  max_calls_per_run: null # 熔断：null 不限制。cursor_agent 拿不到真实美元金额（RunResult
+                           # 只有 token 用量），用调用次数近似控制花费，达到这个数就停止
+                           # 对剩余批次发起新的 LLM 调用（已产出的照常入库，跳过的批次留到
+                           # 下次重跑，不是失败）。openai_http 理论上也认这个字段，但目前
+                           # 没有真实需要用到。
   temperature: 0          # 全部 prompt 要求输出稳定，固定为 0
   timeout_s: 60
   max_retries: 3

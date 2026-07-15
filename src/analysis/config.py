@@ -70,3 +70,28 @@ def load_llm_credentials(env_path: Path | str = ENV_PATH) -> LlmCredentials:
         api_base=env.get("LLM_API_BASE") or os.environ.get("LLM_API_BASE"),
         model=env.get("LLM_MODEL") or os.environ.get("LLM_MODEL"),
     )
+
+
+class CursorCredentials:
+    """cursor_sdk（Cursor Background Agent）凭证，跟 LlmCredentials 分开——不是同一套
+    协议，字段也不同（没有 api_base，Agent.prompt() 固定走 cursor_sdk 内置的 bridge）。
+    """
+
+    def __init__(self, api_key: Optional[str], model: Optional[str]):
+        self.api_key = api_key
+        self.model = model
+
+    def validate(self) -> None:
+        missing = [name for name, val in (("CURSOR_API_KEY", self.api_key),) if not val]
+        if missing:
+            raise RuntimeError(
+                f"缺少 Cursor 凭证环境变量：{', '.join(missing)}（见 config/.env.example）"
+            )
+
+
+def load_cursor_credentials(env_path: Path | str = ENV_PATH) -> CursorCredentials:
+    env = load_env(env_path)
+    return CursorCredentials(
+        api_key=env.get("CURSOR_API_KEY") or os.environ.get("CURSOR_API_KEY"),
+        model=env.get("CURSOR_MODEL") or os.environ.get("CURSOR_MODEL") or "auto",
+    )

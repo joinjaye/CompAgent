@@ -15,3 +15,7 @@ data/logs/*.log
 
 !data/.gitkeep
 !data/logs/.gitkeep
+
+# Cursor Background Agent 沙箱 cwd（src/analysis/cursor_agent.py），agent 运行时
+# 可能在这里写临时文件，内容不重要、不入库
+data/.cursor_agent_sandbox/*

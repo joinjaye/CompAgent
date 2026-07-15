@@ -1,2 +1,6 @@
 PyYAML>=6.0
 certifi>=2024.0.0
+
+# Phase 4 分析层可选后端：config/analysis.yaml 的 llm.provider=cursor_agent 时才用到
+# （src/analysis/cursor_agent.py），默认 provider=openai_http 不需要这个包也能跑。
+cursor_sdk>=0.1.9
