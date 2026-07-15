@@ -4,12 +4,13 @@ capture_locale_tabs，不启动真实 Playwright/浏览器，不发真实网络�
 真实网络验收记录（2026-07-15，用真实 FEISHU_APP_ID/SECRET）：
 - 截图（src/dashboard/screenshot.py）对本地 http.server 跑通，5 个 locale 全部
   产出非空 PNG。
-- upload_image() 的 multipart 请求格式本身正确（拿到了 Feishu 的业务级 JSON 错误
-  响应，不是"请求格式不对"的错误）：`{"code":234007,"msg":"App does not enable
-  bot feature."}`——当前 FEISHU_APP_ID 对应的应用还没有在飞书开发者后台开通"机器人"
-  能力，这是应用配置问题，不是代码问题，真正推送前需要用户去开通。
-- push_image_to_webhook() 未做真实调用：`.env` 里没有配置任何 WEBHOOK_* 真实值
-  （config/push_targets.yaml 的占位符全部替换成 None），没有真实群可以测试。
+- 2026-07-15 架构变更：从"自定义机器人 webhook"改成"应用机器人 im/v1/messages"
+  （见 src/sinks/feishu_bot.py 顶部说明）。真实验收：`upload_image()` 已确认可用
+  （应用的"机器人"能力已开通）；`list_bot_chats()` 真实查到机器人已加入的群
+  （CompAgent_EN/FR/VN/ID 等），按群名解析出真实 chat_id；`send_image_via_bot()`
+  对 CompAgent_EN/FR/VN/ID 四个真实群推送成功，EN-Asia 因为没有匹配的
+  chat_name（"CompAgent_EN-Asia"）在机器人已加入的群列表里查不到，被正确跳过
+  （不是失败）。
 """
 
 from __future__ import annotations
@@ -32,7 +33,7 @@ def _clear_token_cache():
 
 
 # ============================================================
-# multipart body + push_targets 替换
+# multipart body + push_targets 加载
 # ============================================================
 
 
@@ -46,12 +47,21 @@ def test_build_multipart_body_contains_boundary_and_image_bytes():
     assert b'name="image"; filename="test.png"' in body
 
 
-def test_load_push_targets_substitutes_env_vars():
-    env = {"WEBHOOK_EN": "https://open.larksuite.com/open-apis/bot/v2/hook/real-en"}
-    targets = bot.load_push_targets(env)
-    assert targets["EN"]["webhook"] == "https://open.larksuite.com/open-apis/bot/v2/hook/real-en"
-    assert targets["FR"]["webhook"] is None  # 没配置的 locale，占位符替换成空字符串 -> YAML 解析成 None
-    assert set(targets.keys()) == {"EN", "FR", "VN", "ID", "EN-Asia"}
+def test_load_push_targets_reads_chat_name_directly(tmp_path):
+    path = tmp_path / "push_targets.yaml"
+    path.write_text(
+        "targets:\n"
+        "  EN:\n"
+        '    chat_name: "CompAgent_EN"\n'
+        '    name: "竞品情报-EN"\n'
+        "  FR:\n"
+        '    name: "竞品情报-FR"\n',  # FR 没配置 chat_name
+        encoding="utf-8",
+    )
+    targets = bot.load_push_targets(path)
+    assert targets["EN"]["chat_name"] == "CompAgent_EN"
+    assert targets["FR"].get("chat_name") is None
+    assert set(targets.keys()) == {"EN", "FR"}
 
 
 # ============================================================
@@ -151,24 +161,120 @@ def test_upload_image_http_error_does_not_retry(tmp_path, monkeypatch):
 
 
 # ============================================================
-# push_image_to_webhook
+# list_bot_chats
 # ============================================================
 
 
-def test_push_image_to_webhook_success_with_code(monkeypatch):
-    monkeypatch.setattr(bot, "fetch", lambda *a, **k: json.dumps({"code": 0, "msg": "ok"}))
-    bot.push_image_to_webhook("https://hook.example/x", "img_1")  # 不抛异常即通过
+def test_list_bot_chats_returns_name_to_chat_id_mapping(monkeypatch):
+    def fake_fetch(url, *, method="GET", headers=None, body=None, timeout=None, max_retries=None):
+        if "tenant_access_token" in url:
+            return json.dumps({"code": 0, "tenant_access_token": "tok-1", "expire": 7200})
+        assert url.endswith("/im/v1/chats?page_size=100")
+        return json.dumps({
+            "code": 0,
+            "data": {
+                "has_more": False,
+                "page_token": "",
+                "items": [
+                    {"chat_id": "oc_en", "name": "CompAgent_EN"},
+                    {"chat_id": "oc_fr", "name": "CompAgent_FR"},
+                ],
+            },
+        })
+
+    monkeypatch.setattr(bot, "fetch", fake_fetch)
+    creds = bot.BotCredentials(app_id="app-chats-1", app_secret="s")
+    chats = bot.list_bot_chats(creds)
+    assert chats == {"CompAgent_EN": "oc_en", "CompAgent_FR": "oc_fr"}
 
 
-def test_push_image_to_webhook_success_with_status_code(monkeypatch):
-    monkeypatch.setattr(bot, "fetch", lambda *a, **k: json.dumps({"StatusCode": 0}))
-    bot.push_image_to_webhook("https://hook.example/x", "img_1")
+def test_list_bot_chats_paginates_until_has_more_false(monkeypatch):
+    pages = {"n": 0}
+
+    def fake_fetch(url, *, method="GET", headers=None, body=None, timeout=None, max_retries=None):
+        if "tenant_access_token" in url:
+            return json.dumps({"code": 0, "tenant_access_token": "tok-1", "expire": 7200})
+        pages["n"] += 1
+        if "page_token=cursor-2" in url:
+            return json.dumps({
+                "code": 0,
+                "data": {"has_more": False, "page_token": "", "items": [{"chat_id": "oc_2", "name": "Group2"}]},
+            })
+        return json.dumps({
+            "code": 0,
+            "data": {"has_more": True, "page_token": "cursor-2", "items": [{"chat_id": "oc_1", "name": "Group1"}]},
+        })
+
+    monkeypatch.setattr(bot, "fetch", fake_fetch)
+    creds = bot.BotCredentials(app_id="app-chats-2", app_secret="s")
+    chats = bot.list_bot_chats(creds)
+    assert chats == {"Group1": "oc_1", "Group2": "oc_2"}
+    assert pages["n"] == 2
 
 
-def test_push_image_to_webhook_failure_raises(monkeypatch):
-    monkeypatch.setattr(bot, "fetch", lambda *a, **k: json.dumps({"code": 19021, "msg": "invalid image_key"}))
+def test_list_bot_chats_business_error_raises(monkeypatch):
+    def fake_fetch(url, *, method="GET", headers=None, body=None, timeout=None, max_retries=None):
+        if "tenant_access_token" in url:
+            return json.dumps({"code": 0, "tenant_access_token": "tok-1", "expire": 7200})
+        return json.dumps({"code": 99991672, "msg": "Access denied. scope required"})
+
+    monkeypatch.setattr(bot, "fetch", fake_fetch)
+    creds = bot.BotCredentials(app_id="app-chats-3", app_secret="s")
+    with pytest.raises(bot.FeishuBotError, match="99991672"):
+        bot.list_bot_chats(creds)
+
+
+# ============================================================
+# send_image_via_bot
+# ============================================================
+
+
+def test_send_image_via_bot_success(monkeypatch):
+    captured = {}
+
+    def fake_fetch(url, *, method="GET", headers=None, body=None, timeout=None, max_retries=None):
+        if "tenant_access_token" in url:
+            return json.dumps({"code": 0, "tenant_access_token": "tok-1", "expire": 7200})
+        captured["url"] = url
+        captured["body"] = json.loads(body.decode())
+        return json.dumps({"code": 0})
+
+    monkeypatch.setattr(bot, "fetch", fake_fetch)
+    creds = bot.BotCredentials(app_id="app-send-1", app_secret="s")
+    bot.send_image_via_bot("oc_target", "img_1", creds)  # 不抛异常即通过
+    assert captured["url"].endswith("/im/v1/messages?receive_id_type=chat_id")
+    assert captured["body"]["receive_id"] == "oc_target"
+    assert captured["body"]["msg_type"] == "image"
+    assert json.loads(captured["body"]["content"]) == {"image_key": "img_1"}
+
+
+def test_send_image_via_bot_refreshes_token_on_invalid_code(monkeypatch):
+    token_calls = {"n": 0}
+
+    def fake_fetch(url, *, method="GET", headers=None, body=None, timeout=None, max_retries=None):
+        if "tenant_access_token" in url:
+            token_calls["n"] += 1
+            return json.dumps({"code": 0, "tenant_access_token": f"tok-{token_calls['n']}", "expire": 7200})
+        if headers["Authorization"] == "Bearer tok-1":
+            return json.dumps({"code": 99991664, "msg": "token invalid"})
+        return json.dumps({"code": 0})
+
+    monkeypatch.setattr(bot, "fetch", fake_fetch)
+    creds = bot.BotCredentials(app_id="app-send-2", app_secret="s")
+    bot.send_image_via_bot("oc_target", "img_1", creds)
+    assert token_calls["n"] == 2
+
+
+def test_send_image_via_bot_failure_raises(monkeypatch):
+    def fake_fetch(url, *, method="GET", headers=None, body=None, timeout=None, max_retries=None):
+        if "tenant_access_token" in url:
+            return json.dumps({"code": 0, "tenant_access_token": "tok-1", "expire": 7200})
+        return json.dumps({"code": 19021, "msg": "invalid image_key"})
+
+    monkeypatch.setattr(bot, "fetch", fake_fetch)
+    creds = bot.BotCredentials(app_id="app-send-3", app_secret="s")
     with pytest.raises(bot.FeishuBotError, match="19021"):
-        bot.push_image_to_webhook("https://hook.example/x", "img_1")
+        bot.send_image_via_bot("oc_target", "img_1", creds)
 
 
 # ============================================================
@@ -195,6 +301,20 @@ def _fake_screenshots(tmp_path, locales):
     return paths
 
 
+def _fake_push_targets(tmp_path, mapping: dict[str, str]) -> Path:
+    """写一份临时 push_targets.yaml，`mapping` 是 {locale: chat_name}（没配置的
+    locale 不写 chat_name，跟真实"没配群"场景一致）。"""
+    lines = ["targets:"]
+    for locale in bot.PUSH_LOCALES:
+        lines.append(f"  {locale}:")
+        if locale in mapping:
+            lines.append(f'    chat_name: "{mapping[locale]}"')
+        lines.append(f'    name: "竞品情报-{locale}"')
+    path = tmp_path / "push_targets.yaml"
+    path.write_text("\n".join(lines), encoding="utf-8")
+    return path
+
+
 def test_dry_run_captures_screenshots_but_calls_no_feishu_api(tmp_path, monkeypatch, db_path):
     monkeypatch.setattr(
         bot, "capture_locale_tabs",
@@ -205,49 +325,55 @@ def test_dry_run_captures_screenshots_but_calls_no_feishu_api(tmp_path, monkeypa
         raise AssertionError("dry_run 不应该调用任何飞书 API")
 
     monkeypatch.setattr(bot, "fetch", _boom)
-    monkeypatch.setattr(bot, "load_env", lambda: {"WEBHOOK_EN": "https://hook.example/en"})
+    monkeypatch.setattr(bot, "PUSH_TARGETS_PATH", _fake_push_targets(tmp_path, {"EN": "CompAgent_EN"}))
 
     report = bot.push_dashboard_screenshots("http://fake", db_path=db_path, dry_run=True)
     assert report.pushed == 0
     assert report.failed == 0
-    # EN 配置了 webhook -> dry-run 里应该出现"会推送"的详情；其余 4 个没配置 webhook -> skipped
+    # EN 配了 chat_name -> dry-run 里应该出现"会推送"的详情；其余 4 个没配置 -> skipped
     assert report.skipped == 4
     assert any("EN" in d and "会上传" in d for d in report.details)
 
 
-def test_missing_webhook_is_skipped_not_failed(tmp_path, monkeypatch, db_path):
+def test_missing_chat_name_is_skipped_not_failed(tmp_path, monkeypatch, db_path):
     monkeypatch.setattr(
         bot, "capture_locale_tabs",
         lambda url, locales, out_dir, **kw: _fake_screenshots(tmp_path, locales),
     )
-    monkeypatch.setattr(bot, "load_env", lambda: {})
+    monkeypatch.setattr(bot, "PUSH_TARGETS_PATH", _fake_push_targets(tmp_path, {}))
 
     report = bot.push_dashboard_screenshots("http://fake", db_path=db_path, dry_run=True)
     assert report.skipped == 5
     assert report.failed == 0
 
 
-def test_real_run_pushes_and_logs_sync_log(tmp_path, monkeypatch, db_path):
+def test_real_run_pushes_via_bot_and_logs_sync_log(tmp_path, monkeypatch, db_path):
     monkeypatch.setattr(
         bot, "capture_locale_tabs",
         lambda url, locales, out_dir, **kw: _fake_screenshots(tmp_path, locales),
     )
     monkeypatch.setattr(bot, "load_env", lambda: {
         "FEISHU_APP_ID": "app-x", "FEISHU_APP_SECRET": "secret-x",
-        "WEBHOOK_EN": "https://hook.example/en",
     })
+    monkeypatch.setattr(bot, "PUSH_TARGETS_PATH", _fake_push_targets(tmp_path, {"EN": "CompAgent_EN"}))
 
     def fake_fetch(url, *, method="GET", headers=None, body=None, timeout=None, max_retries=None):
         if "tenant_access_token" in url:
             return json.dumps({"code": 0, "tenant_access_token": "tok-1", "expire": 7200})
         if url.endswith("/im/v1/images"):
             return json.dumps({"code": 0, "data": {"image_key": "img_key_1"}})
-        return json.dumps({"code": 0})  # webhook post
+        if "/im/v1/chats" in url:
+            return json.dumps({
+                "code": 0,
+                "data": {"has_more": False, "page_token": "", "items": [{"chat_id": "oc_en", "name": "CompAgent_EN"}]},
+            })
+        assert url.endswith("/im/v1/messages?receive_id_type=chat_id")
+        return json.dumps({"code": 0})
 
     monkeypatch.setattr(bot, "fetch", fake_fetch)
 
     report = bot.push_dashboard_screenshots("http://fake", db_path=db_path, batch_date="2026-07-15", dry_run=False)
-    assert report.pushed == 1  # 只有 EN 配置了 webhook
+    assert report.pushed == 1  # 只有 EN 配置了 chat_name 且能在群列表里解析出 chat_id
     assert report.skipped == 4
     assert report.failed == 0
 
@@ -260,6 +386,44 @@ def test_real_run_pushes_and_logs_sync_log(tmp_path, monkeypatch, db_path):
     assert rows[0][1].endswith("2026-07-15")  # record_id 带上了 batch_date
 
 
+def test_chat_not_found_is_skipped_not_failed(tmp_path, monkeypatch, db_path):
+    """配了 chat_name，但机器人没有加入这个群（或群名不匹配）——`list_bot_chats()`
+    查不到对应 chat_id，应该 skip，不是 failed（跟 EN-Asia 目前的真实状态一致）。"""
+    monkeypatch.setattr(
+        bot, "capture_locale_tabs",
+        lambda url, locales, out_dir, **kw: _fake_screenshots(tmp_path, locales),
+    )
+    monkeypatch.setattr(bot, "load_env", lambda: {
+        "FEISHU_APP_ID": "app-x", "FEISHU_APP_SECRET": "secret-x",
+    })
+    monkeypatch.setattr(bot, "PUSH_TARGETS_PATH", _fake_push_targets(tmp_path, {"EN-Asia": "CompAgent_EN-Asia"}))
+
+    def fake_fetch(url, *, method="GET", headers=None, body=None, timeout=None, max_retries=None):
+        if "tenant_access_token" in url:
+            return json.dumps({"code": 0, "tenant_access_token": "tok-1", "expire": 7200})
+        if "/im/v1/chats" in url:
+            return json.dumps({
+                "code": 0,
+                "data": {"has_more": False, "page_token": "", "items": [{"chat_id": "oc_kr", "name": "CompAgent_KR"}]},
+            })
+        raise AssertionError("chat_id 解析不到，不应该走到上传图片这一步")
+
+    monkeypatch.setattr(bot, "fetch", fake_fetch)
+
+    report = bot.push_dashboard_screenshots("http://fake", db_path=db_path, dry_run=False)
+    assert report.pushed == 0
+    assert report.failed == 0
+    assert report.skipped == 5
+    assert any("EN-Asia" in d and "未加入" in d for d in report.details)
+
+    conn = sqlite3.connect(str(db_path))
+    row = conn.execute(
+        "SELECT status, error FROM sync_log WHERE target='bot_EN-Asia'"
+    ).fetchone()
+    conn.close()
+    assert row == ("success", "chat_not_found")  # skip 动作本身是 success，error 字段记录跳过原因
+
+
 def test_screenshot_failure_for_one_locale_is_skipped(tmp_path, monkeypatch, db_path):
     def _partial_screenshots(url, locales, out_dir, **kw):
         result = _fake_screenshots(tmp_path, locales)
@@ -269,19 +433,33 @@ def test_screenshot_failure_for_one_locale_is_skipped(tmp_path, monkeypatch, db_
     monkeypatch.setattr(bot, "capture_locale_tabs", _partial_screenshots)
     monkeypatch.setattr(bot, "load_env", lambda: {
         "FEISHU_APP_ID": "app-x", "FEISHU_APP_SECRET": "secret-x",
-        "WEBHOOK_EN": "https://hook.example/en", "WEBHOOK_FR": "https://hook.example/fr",
     })
+    monkeypatch.setattr(
+        bot, "PUSH_TARGETS_PATH",
+        _fake_push_targets(tmp_path, {"EN": "CompAgent_EN", "FR": "CompAgent_FR"}),
+    )
 
     def fake_fetch(url, *, method="GET", headers=None, body=None, timeout=None, max_retries=None):
         if "tenant_access_token" in url:
             return json.dumps({"code": 0, "tenant_access_token": "tok-1", "expire": 7200})
         if url.endswith("/im/v1/images"):
             return json.dumps({"code": 0, "data": {"image_key": "img_key_1"}})
+        if "/im/v1/chats" in url:
+            return json.dumps({
+                "code": 0,
+                "data": {
+                    "has_more": False, "page_token": "",
+                    "items": [
+                        {"chat_id": "oc_en", "name": "CompAgent_EN"},
+                        {"chat_id": "oc_fr", "name": "CompAgent_FR"},
+                    ],
+                },
+            })
         return json.dumps({"code": 0})
 
     monkeypatch.setattr(bot, "fetch", fake_fetch)
 
     report = bot.push_dashboard_screenshots("http://fake", db_path=db_path, dry_run=False)
     assert report.pushed == 1  # EN 成功
-    assert report.skipped == 4  # FR（截图失败）+ VN/ID/EN-Asia（无 webhook）
+    assert report.skipped == 4  # FR（截图失败）+ VN/ID/EN-Asia（无 chat_name）
     assert any("FR" in d and "截图失败" in d for d in report.details)

@@ -10,11 +10,20 @@ Phase 6 的规则引擎如果以后要做，是另一条独立路径，不依赖
 「全量」「全局视角」两个 tab 不推送——业务决定，见调用方 `push_dashboard_screenshots`
 的 `locales` 参数（固定传 `EN/FR/VN/ID/EN-Asia`，不包含 `archive`/`global`）。
 
-飞书自定义机器人 webhook 本身只能发消息，不能直接带图片二进制——发图片前必须先用
-应用凭证（FEISHU_APP_ID/SECRET，同 `feishu_bitable.py` 用的那对，需要 im:resource
-上传权限，跟 Bitable 读写权限是否已经在飞书开发者后台开通是两回事，本模块没有验证过
-这个权限是否已经打开）把图片上传到 `im/v1/images` 换一个 image_key，再拿这个
-image_key 发到 webhook。这是飞书协议本身的限制，不是本模块的设计选择。
+**2026-07-15 架构变更：从"自定义机器人 webhook"改成"应用机器人 im/v1/messages"**，
+不再是最初设计（见 git 历史）。原因：自定义机器人 webhook 虽然协议上支持
+`msg_type=image`，但发图片前必须先用应用凭证把二进制传到 `im/v1/images` 换
+`image_key`——这一步本身就需要应用在飞书开发者后台开通"机器人"能力，跟维不维护
+webhook 无关。既然应用侧的机器人能力已经是硬依赖，直接换成应用机器人主动发消息
+（`POST im/v1/messages?receive_id_type=chat_id`）反而更简单：不需要为每个 locale
+单独申请/存一个 webhook 密钥，只需要机器人被邀请进对应的群（一次性操作），配置里
+维护"群名"就行，`chat_id` 通过 `list_bot_chats()`（`GET im/v1/chats`，机器人自己
+所在的群列表）按名字动态解析，比手工去飞书后台复制 `chat_id` 更不容易出错（改群名
+不用改配置，只要 `chat_name` 还对得上）。upload_image() 上传图片这一步完全不变
+（依然是应用凭证 FEISHU_APP_ID/SECRET），只是"图片上传完之后怎么发出去"这一步从
+webhook 换成了应用机器人消息接口。除了"机器人"能力，这条路径还需要应用具备
+`im:chat`（或 `im:chat:readonly`，列群列表用）和 `im:message`（发消息用）这两类
+scope，在飞书开发者后台"权限管理"里添加。
 """
 from __future__ import annotations
 
@@ -22,7 +31,6 @@ import argparse
 import json
 import logging
 import os
-import re
 import sqlite3
 import time
 import uuid
@@ -52,8 +60,8 @@ PUSH_LOCALES = ["EN", "FR", "VN", "ID", "EN-Asia"]
 
 
 class FeishuBotError(Exception):
-    """推送流程失败（上传图片 / 调用 webhook 最终失败），不是"这个 locale 没配置群"
-    那种预期内的跳过。"""
+    """推送流程失败（上传图片 / 查群列表 / 发消息最终失败），不是"这个 locale 没
+    配置群""机器人还没被邀请进这个群"那种预期内的跳过。"""
 
 
 # ============================================================
@@ -83,21 +91,15 @@ def load_env(path: Path | str = ENV_PATH) -> dict[str, str]:
     return merged
 
 
-_ENV_VAR_RE = re.compile(r"\$\{([A-Z_][A-Z0-9_]*)\}")
-
-
-def load_push_targets(env: dict[str, str], path: Path | str = PUSH_TARGETS_PATH) -> dict[str, dict]:
-    """读 config/push_targets.yaml，把 `${WEBHOOK_EN}` 这类占位符替换成 .env 里的真实值。
-    没配置真实 webhook 的 locale，值就是空字符串——调用方据此判断"这个 locale 该不该
-    跳过"，不是报错（不是每个 locale 从第一天起就一定有群，如实反映配置状态）。
+def load_push_targets(path: Path | str = PUSH_TARGETS_PATH) -> dict[str, dict]:
+    """读 config/push_targets.yaml，返回 {locale: {chat_name, name}}。`chat_name` 是
+    群在飞书里显示的名字（机器人已加入该群时，`list_bot_chats()` 才能按名字解析出
+    `chat_id`）；没配置 `chat_name` 的 locale，调用方据此判断"该不该跳过"，不是报错
+    （不是每个 locale 从第一天起就一定有群，如实反映配置状态）。不再需要 `.env` 里的
+    `${WEBHOOK_*}` 占位符替换——群名是配置本身，不是需要保密的密钥。
     """
     raw = Path(path).read_text(encoding="utf-8")
-
-    def _sub(match: re.Match) -> str:
-        return env.get(match.group(1), "")
-
-    substituted = _ENV_VAR_RE.sub(_sub, raw)
-    data = yaml.safe_load(substituted)
+    data = yaml.safe_load(raw)
     return data.get("targets", {})
 
 
@@ -147,7 +149,7 @@ def get_tenant_access_token(app_id: str, app_secret: str, *, force_refresh: bool
 
 
 # ============================================================
-# 图片上传 + webhook 推送
+# 图片上传 + 应用机器人主动发消息
 # ============================================================
 
 
@@ -200,21 +202,72 @@ def upload_image(image_path: Path, credentials: BotCredentials, *, max_retries: 
     raise FeishuBotError(f"上传图片重试 {max_retries} 次后仍失败：{last_error}")
 
 
-def push_image_to_webhook(webhook_url: str, image_key: str) -> None:
-    """webhook 请求本身不需要外层重试——fetch() 内部已经处理了 5xx/网络错误的指数
-    退避，4xx（比如 webhook URL 失效）重试没有意义；webhook 也没有 token 失效这种
-    "重试可能改变结果"的场景（跟 upload_image 不一样，不需要那层循环）。"""
-    body = json.dumps({"msg_type": "image", "content": {"image_key": image_key}}).encode("utf-8")
-    try:
-        raw = fetch(webhook_url, method="POST", headers={"Content-Type": "application/json"}, body=body)
-    except HttpError as e:
-        raise FeishuBotError(f"推送到 webhook 失败：{e}") from e
-    resp = json.loads(raw)
-    # 自定义机器人 webhook 的成功响应是 {"code":0,...} 或 StatusCode==0，
-    # 也可能只回 {"StatusCode":0}（旧版协议），两种都当成功处理
-    if resp.get("code", resp.get("StatusCode")) == 0:
-        return
-    raise FeishuBotError(f"推送到 webhook 失败：{resp}")
+def list_bot_chats(credentials: BotCredentials) -> dict[str, str]:
+    """列出应用机器人当前已加入的全部群聊，返回 {群名: chat_id}。分页遍历
+    `page_token`（当前真实群数量很少，一页就能拿完，但不假设以后一直如此）。
+    需要应用具备 `im:chat`/`im:chat:readonly` 类 scope，机器人本身也必须已经被
+    邀请进对应的群——这两者缺一都会导致目标群"查不到"（`chat_id` 解析不出来），
+    调用方按"群不存在"处理（skip），不是报错。同名群理论上可能撞车（飞书不保证
+    群名唯一），后出现的会覆盖先出现的，本项目目前只有个位数测试群，未做去重
+    保护，如果以后群数量变多、真的撞名，需要改成让 `chat_name` 换成更精确的
+    `chat_id` 直接配置。"""
+    token = get_tenant_access_token(credentials.app_id, credentials.app_secret)
+    chats: dict[str, str] = {}
+    page_token = ""
+    while True:
+        url = f"{API_BASE}/im/v1/chats?page_size=100"
+        if page_token:
+            url += f"&page_token={page_token}"
+        try:
+            raw = fetch(url, method="GET", headers={"Authorization": f"Bearer {token}"})
+        except HttpError as e:
+            raise FeishuBotError(f"获取群聊列表请求失败：{e}") from e
+        resp = json.loads(raw)
+        if resp.get("code") != 0:
+            raise FeishuBotError(f"获取群聊列表失败：code={resp.get('code')} msg={resp.get('msg')}")
+        data = resp.get("data", {})
+        for item in data.get("items", []):
+            chats[item["name"]] = item["chat_id"]
+        if not data.get("has_more"):
+            break
+        page_token = data.get("page_token") or ""
+        if not page_token:
+            break
+    return chats
+
+
+def send_image_via_bot(chat_id: str, image_key: str, credentials: BotCredentials, *, max_retries: int = MAX_RETRIES) -> None:
+    """用应用机器人身份把图片消息主动发到指定群（`POST im/v1/messages
+    ?receive_id_type=chat_id`），取代此前的自定义机器人 webhook 路径（见模块顶部
+    2026-07-15 架构变更说明）。跟 `upload_image()` 同样的 token 失效重试逻辑——
+    这里也会因为 token 过期而收到业务错误码，值得重试；4xx 传输层错误不重试。"""
+    body = json.dumps(
+        {"receive_id": chat_id, "msg_type": "image", "content": json.dumps({"image_key": image_key})}
+    ).encode("utf-8")
+
+    last_error: Optional[str] = None
+    force_refresh = False
+    for attempt in range(max_retries):
+        token = get_tenant_access_token(credentials.app_id, credentials.app_secret, force_refresh=force_refresh)
+        try:
+            raw = fetch(
+                f"{API_BASE}/im/v1/messages?receive_id_type=chat_id",
+                method="POST",
+                headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json; charset=utf-8"},
+                body=body,
+            )
+        except HttpError as e:
+            raise FeishuBotError(f"发送消息请求失败：{e}") from e
+        resp = json.loads(raw)
+        if resp.get("code") == 0:
+            return
+        if resp.get("code") in (99991661, 99991663, 99991664):
+            force_refresh = True
+            last_error = f"token 失效，code={resp.get('code')}"
+            continue
+        raise FeishuBotError(f"发送消息失败：code={resp.get('code')} msg={resp.get('msg')}")
+
+    raise FeishuBotError(f"发送消息重试 {max_retries} 次后仍失败：{last_error}")
 
 
 def _log_sync(conn: sqlite3.Connection, target: str, record_id: str, action: str,
@@ -242,8 +295,10 @@ def push_dashboard_screenshots(
     dry_run: bool = True,
 ) -> PushReport:
     """截图 + 推送编排。dry_run=True（默认）：正常截图（本地操作，无副作用），但不
-    调用飞书任何接口（不上传图片、不发 webhook），只打印"如果真推会发生什么"——跟
-    `feishu_bitable.py --dry-run` 的语义一致，安全默认值，避免误发到真实群。
+    调用飞书任何接口（不上传图片、不查群列表、不发消息），只打印"如果真推会发生
+    什么"——跟 `feishu_bitable.py --dry-run` 的语义一致，安全默认值，避免误发到
+    真实群。dry_run 模式下不解析 `chat_id`（那需要调 `im/v1/chats`），只按配置里的
+    `chat_name` 打印目标群名，不保证这个群名真的能在机器人已加入的群列表里查到。
     """
     env = load_env()
     report = PushReport()
@@ -251,19 +306,21 @@ def push_dashboard_screenshots(
 
     screenshots = capture_locale_tabs(dashboard_url, PUSH_LOCALES, screenshot_dir)
 
-    targets = load_push_targets(env)
+    targets = load_push_targets(PUSH_TARGETS_PATH)
     credentials = load_bot_credentials(env) if not dry_run else None
     if credentials is not None:
         credentials.validate()
 
+    chats_by_name: dict[str, str] = {}
     conn: Optional[sqlite3.Connection] = None
     if not dry_run:
+        chats_by_name = list_bot_chats(credentials)
         conn = connect(str(db_path))
 
     try:
         for locale in PUSH_LOCALES:
             target = targets.get(locale, {})
-            webhook_url = target.get("webhook") or ""
+            chat_name = target.get("chat_name") or ""
             record_id = f"{locale}_{batch_date}"
 
             if locale not in screenshots:
@@ -275,26 +332,35 @@ def push_dashboard_screenshots(
                     _log_sync(conn, f"bot_{locale}", record_id, "skip", "success", "screenshot_failed")
                 continue
 
-            if not webhook_url:
-                msg = f"{locale}: 未配置 webhook（config/push_targets.yaml + .env 的 WEBHOOK_* 变量），跳过"
+            if not chat_name:
+                msg = f"{locale}: 未配置群名（config/push_targets.yaml 的 chat_name），跳过"
                 logger.warning(msg)
                 report.skipped += 1
                 report.details.append(msg)
                 if conn is not None:
-                    _log_sync(conn, f"bot_{locale}", record_id, "skip", "success", "no_webhook_configured")
+                    _log_sync(conn, f"bot_{locale}", record_id, "skip", "success", "no_chat_name_configured")
                 continue
 
             if dry_run:
-                msg = f"{locale}: [dry-run] 会上传 {screenshots[locale]} 并推送到 {target.get('name', locale)} 群"
+                msg = f"{locale}: [dry-run] 会上传 {screenshots[locale]} 并通过应用机器人发到群「{chat_name}」"
                 logger.info(msg)
                 report.details.append(msg)
                 continue
 
+            chat_id = chats_by_name.get(chat_name)
+            if not chat_id:
+                msg = f"{locale}: 应用机器人未加入群「{chat_name}」（或群名不匹配），跳过"
+                logger.warning(msg)
+                report.skipped += 1
+                report.details.append(msg)
+                _log_sync(conn, f"bot_{locale}", record_id, "skip", "success", "chat_not_found")
+                continue
+
             try:
                 image_key = upload_image(screenshots[locale], credentials)
-                push_image_to_webhook(webhook_url, image_key)
+                send_image_via_bot(chat_id, image_key, credentials)
                 report.pushed += 1
-                msg = f"{locale}: 推送成功 -> {target.get('name', locale)}"
+                msg = f"{locale}: 推送成功 -> {chat_name}"
                 report.details.append(msg)
                 logger.info(msg)
                 _log_sync(conn, f"bot_{locale}", record_id, "create", "success")

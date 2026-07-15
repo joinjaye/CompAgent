@@ -1,25 +1,35 @@
 # ============================================================
-# 推送目标配置模板
-# locale -> 飞书群 webhook 映射。每个 locale 对应一个独立的群，
+# 推送目标配置：locale -> 飞书群映射。每个 locale 对应一个独立的群，
 # 各群独立推送，不做跨语言去重（详见 CLAUDE.md 核心约束 4）。
 #
-# webhook 值使用 ${VAR} 引用环境变量，实际地址写在 .env 里，
-# 不要把真实 webhook 直接硬编码在本文件中。
+# 2026-07-15 起改用"应用机器人"路径（见 src/sinks/feishu_bot.py 顶部说明），
+# 不再是"自定义机器人 webhook"。`chat_name` 是群在飞书里显示的名字，运行时通过
+# `list_bot_chats()`（GET im/v1/chats，机器人自己所在的群列表）按名字动态解析成
+# `chat_id`——群名不是需要保密的密钥，直接写在这里，不用 `.env` 占位符。
+#
+# 前提：应用机器人必须已经被邀请进对应的群，否则 `chat_name` 查不到对应
+# `chat_id`，运行时会跳过（skip），不是报错。
 # ============================================================
 
 targets:
   EN:
-    webhook: ${WEBHOOK_EN}
+    chat_name: "CompAgent_EN"
     name: "竞品情报-EN"
   FR:
-    webhook: ${WEBHOOK_FR}
+    chat_name: "CompAgent_FR"
     name: "竞品情报-FR"
   VN:
-    webhook: ${WEBHOOK_VN}
+    chat_name: "CompAgent_VN"
     name: "竞品情报-VN"
   ID:
-    webhook: ${WEBHOOK_ID}
+    chat_name: "CompAgent_ID"
     name: "竞品情报-ID"
   EN-Asia:
-    webhook: ${WEBHOOK_EN_ASIA}
+    # 2026-07-15 真实核对：机器人目前已加入的群里没有叫 "CompAgent_EN-Asia" 的
+    # （只有 EN/FR/VN/ID 四个 + 一个命名不属于这套约定的 "CompAgent_KR"，未确认
+    # 是否打算用作 EN-Asia 的群，未擅自复用——如果 CompAgent_KR 就是要给
+    # EN-Asia 用的，改这里的 chat_name 成 "CompAgent_KR" 即可；如果需要新建一个
+    # 群，建好后邀请机器人加入、群名对上这里的值就行，不需要改代码）。
+    # 目前会因为查不到 chat_id 被跳过（skip，not failed）。
+    chat_name: "CompAgent_EN-Asia"
     name: "竞品情报-EN-Asia"

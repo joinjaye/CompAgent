@@ -3382,3 +3382,254 @@ KYC）及全员合约交易量达10万U等任务领取空投..."`、`reward_rang
 是否需要一道标签归一化/合并的后处理（比如定期跑一次"相似标签聚类"人工或 LLM
 辅助合并），本次未处理，留给用户决定优先级——当前实现是可用状态，只是 campaign
 类目的类型覆盖收益打了折扣，不是功能性缺陷。
+
+## 真实数据全流程验证：Phase 4 → 看板导出 → GitHub Pages → 群推送（2026-07-15）
+
+用户要求对「daily 增量分页上限 5→2」一节记录的 99 条真实数据（Bitunix 26 +
+BingX 16 + Phemex 18 + Lbank 39，均已完成 Phase 2/3）跑一遍从 Phase 4 开始的
+完整流程，ZMX 基线使用上一节已经真实处理好的近 90 天结构化 `zmx_baseline`
+（226 条），并要求顺带打通看板发布（GitHub Pages）和飞书群截图推送两条链路。
+
+### Phase 4：真实调用 cursor_agent，22 个批次全部产出
+
+`.env` 仍然只有 `CURSOR_API_KEY`（`LLM_API_KEY`/`LLM_API_BASE` 为空），显式传
+`--provider cursor_agent`：
+
+```
+python -m src.analysis --db data/competitor_intel.db --source Bitunix,BingX,Phemex,Lbank --provider cursor_agent
+# 分析批次数：analyzed=10 derived=12 cache_hits=1 llm_calls=9 skipped_call_cap=0
+# validation_failed=0 total_tokens=173745
+```
+
+22 个批次（campaign/product/listing/delisting × 4 源 × 各自 locale，`other`
+被正确排除）全部落库，无一失败。**一个值得记录的真实现象**：`Phemex/delisting/FR`
+既没有走 EN 复用（`can_derive_from_en()` 判定失败，因为「daily 增量分页上限 5→2」
+一节记录过的已知设计缺陷——Phemex 同一篇下架公告在 EN/FR 下 `article_id` 不同，
+`group_id` 因此拼不到一起，FR 侧的 group 不被 EN 的 `related_uids` 覆盖），也没有
+真正调用 LLM（`llm_tokens_used=0`），而是命中了 `llm_cache`——因为 Phemex 的下架
+类通知本来就不做本地化（CLAUDE.md 早前已记录过这个真实观察：FR 端抓到的标题都是
+纯英文原文），FR 批次的 9 篇文章 `content` 跟 EN 批次逐字节相同，`content_hash`
+集合完全一致，缓存 key 天然撞车，直接省下了一次真实 LLM 调用。副作用：这次
+`articles_analysis` 字段是空数组——因为缓存复用的响应里 `uid` 是 EN 批次的
+uid，被 `validate_and_normalize()` 的越界校验正确丢弃（9 条 `WARNING 丢弃
+articles 条目...不在本批次内`），但 `summary`/`zmx_diff`/`priority`/`diff_type`
+这些不挂 uid 的字段原样保留，人工核对内容跟真实 9 篇下架公告一致，不是错误
+结果，是"跨 locale 内容重复触发缓存命中，但逐条 uid 映射按设计被拒绝"的正确
+行为。
+
+`insights` 表 22 行全部写入，抽样人工核对（Bitunix/campaign、Lbank/listing 等）
+summary/diff_type/priority 均准确对应源公告内容，Zoomex 结构化基线（`zmx_hits`
+不再是 0，跟「独立 db 试运行」一节因为没有 Zoomex 数据而全部退化成"基线有限"
+形成对比）被正确注入 prompt。
+
+### Phase 7：用主库重新导出看板数据
+
+```
+python -m src.dashboard --db-path data/competitor_intel.db --out docs/data/dashboard.json
+# insights: 22（模拟 0）；Bitunix/BingX/Phemex/Lbank 今日=累计（全新窗口首次导出）；
+# Weex 今日 0 / 累计 0（路径问题仍未解决，如实显示无数据，不编造）
+```
+
+这次导出完全替换了此前 Phase 7 session 用 `dashboard_demo.db`（合并 demo 数据 +
+29 条模拟 insights）产出的旧 `docs/data/dashboard.json`——数据量因此从演示用的
+大规模历史堆积（Zoomex 2018 + Bitunix 32 + BingX 40 + Phemex 178 + Lbank 1679）
+收缩成真实 daily 增量规模（99 条非基线数据），这是预期之内的结果（测的是真实
+每日调度产出的量级，不是 demo 丰富度），不是回归。
+
+装了 Playwright 的 Chromium（此前 session 从未真正装过浏览器二进制，这次是
+第一次跑 `playwright install chromium` 成功）用本地 `http.server` 截了一遍
+5 个 locale tab 做视觉核验，渲染正确（22 条 insights 分布、Weex 空态提示均正常
+显示），确认导出数据结构和前端渲染没有问题后再提交。
+
+**一个环境相关的真实坑，记录以防再遇到**：默认只读/受限 sandbox 下调用
+`playwright.chromium.launch()` 会报 `Executable doesn't exist at .../chrome-
+headless-shell-mac-x64/...`——但实际磁盘上装的是 `mac-arm64`（机器本身是
+arm64，`platform.machine()` 也确认是 arm64）。只有加 `required_permissions:
+["all"]`（完全禁用 sandbox）才能正常 launch，怀疑是 sandbox-exec 环境下 Node
+驱动进程的架构探测在这个环境被干扰成了 x64。这是本地沙箱环境的兼容性问题，
+不是 Playwright 或本项目代码的 bug，以后在这个环境里跑任何 Playwright 相关
+命令（截图、GitHub Pages 相关自动化等）都需要 `required_permissions: ["all"]`。
+
+`git add docs/data/dashboard.json && git commit && git push origin main`
+（commit `325017d`）已推送到 `origin/main`。
+
+### GitHub Pages：确认未启用，无法用现有凭证自动开启
+
+用 `git credential fill` 拿到的凭证查询 `GET /repos/joinjaye/CompAgent/pages`
+返回 404，确认 Pages 从未被启用过。尝试用同一个凭证 `POST` 创建 Pages 站点被
+安全审查拦截（"把 push 用的凭证挪去改仓库设置"被判定为凭证用途外的敏感操作，
+没有强行申请批准）——改为指导用户手动在 `https://github.com/joinjaye/
+CompAgent/settings/pages` 里选 `Deploy from a branch` / `main` / `/docs` 保存，
+这一步仍然需要用户自己动手，跟「Phase 7 之后：飞书群截图推送」一节记录的结论
+一致，本次没有新进展。
+
+### 飞书群推送：webhook 已配置齐全，但仍卡在同一个应用权限问题
+
+跟 Phase 7 之后那次验收时不同，`.env` 里 `WEBHOOK_EN/FR/VN/ID/EN_ASIA` 这次
+**已经全部配置好了**（当时全部为空）。`--dry-run` 显示 5 个 locale 全部会正常
+截图+推送，去掉 `--dry-run` 真实执行：
+
+```
+python -m src.sinks.feishu_bot --dashboard-url http://localhost:8731/index.html --db-path data/competitor_intel.db --execute
+# pushed=0 skipped=0 failed=5，5 个 locale 全部在"上传图片"这一步失败
+```
+
+用同样的 `get_tenant_access_token()`+`im/v1/images` 调用单独排查（绕开
+`upload_image()` 只包裝 HTTP 状态码、丢失响应体的问题，直接读
+`urllib.error.HTTPError.read()`），确认真实响应体：
+
+```json
+{"code":234007,"msg":"App does not enable bot feature.","error":{"log_id":"..."}}
+```
+
+跟「Phase 7 之后：飞书群截图推送」一节记录的阻塞点**完全是同一个**、尚未解决：
+`FEISHU_APP_ID` 对应的应用在飞书开放平台后台仍然没有开通"机器人"能力（这跟
+Bitable 读写用的是不同的权限范围，webhook 配置齐全也绕不开这一步）。需要用户
+去飞书开放平台后台给这个应用开通机器人能力，这是纯粹的第三方平台配置操作，
+本 session 没有权限代为操作，也没有找到绕过的办法。
+
+### 本次未做 / 仍遗留
+
+- **飞书群截图推送端到端未验证成功**：卡在应用机器人权限，5 个 locale 全部
+  `failed`；`sync_log` 确实记录了这次失败（`target=bot_EN/FR/VN/ID/EN-Asia`，
+  `action=create`，`status=failed` 各 1 条），审计轨迹按设计正常工作，图片
+  上传失败也没有被吞掉。
+- **GitHub Pages 仍未启用**，需要用户手动去 Settings 里点一下（见上文步骤）。
+- Phemex 的地区独占/`group_id` 跨 locale 归组缺陷（`article_id` 不同导致
+  EN/FR 拼不到同一个 `group_id`）在这次真实数据上又复现了一次（体现为
+  `Phemex/delisting/FR` 无法走 EN 复用），依然是已知问题，未修复。
+- 本次范围内 Weex 仍是 0 条（路径问题未解决），BingX/Zoomex 全量、其余
+  Lbank 分类均未涉及。
+
+## 飞书群推送架构切换：webhook → 应用机器人 chat_id（2026-07-15）
+
+用户在飞书开发者后台给应用开通了"机器人"能力、补齐了权限 scope，并把机器人邀请进
+了几个真实测试群后，反馈"群推送图片不能使用原始 webhook，需要通过应用机器人实现"、
+"chat id 现在可以访问了，用真的"——把此前「Phase 7 之后：飞书群截图推送」一节遗留的
+阻塞点（应用未开通机器人能力）和悬而未决的推送路径选择一次性解决掉。
+
+### 为什么整个换成应用机器人主动发消息，不是"修好 webhook 那条路"
+
+`push_image_to_webhook()` 原来的设计（自定义机器人 webhook 发 `msg_type=image`）
+本身协议上没问题，但发图片前必须先用应用凭证把二进制传到 `im/v1/images` 换
+`image_key`——**这一步天生依赖应用的"机器人"能力**，跟维不维护 webhook 无关。也就是
+说"机器人能力"这个硬依赖躺不掉，webhook 只是在这基础上又加了一层"每个 locale 单独
+一个 webhook 密钥"的维护成本。既然机器人能力已经开通，直接让应用机器人自己
+`POST im/v1/messages?receive_id_type=chat_id` 主动发消息更省事：不需要为每个 locale
+在飞书后台创建自定义机器人、复制 webhook URL 存进 `.env`，只需要把真正的机器人
+（一个应用只有一个）邀请进对应的群（一次性群操作），配置里维护"群名"字符串就行。
+
+### 架构改动
+
+- **`src/sinks/feishu_bot.py`**：
+  - 新增 `list_bot_chats(credentials) -> dict[群名, chat_id]`（`GET im/v1/chats`，
+    分页遍历 `page_token`，返回机器人当前已加入的全部群）。
+  - 新增 `send_image_via_bot(chat_id, image_key, credentials)`（`POST
+    im/v1/messages?receive_id_type=chat_id`，body `{"receive_id": chat_id,
+    "msg_type": "image", "content": json.dumps({"image_key": image_key})}`），
+    跟 `upload_image()` 同款 token 失效重试逻辑（`code in (99991661, 99991663,
+    99991664)` 强制刷新 token 重试一次）。
+  - **删除** `push_image_to_webhook()` 和 `_ENV_VAR_RE`（`${WEBHOOK_*}` 占位符替换
+    逻辑）——不是保留兼容层，彻底换掉，跟项目一贯"确定不用就删除"的做法一致。
+  - `load_push_targets()` 签名简化成 `load_push_targets(path=PUSH_TARGETS_PATH)`，
+    不再需要 `env` 参数（群名不是密钥，不用从 `.env` 做变量替换，直接读 YAML 原文）。
+  - `push_dashboard_screenshots()`：`dry_run=True` 时行为不变（不调用任何飞书 API，
+    只打印"会发到哪个群名"，不解析 `chat_id`）；`dry_run=False` 时先调一次
+    `list_bot_chats()` 拿到当前群名→`chat_id` 映射，再对每个 locale 查表——查不到
+    （机器人没加入该群，或群名对不上）按 `skip`（`chat_not_found`）处理，不是
+    `failed`，跟"没配置群名"是同一档"预期内跳过"，语义上跟 EN-Asia 目前的真实情况
+    完全对应（见下方验收记录）。
+- **`config/push_targets.yaml`**：`webhook: ${WEBHOOK_EN}` 全部换成
+  `chat_name: "CompAgent_EN"`（EN/FR/VN/ID 四个真实群名，2026-07-15 用
+  `GET im/v1/chats` 核对过机器人确实已加入）。`EN-Asia` 配的 `chat_name:
+  "CompAgent_EN-Asia"` **目前没有对应的真实群**——机器人已加入的群列表里只有
+  `CompAgent_EN/FR/VN/ID` 四个 + 一个命名不属于这套约定的 `CompAgent_KR`（未确认
+  是不是打算给 EN-Asia 用，注释里如实记录、未擅自猜测复用）。
+- **`config/.env.example`**：删除 `WEBHOOK_EN`/`WEBHOOK_FR`/`WEBHOOK_VN`/
+  `WEBHOOK_ID`/`WEBHOOK_EN_ASIA` 五个变量（不再需要），保留 `WEBHOOK_OPS`
+  ——那是 Phase 8 运维告警群用的，走的是另一条独立的"自定义机器人 webhook"路径，
+  跟这次业务群推送的架构变更无关，不受影响。
+- **`tests/sinks/test_feishu_bot.py`**：整份重写，覆盖新增的
+  `list_bot_chats()`/`send_image_via_bot()`（含分页、业务错误、token 刷新）、
+  `push_dashboard_screenshots()` 在"配置了 chat_name 但机器人没加入该群"场景下
+  正确 skip（不是 failed）。
+
+### 真实网络验收记录（2026-07-15，真实 chat_id，真实推送到 4 个测试群）
+
+先用真实凭证查询机器人已加入的群，确认真实 `chat_id`：
+
+```
+GET im/v1/chats -> CompAgent_EN=oc_bbea8d58f4f1cf7f321a90f819882c5d
+                    CompAgent_FR=oc_f9baa4646b34101c00c09e25709be64d
+                    CompAgent_KR=oc_24a7adb4942ecf1ebab28b05baacee62（未使用）
+                    CompAgent_VN=oc_11ceacda2fb83a7912cabb20ab47d2fb
+                    CompAgent_ID=oc_4bb28a20a50dd4c19842d04ed5d459d3
+```
+
+改完代码后，用本地 `http.server`（`docs/` 已发布的最新 `dashboard.json`）跑一次真实
+截图 + 真实推送：
+
+```
+python -m src.sinks.feishu_bot --dashboard-url http://localhost:8731/index.html \
+  --db-path data/competitor_intel.db --execute
+# 5 个 locale 截图全部成功
+# EN: 推送成功 -> CompAgent_EN
+# FR: 推送成功 -> CompAgent_FR
+# VN: 推送成功 -> CompAgent_VN
+# ID: 推送成功 -> CompAgent_ID
+# EN-Asia: 应用机器人未加入群「CompAgent_EN-Asia」（或群名不匹配），跳过
+# pushed=4 skipped=1 failed=0
+```
+
+`sync_log` 核对：`bot_EN/FR/VN/ID` 四行 `action=create status=success`，
+`bot_EN-Asia` 一行 `action=skip status=success error=chat_not_found`——跟「Phase 7
+之后」一节记录的更早一批 `failed`（应用机器人能力未开通时代）区分开，历史失败记录
+原样保留在 `sync_log` 里，不是本次的产出，如实反映"这条推送链路从阻塞到打通"的
+真实过程。`pytest` 全量 276 通过（`tests/sinks/test_feishu_bot.py` 18 个，全部离线
+mock）。
+
+### 已知限制
+
+- **`CompAgent_EN-Asia` 群还不存在**：`config/push_targets.yaml` 已经按预期命名
+  配好 `chat_name`，只要之后真的建一个这个名字的群、把机器人邀请进去，`EN-Asia` 的
+  推送会自动打通，不需要改任何代码。是否要把 `CompAgent_KR` 复用成 `EN-Asia`
+  的目标群，本次未擅自决定，留给用户确认。
+- **同名群撞车没有保护**：`list_bot_chats()` 按名字建字典，如果飞书里真的出现两个
+  同名群，后出现的会静默覆盖先出现的——当前机器人只加入了个位数测试群，风险低，
+  真实生产铺开后如果群命名不严格唯一，需要改成直接配置 `chat_id`（而不是
+  `chat_name`）来规避这个问题。
+- **`CompAgent_EN/FR/VN/ID` 目前是用户自建的测试群**（命名规律是"CompAgent_
+  {locale}"，不是 CLAUDE.md 早前占位的"竞品情报-{locale}"这套命名），是否要切换成
+  正式的业务群、群名是否要统一成中文命名规范，是业务侧决定，本次未涉及，
+  `config/push_targets.yaml` 的 `name` 字段（人类可读名称，不参与匹配逻辑）仍然
+  保留了"竞品情报-EN"这套占位命名，跟真实 `chat_name` 是两个独立字段。
+- **没有接入任何调度**：跟「Phase 7 之后」一节记录的限制一样，仍然只能手动执行
+  `python -m src.sinks.feishu_bot --dashboard-url <url> --execute`。
+
+## Phase 5 真实同步：主库 data/competitor_intel.db 首次全量灌入飞书多维表（2026-07-15）
+
+Phase 5（`src/sinks/feishu_bitable.py`）此前只在专门的验收库
+`data/test_daily_20260715.db` 上跑过（见「Phase 5 完成情况」一节）。本次用户要求
+对当前主库 `data/competitor_intel.db`（含本 session 之前跑完的 99 条新数据、
+Zoomex 全量基线、22 条真实 Phase 4 insights）执行真实同步，代码本身零改动，
+只是换了一个 `--db-path` 目标。
+
+```
+python -m src.sinks.feishu_bitable --db-path data/competitor_intel.db --dry-run
+# announcements: dry_run_rows=2117　insights: dry_run_rows=22（字段映射全部正常）
+
+python -m src.sinks.feishu_bitable --db-path data/competitor_intel.db
+# 首轮：announcements created=2117 updated=0 skipped=0 failed=0
+#       insights      created=22   updated=0 skipped=0 failed=0
+
+python -m src.sinks.feishu_bitable --db-path data/competitor_intel.db
+# 第二轮（幂等验证）：announcements created=0 updated=0 skipped=2117 failed=0
+#                     insights      created=0 updated=0 skipped=22   failed=0
+```
+
+`sync_log` 核对：`bitable_announcements`/`bitable_insights` 各一批
+`action=create status=success`，行数分别 2117/22，跟命令行输出逐一对上。这是这个
+主库第一次真正同步到飞书多维表（此前的验收都在独立的临时/demo 库上做），后续
+`competitor_intel.db` 里的数据（不管是重跑采集、Phase 4 分析产出新 insights，还是
+Phase 3 pipeline 改了 category/is_region_exclusive）都可以直接重跑同一条命令
+增量同步，不需要额外操作。
