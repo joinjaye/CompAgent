@@ -18,9 +18,9 @@ def main() -> None:
 
     data = export(args.db_path, args.out)
     print(f"导出完成：{args.out}")
-    print(f"  as_of_date: {data['meta']['as_of_date']}")
+    print(f"  batch_date: {data['meta']['batch_date']}")
     print(f"  insights: {data['meta']['insights_total']}（模拟 {data['meta']['insights_mock']}）")
-    for source, info in data["sources"].items():
+    for source, info in data["meta"]["source_coverage"].items():
         status = "✓" if info["active"] else "✗ 无数据"
         print(f"  {source}: {status} 今日 {info['today']} / 累计 {info['total']}")
 

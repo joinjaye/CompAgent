@@ -41,6 +41,70 @@ _VALID_DIFF_TYPES: dict[str, set[str]] = {
     "delisting": {"不适用"},
 }
 
+# 逐条 articles[] 校验用（-v2 新增，见 prompts.py 顶部注释）。diff_type 复用同一张
+# 表——每条自己的差异判断跟批次级 zmx_comparison.diff_type 遵守同一套枚举约束。
+_VALID_ARTICLE_DIFF_TYPES = _VALID_DIFF_TYPES
+_VALID_ARTICLE_PRIORITY: set[str] = {"高", "中", "低"}
+_VALID_CHANGE_KIND: set[str] = {"reward", "rule", "other"}
+_VALID_LISTING_KIND: set[str] = {"spot", "perp"}
+
+
+def _normalize_article_fields(
+    item: dict[str, Any], *, category: str, article_status: dict[str, str], issues: list[str]
+) -> dict[str, Any]:
+    """逐条 articles[] 的字段校验/强制，只修正/置空单个字段，绝不因为某个字段不合法
+    就丢弃整条（丢弃整条的唯一触发条件是 uid 不在 related_uids 内，那个检查在调用方
+    的循环里已经做过，走到这里的 item 已经确认 uid 合法）。
+
+    - diff_type：跟批次级 zmx_comparison 完全相同的三分支逻辑（delisting 恒不适用 /
+      不在该 category 合法枚举内则强制不适用 / evidence_indices 为空则强制不适用），
+      只是判断依据是这一条自己的 evidence_indices，不是批次级的。
+    - priority：不在 高/中/低 内则置 null（不像 diff_type 那样有"不适用"这个安全
+      默认值可以强制填，无法判断时如实留空，不编造）。
+    - follow_up：不是字符串则置 null。
+    - change_kind：只有 category=campaign 且这一条自己的 status=changed 时才可能
+      保留合法值，其余情况一律 null——即使 LLM 给了值也不采信。
+    - listing_kind：只有 category=listing 且值在 spot/perp 内才保留，其余置 null。
+    """
+    uid = item.get("uid")
+
+    evidence_raw = item.get("evidence_indices")
+    evidence_list = [i for i in evidence_raw if isinstance(i, int)] if isinstance(evidence_raw, list) else []
+    item["evidence_indices"] = evidence_list
+
+    valid_diff = _VALID_ARTICLE_DIFF_TYPES.get(category, {"不适用"})
+    diff_type = item.get("diff_type")
+    if category == "delisting":
+        diff_type = "不适用"
+    elif diff_type not in valid_diff:
+        issues.append(f"article:{uid}:invalid_diff_type:{diff_type}")
+        diff_type = "不适用"
+    elif diff_type != "不适用" and not evidence_list:
+        issues.append(f"article:{uid}:empty_evidence_indices_forced_not_applicable")
+        diff_type = "不适用"
+    item["diff_type"] = diff_type
+
+    priority = item.get("priority")
+    if priority not in _VALID_ARTICLE_PRIORITY:
+        if priority is not None:
+            issues.append(f"article:{uid}:invalid_priority:{priority!r}")
+        priority = None
+    item["priority"] = priority
+
+    follow_up = item.get("follow_up")
+    item["follow_up"] = follow_up if isinstance(follow_up, str) else None
+
+    change_kind = item.get("change_kind")
+    if category == "campaign" and article_status.get(uid) == "changed" and change_kind in _VALID_CHANGE_KIND:
+        item["change_kind"] = change_kind
+    else:
+        item["change_kind"] = None
+
+    listing_kind = item.get("listing_kind")
+    item["listing_kind"] = listing_kind if (category == "listing" and listing_kind in _VALID_LISTING_KIND) else None
+
+    return item
+
 
 def compute_cache_key(content_hashes: list[str], prompt_version: str) -> str:
     """key = SHA256(SHA256(排序后的 content_hash 拼接) || prompt_version)。
@@ -124,6 +188,7 @@ def validate_and_normalize(
     category: str,
     related_uids: set[str],
     zmx_hits: Optional[list[ZmxBaselineEntry]] = None,
+    article_status: Optional[dict[str, str]] = None,
 ) -> AnalysisResult:
     """入库前校验，规则见 CLAUDE.md Phase 4 / phasePrompts.md 第四步：
 
@@ -131,8 +196,19 @@ def validate_and_normalize(
     - diff_type 不在枚举值内 -> 强制改「不适用」
     - diff_type != 不适用 但 evidence_indices 为空 -> 强制改「不适用」（防幻觉）
     - articles 里 uid 不在 related_uids 内 -> 丢弃该条目
+
+    -v2（2026-07-20）新增：articles[] 逐条的 diff_type/priority/follow_up/
+    change_kind/listing_kind 校验（见 _normalize_article_fields）。这些字段只做
+    单字段级别的强制/置空，不会导致整条被丢弃——丢弃整条的唯一触发条件仍然只有
+    上面第四条（uid 不在 related_uids 内）。
+
+    article_status 是 {uid: status}（如 "new"/"changed"），用于程序性强制
+    change_kind「只有该条自己 status=changed 时才可能有值」这条规则——不传时
+    （默认 None，等价于空字典）等同于"每条状态都不是 changed"，change_kind 恒为
+    null，不影响其余字段的校验，也不影响任何既有调用方/测试的行为。
     """
     zmx_hits = zmx_hits or []
+    article_status = article_status or {}
     issues: list[str] = []
 
     try:
@@ -158,6 +234,9 @@ def validate_and_normalize(
                 logger.warning("丢弃 articles 条目：uid=%r 不在本批次 related_uids 内", uid)
                 issues.append(f"dropped_article_uid_not_in_batch:{uid}")
                 continue
+            item = _normalize_article_fields(
+                item, category=category, article_status=article_status, issues=issues
+            )
             filtered_articles.append(item)
 
     zmx = data.get("zmx_comparison") or {}

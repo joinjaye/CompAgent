@@ -1,6 +1,11 @@
-"""四套按 category 分发的 LLM prompt 模板（phasePrompts.md Phase 4 给定的完整文本，
-逐字实现）。改任何一套 prompt 的正文必须递增 config/analysis.yaml 的
-prompt_versions[category]。
+"""四套按 category 分发的 LLM prompt 模板（原始版本 -v1 是 phasePrompts.md Phase 4
+给定的完整文本，逐字实现；-v2，2026-07-20，在每个模板的 articles[] 里逐条新增
+diff_type/priority/follow_up 三个通用字段 + evidence_indices（campaign/product/
+listing）+ change_kind（仅 campaign）+ listing_kind（仅 listing），供 Phase 7 看板
+逐条排序/展示用，取代原来只有批次级 zmx_comparison 的粗粒度）。改任何一套 prompt 的
+正文必须递增 config/analysis.yaml 的 prompt_versions[category]。这 5 个新字段是否
+合法由 src/analysis/llm.py 的 validate_and_normalize() 程序性强制，不是单纯信任
+LLM 输出遵守本文件里写的规则。
 
 变量替换只认形如 {ALL_CAPS_NAME} 的占位符（正则 `\\{[A-Z][A-Z0-9_]*\\}`），公告
 正文/标题这些不受信任的自由文本先各自拼进 ARTICLES_BLOCK / ZMX_BLOCK 字符串，再作为
@@ -33,7 +38,9 @@ def render(template: str, variables: dict[str, str]) -> str:
 
 
 # ============================================================
-# campaign-v1
+# campaign-v2（2026-07-20：articles[] 逐条新增 diff_type/evidence_indices/priority/
+# follow_up/change_kind，供 Phase 7 看板逐条分析 + 优先级排序用；change_kind 仅
+# campaign 独有，其它三个 category 没有这个字段）
 # ============================================================
 
 SYSTEM_CAMPAIGN = (
@@ -78,7 +85,12 @@ start_date~end_date）
       "mechanics": "玩法机制一句话。门槛、奖励形式、奖励规模必须从正文数字中提取，不可估算或替换为模糊表达。正文信息不足时填「原文信息不足」。",
       "time_window": "活动起止时间，格式 YYYY-MM-DD ~ YYYY-MM-DD。正文未提供时填 null。",
       "target_users": "目标用户群，如「所有用户」「新注册用户」「合约交易用户」「大户（持仓 > X USDT）」。",
-      "change_summary": "（仅 status=changed 时填写，其他情况填 null）具体变更内容，如「奖池从 10,000 USDT 增加至 50,000 USDT，活动截止日期延长 7 天」。"
+      "change_summary": "（仅 status=changed 时填写，其他情况填 null）具体变更内容，如「奖池从 10,000 USDT 增加至 50,000 USDT，活动截止日期延长 7 天」。",
+      "diff_type": "本条与 Zoomex 的差异类型（逐条判断，独立于下面 zmx_comparison 的批次级判断），从以下选项选一个：ZMX已有 / ZMX缺失 / ZMX玩法不同 / 混合 / 不适用。本条 evidence_indices 为空数组时必须填「不适用」。",
+      "evidence_indices": "[整数数组，本条引用了哪几条 [Zindex]，未引用任何基线时必须为空数组 []]",
+      "priority": "本条优先级：高 / 中 / 低，判断标准同 zmx_comparison.priority，但只针对本条。",
+      "follow_up": "一句话可执行的中文跟进建议，如「建议评估是否上线同类交易赛」。priority=低 或 diff_type=不适用 时可填空字符串或「无需跟进」。",
+      "change_kind": "仅当本条 status=changed 时可能有值：reward（奖励规模/形式变化）/ rule（规则或门槛变化）/ other（其他变化）；status≠changed 时必须填 null，不得猜测。"
     }
   ],
   "zmx_comparison": {
@@ -93,12 +105,15 @@ start_date~end_date）
 【强制规则，违反时输出视为无效】
 1. uid 字段原样照抄，不得改动任何字符
 2. mechanics 里的数字必须来自正文，禁止出现「大量」「丰厚」「一定数量」等模糊词
-3. evidence_indices 为空数组时，diff_type 只能是「不适用」
+3. evidence_indices 为空数组时，diff_type 只能是「不适用」（zmx_comparison 顶层和每条 articles 内部各自独立判断，互不影响）
 4. 整个输出必须是合法 JSON，不加任何注释（// 或 /* */ 均不允许）
+5. 每条 articles 的 change_kind 只在该条自己 status=changed 时才可能有值，其余一律 null；不得因为批次里有别的条目 changed 就误填
 """
 
 # ============================================================
-# product-v1
+# product-v2（2026-07-20：articles[] 逐条新增 diff_type/evidence_indices/priority/
+# follow_up，供 Phase 7 看板逐条分析 + 优先级排序用。change_kind 是 campaign 独有
+# 字段，product 不产出这个字段。）
 # ============================================================
 
 SYSTEM_PRODUCT = (
@@ -132,7 +147,11 @@ key_mechanics | 目标用户：target_users）
       "title": "（原样照抄）",
       "feature_description": "新功能或变更的一句话描述。必须说清楚「做了什么」，如「新增跟单交易止损止盈功能，支持跟单者自定义最大跟单金额上限」。禁止使用「优化了体验」「提升了性能」等无实质内容的表述。",
       "affected_users": "影响哪类用户，如「所有合约交易用户」「使用 API 接入的机构用户」「跟单交易跟随者」。",
-      "change_summary": "（仅 status=changed 时填写，其他情况填 null）具体改了什么，如「手续费返还比例从 20% 提高至 30%，适用范围从 VIP3+ 扩展至 VIP1+」。"
+      "change_summary": "（仅 status=changed 时填写，其他情况填 null）具体改了什么，如「手续费返还比例从 20% 提高至 30%，适用范围从 VIP3+ 扩展至 VIP1+」。",
+      "diff_type": "本条与 Zoomex 的差异类型（逐条判断，独立于下面 zmx_comparison 的批次级判断）：ZMX已有 / ZMX缺失 / ZMX玩法不同 / 混合 / 不适用。本条 evidence_indices 为空数组时必须填「不适用」。",
+      "evidence_indices": "[整数数组，本条引用了哪几条 [Zindex]，未引用任何基线时必须为空数组 []]",
+      "priority": "本条优先级：高 / 中 / 低，判断标准同 zmx_comparison.priority，但只针对本条。",
+      "follow_up": "一句话可执行的中文跟进建议，如「建议评估该功能是否列入下季度 roadmap」。priority=低 或 diff_type=不适用 时可填空字符串或「无需跟进」。"
     }
   ],
   "zmx_comparison": {
@@ -147,12 +166,16 @@ key_mechanics | 目标用户：target_users）
 【强制规则】
 1. uid 字段原样照抄
 2. feature_description 必须包含「做了什么」的实质内容，不接受仅描述影响而不描述功能的表述
-3. evidence_indices 为空时 diff_type 只能是「不适用」
+3. evidence_indices 为空时 diff_type 只能是「不适用」（zmx_comparison 顶层和每条 articles 内部各自独立判断）
 4. 整个输出必须是合法 JSON
+5. articles 内不产出 change_kind 字段（该字段仅 campaign 类目有意义）
 """
 
 # ============================================================
-# listing-v1
+# listing-v2（2026-07-20：articles[] 逐条新增 diff_type/evidence_indices/priority/
+# follow_up/listing_kind。listing_kind 是 listing 独有字段，spot/perp 从
+# market_type 归约而来；market_type 本身是「现货/合约/两者均有/不明」四选一，
+# 「两者均有」「不明」时 listing_kind 必须填 null，不强行二选一猜测。）
 # ============================================================
 
 SYSTEM_LISTING = (
@@ -186,7 +209,12 @@ key_mechanics | 时间：start_date~end_date）
       "token_symbol": "代币符号，如「BTCUSDT」。从标题或正文提取，提取不到填 null。",
       "market_type": "现货 / 合约 / 两者均有 / 不明",
       "launch_time": "上线时间，格式 YYYY-MM-DD HH:MM UTC。正文未提供填 null。",
-      "project_brief": "项目一句话简介，从正文提取。正文无介绍填 null，禁止自行补充 LLM 知识库里的项目信息。"
+      "project_brief": "项目一句话简介，从正文提取。正文无介绍填 null，禁止自行补充 LLM 知识库里的项目信息。",
+      "diff_type": "本条与 Zoomex 的差异类型（逐条判断，独立于下面 zmx_comparison 的批次级判断）：ZMX已有 / ZMX缺失 / 混合 / 不适用（不含「ZMX玩法不同」，同批次级约束）。本条 evidence_indices 为空数组时必须填「不适用」。",
+      "evidence_indices": "[整数数组，本条引用了哪几条 [Zindex]，未引用任何基线时必须为空数组 []]",
+      "priority": "本条优先级：高 / 中 / 低，判断标准同 zmx_comparison.priority，但只针对本条。",
+      "follow_up": "一句话可执行的中文跟进建议，如「建议关注该代币是否值得纳入 ZMX 上币评估」。priority=低 或 diff_type=不适用 时可填空字符串或「无需跟进」。",
+      "listing_kind": "spot（现货）/ perp（合约/期货）。从 market_type 归约：market_type=现货→spot；market_type=合约→perp；market_type=两者均有 或 不明→null，不强行二选一猜测。"
     }
   ],
   "zmx_comparison": {
@@ -201,12 +229,16 @@ key_mechanics | 时间：start_date~end_date）
 【强制规则】
 1. uid 字段原样照抄
 2. project_brief 只能来自正文，禁止使用 LLM 训练数据中的项目知识
-3. evidence_indices 为空时 diff_type 只能是「不适用」
-4. listing 批次的 diff_type 不含「ZMX玩法不同」选项
+3. evidence_indices 为空时 diff_type 只能是「不适用」（zmx_comparison 顶层和每条 articles 内部各自独立判断）
+4. listing 批次的 diff_type（zmx_comparison 与每条 articles 内部均不含）不含「ZMX玩法不同」选项
+5. listing_kind 无法从 market_type 明确归约时（两者均有/不明）必须填 null，不得猜测
+6. articles 内不产出 change_kind 字段（该字段仅 campaign 类目有意义）
 """
 
 # ============================================================
-# delisting-v1
+# delisting-v2（2026-07-20：articles[] 逐条新增 priority/follow_up。delisting 没有
+# ZMX 基线对比（无 {ZMX_BLOCK}），所以不产出 evidence_indices；diff_type 逐条同样
+# 恒为「不适用」（与批次级一致），不产出 listing_kind/change_kind。）
 # ============================================================
 
 SYSTEM_DELISTING = (
@@ -237,7 +269,10 @@ USER_DELISTING_TEMPLATE = """\
       "token_symbol": "代币符号，提取不到填 null",
       "market_type": "现货 / 合约 / 两者均有 / 不明",
       "delist_time": "下架时间，格式 YYYY-MM-DD HH:MM UTC。正文未提供填 null。",
-      "reason": "下架原因，从正文提取。常见值：「流动性不足」「项目方要求」「合规原因」「维护升级」。正文未说明填 null，禁止推断。"
+      "reason": "下架原因，从正文提取。常见值：「流动性不足」「项目方要求」「合规原因」「维护升级」。正文未说明填 null，禁止推断。",
+      "diff_type": "固定为「不适用」，不得修改（delisting 不做 ZMX 差异分析）。",
+      "priority": "本条优先级：高 / 中 / 低，判断标准同 zmx_comparison.priority，但只针对本条。",
+      "follow_up": "一句话可执行的中文跟进建议，如「建议检查 ZMX 是否有该代币的对应仓位/挂单风险提示」。priority=低 时可填空字符串或「无需跟进」。"
     }
   ],
   "zmx_comparison": {
@@ -252,7 +287,8 @@ USER_DELISTING_TEMPLATE = """\
 【强制规则】
 1. uid 字段原样照抄
 2. reason 只能来自正文，禁止推断
-3. diff_type 固定为「不适用」，不得修改
+3. diff_type（批次级和每条 articles 内部均）固定为「不适用」，不得修改
+4. articles 内不产出 evidence_indices/listing_kind/change_kind 字段（delisting 无 ZMX 对比，这些字段对 delisting 均无意义）
 """
 
 _TEMPLATES: dict[str, tuple[str, str]] = {

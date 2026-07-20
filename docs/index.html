@@ -67,21 +67,16 @@ a { color: inherit; }
 .topbar-right { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--status-good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-good) 20%, transparent); }
 
-/* ---------- locale tabs ---------- */
-.locale-tabs { display: flex; gap: 2px; padding: 0.6rem 1.5rem 0; overflow-x: auto; }
-.locale-tab {
-  padding: 7px 14px; font-size: 13px; color: var(--text-secondary); cursor: pointer;
+/* ---------- category tabs (top-level nav) ---------- */
+.category-tabs { display: flex; gap: 2px; padding: 0.6rem 1.5rem 0; overflow-x: auto; }
+.category-tab {
+  padding: 7px 16px; font-size: 13px; color: var(--text-secondary); cursor: pointer;
   white-space: nowrap; user-select: none; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
   border-bottom: 2px solid transparent; transition: color 0.15s var(--ease), background 0.15s var(--ease);
   font-weight: 500;
 }
-.locale-tab:hover { color: var(--text-primary); background: var(--surface-1); }
-.locale-tab.active { color: var(--hue-campaign); border-bottom-color: var(--hue-campaign); background: var(--surface-1); font-weight: 650; }
-.locale-tab.accent-tab { color: #f0b429; }
-.locale-tab.accent-tab.active { color: #f0b429; border-bottom-color: #f0b429; }
-.locale-tab.global { color: var(--text-muted); }
-.locale-tab.global.active { color: var(--hue-campaign); }
-.tabs-divider { width: 1px; align-self: stretch; margin: 8px 6px; background: var(--border); flex-shrink: 0; }
+.category-tab:hover { color: var(--text-primary); background: var(--surface-1); }
+.category-tab.active { color: var(--hue-campaign); border-bottom-color: var(--hue-campaign); background: var(--surface-1); font-weight: 650; }
 
 /* ---------- section scaffolding ---------- */
 .section-label { font-size: 11px; font-weight: 650; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; padding: 1.5rem 1.5rem 0.6rem; }
@@ -89,10 +84,14 @@ a { color: inherit; }
 .tab-pane.active { display: flex; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
 
-/* ---------- stat cards ---------- */
-.overview-grid { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 10px; padding: 0 1.5rem; }
-@media (max-width: 1024px) { .overview-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
-@media (max-width: 480px) { .overview-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+/* ---------- quick jump ---------- */
+.quick-jump { display: flex; gap: 8px; padding: 0.4rem 1.5rem 0; flex-wrap: wrap; }
+.quick-jump-btn { font-size: 11.5px; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); transition: all 0.12s var(--ease); }
+.quick-jump-btn:hover { border-color: var(--hue-campaign); color: var(--hue-campaign); }
+
+/* ---------- stat / chip cards ---------- */
+.overview-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 0 1.5rem; }
+@media (max-width: 860px) { .overview-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
 .stat-card {
   background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 0.85rem 1rem; box-shadow: var(--shadow-card); transition: border-color 0.15s var(--ease);
@@ -104,53 +103,65 @@ a { color: inherit; }
 .stat-value.warn { color: var(--status-warning); }
 .stat-value.danger { color: var(--status-critical); }
 .stat-delta { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
+.chip-diffs { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
+.chip-diffs .tag { font-size: 10px; padding: 2px 7px; }
 
-/* ---------- daily digest hero ---------- */
-.digest-hero {
-  margin: 1.1rem 1.5rem 0; padding: 1.1rem 1.25rem; border-radius: var(--radius-lg);
-  background: linear-gradient(155deg, color-mix(in srgb, var(--hue-campaign) 12%, var(--surface-1)), var(--surface-1));
-  border: 1px solid color-mix(in srgb, var(--hue-campaign) 25%, var(--border));
-  box-shadow: var(--shadow-card);
-}
-.digest-hero-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--hue-campaign); margin-bottom: 6px; }
-.digest-hero-text { font-size: 13.5px; color: var(--text-primary); line-height: 1.7; }
+/* ---------- activity ranking (reused on Overview) ---------- */
+.rank-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); margin: 0 1.5rem; box-shadow: var(--shadow-card); overflow: hidden; }
+.rank-row { display: flex; align-items: center; padding: 8px 1rem; border-bottom: 1px solid var(--border); gap: 12px; font-size: 12.5px; transition: background 0.1s; }
+.rank-row:hover { background: var(--surface-2); }
+.rank-row:last-child { border-bottom: none; }
+.rank-source { width: 66px; flex-shrink: 0; }
+.rank-bar-wrap { flex: 1; background: var(--surface-3); border-radius: 4px; height: 8px; overflow: hidden; }
+.rank-bar { height: 8px; border-radius: 4px; background: var(--hue-campaign); transition: width 0.4s var(--ease); }
+.rank-count { width: 50px; text-align: right; color: var(--text-muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+.rank-row.inactive .rank-source, .rank-row.inactive .rank-count { color: var(--text-muted); }
+.rank-row.inactive .rank-bar { background: var(--border-strong); }
 
-/* ---------- analysis blocks (grouped batch insights) ---------- */
-.analysis-groups { padding: 0 1.5rem; display: flex; flex-direction: column; gap: 14px; }
-.analysis-group { display: flex; flex-direction: column; gap: 8px; }
-.analysis-group-title { display: flex; align-items: center; gap: 8px; }
-.analysis-group-count { font-size: 11.5px; color: var(--text-muted); }
-.analysis-card {
+/* ---------- detail cards (Campaign / Product / highlights) ---------- */
+.detail-list { padding: 0 1.5rem; display: flex; flex-direction: column; gap: 10px; }
+.detail-card {
   background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius);
-  padding: 0.8rem 1rem; box-shadow: var(--shadow-card); transition: border-color 0.15s var(--ease);
+  padding: 0.9rem 1.05rem; box-shadow: var(--shadow-card); transition: border-color 0.15s var(--ease);
 }
-.analysis-card:hover { border-color: var(--border-strong); }
-.analysis-card-head { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 8px; }
-.analysis-body { font-size: 12.5px; color: var(--text-primary); line-height: 1.65; white-space: pre-line; }
-.analysis-body.clamped { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.detail-card:hover { border-color: var(--border-strong); }
+.detail-card.accent-missing { border-left: 3px solid var(--status-critical); }
+.detail-card-head { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; margin-bottom: 8px; }
+.detail-title { font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.4; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.detail-title a { text-decoration: none; }
+.detail-title a:hover { text-decoration: underline; }
+.detail-body { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; white-space: pre-line; }
+.detail-body.clamped { display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 .analysis-toggle {
   margin-top: 7px; background: none; border: none; padding: 0; font-size: 11.5px;
   color: var(--hue-campaign); font-weight: 600; transition: opacity 0.12s;
 }
 .analysis-toggle:hover { opacity: 0.75; }
-.digest-badge { font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 20px; margin-left: 8px; vertical-align: middle; background: var(--surface-2); color: var(--text-muted); border: 1px dashed var(--border-strong); text-transform: none; letter-spacing: 0; }
-.digest-focus { margin-top: 8px; font-size: 12.5px; color: var(--hue-campaign); font-weight: 600; }
+.follow-up { margin-top: 8px; font-size: 12.5px; color: var(--hue-campaign); font-weight: 600; line-height: 1.5; }
+.detail-meta { margin-top: 8px; font-size: 11px; color: var(--text-muted); display: flex; gap: 10px; align-items: center; }
+.detail-meta a { color: var(--hue-campaign); font-weight: 600; }
 
-/* ---------- highlights ---------- */
-.highlights-list { padding: 0 1.5rem; display: flex; flex-direction: column; gap: 8px; }
+/* ---------- priority ---------- */
+.priority-high { background: color-mix(in srgb, var(--status-critical) 18%, transparent); color: #ff9d99; }
+.priority-medium { background: color-mix(in srgb, var(--status-warning) 20%, transparent); color: #f6cb6b; }
+.priority-low { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
+
+/* ---------- highlight cards (Overview) ---------- */
 .highlight-card {
   background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 0.85rem 1rem; display: flex; align-items: flex-start; gap: 12px;
-  box-shadow: var(--shadow-card); transition: border-color 0.15s var(--ease), transform 0.15s var(--ease);
+  box-shadow: var(--shadow-card); transition: border-color 0.15s var(--ease);
 }
 .highlight-card:hover { border-color: var(--border-strong); }
-.highlight-card.pri-high { border-left: 3px solid var(--status-critical); }
+.highlight-card.accent-missing { border-left: 3px solid var(--status-critical); }
 .hl-source { font-size: 11px; font-weight: 650; background: color-mix(in srgb, var(--hue-campaign) 16%, transparent); color: var(--hue-campaign); padding: 3px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; margin-top: 1px; }
 .hl-body { flex: 1; min-width: 0; }
 .hl-title { font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.4; }
+.hl-title a { text-decoration: none; }
+.hl-title a:hover { text-decoration: underline; }
 .hl-summary { font-size: 12.5px; color: var(--text-secondary); margin-top: 4px; line-height: 1.55; }
 .hl-meta { display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
-.priority-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--status-critical); flex-shrink: 0; margin-top: 6px; box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-critical) 18%, transparent); }
+.hl-time { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
 .tag { font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; letter-spacing: 0.01em; }
 .tag-missing { background: color-mix(in srgb, var(--status-critical) 18%, transparent); color: #ff9d99; }
@@ -165,69 +176,62 @@ a { color: inherit; }
 .tag-delisting { background: color-mix(in srgb, var(--hue-delisting) 18%, transparent); color: #f5928d; }
 .tag-other { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
 .tag-mock { background: transparent; color: var(--text-muted); border: 1px dashed var(--text-muted); font-weight: 500; }
-.hl-time { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
 
-/* ---------- CEX table ---------- */
-.cex-header { display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; flex-wrap: wrap; gap: 8px; }
-.cex-filter { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+/* ---------- filter bar (shared: Campaign/Product/Listing/Markets/Search) ---------- */
+.filter-bar { display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; flex-wrap: wrap; gap: 8px; }
+.filter-group { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .filter-btn {
   font-size: 11.5px; padding: 4px 11px; border-radius: 20px; border: 1px solid var(--border);
   background: var(--surface-1); color: var(--text-secondary); transition: all 0.12s var(--ease);
 }
 .filter-btn:hover { border-color: var(--border-strong); color: var(--text-primary); }
 .filter-btn.active { background: var(--hue-campaign); color: var(--on-accent); border-color: var(--hue-campaign); font-weight: 600; }
+.filter-btn:disabled { opacity: 0.35; cursor: default; }
 
-.cex-tabs { display: flex; gap: 4px; padding: 0.5rem 1.5rem 0; }
-.cex-tab {
-  padding: 6px 12px; font-size: 12px; color: var(--text-muted); border-radius: var(--radius-sm);
-  border-bottom: 2px solid transparent; transition: all 0.12s var(--ease); font-weight: 500;
-}
-.cex-tab:hover { color: var(--text-primary); background: var(--surface-1); }
-.cex-tab.active { color: var(--text-primary); background: var(--surface-1); border-bottom-color: var(--border-strong); font-weight: 650; }
-
-.table-wrap { overflow-x: auto; margin: 0 1.5rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1); box-shadow: var(--shadow-card); }
-.cex-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
-.cex-table thead th { padding: 9px 1rem; text-align: left; font-size: 10.5px; font-weight: 650; color: var(--text-muted); letter-spacing: 0.04em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
-.cex-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s var(--ease); }
-.cex-table tbody tr:last-child { border-bottom: none; }
-.cex-table tbody tr:hover { background: var(--surface-2); }
-.cex-table tbody td { padding: 9px 1rem; vertical-align: top; }
-.cex-table .td-title { max-width: 380px; font-weight: 500; color: var(--text-primary); }
-.cex-table .td-time { width: 62px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+/* ---------- data table (Listing / Search / Markets matrix) ---------- */
+.table-wrap { overflow-x: auto; margin: 0.6rem 1.5rem 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface-1); box-shadow: var(--shadow-card); }
+.data-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.data-table thead th { padding: 9px 1rem; text-align: left; font-size: 10.5px; font-weight: 650; color: var(--text-muted); letter-spacing: 0.04em; text-transform: uppercase; border-bottom: 1px solid var(--border); white-space: nowrap; }
+.data-table tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s var(--ease); }
+.data-table tbody tr:last-child { border-bottom: none; }
+.data-table tbody tr:hover { background: var(--surface-2); }
+.data-table tbody tr.row-accent-missing { box-shadow: inset 3px 0 0 var(--status-critical); }
+.data-table tbody td { padding: 9px 1rem; vertical-align: top; }
+.data-table .td-title { max-width: 380px; font-weight: 500; color: var(--text-primary); }
+.data-table .td-title a { text-decoration: none; } .data-table .td-title a:hover { text-decoration: underline; }
+.data-table .td-time { width: 76px; color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .source-pill { font-size: 10.5px; font-weight: 650; padding: 3px 8px; border-radius: 20px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary); white-space: nowrap; }
 .status-chip { font-size: 10.5px; padding: 2px 8px; border-radius: 20px; font-weight: 600; }
 .status-chip.new { background: color-mix(in srgb, var(--hue-campaign) 16%, transparent); color: #8fbdf5; }
 .status-chip.changed { background: color-mix(in srgb, var(--status-warning) 20%, transparent); color: #f6cb6b; }
 .status-chip.unchanged { background: var(--surface-2); color: var(--text-muted); }
-.cex-empty { padding: 2rem 1.25rem; color: var(--text-muted); font-size: 13px; text-align: center; }
-.cex-footer { display: flex; align-items: center; justify-content: space-between; padding: 8px 1rem; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-muted); }
-.view-all-link { color: var(--hue-campaign); font-weight: 600; background: none; border: none; padding: 0; font-size: 11.5px; transition: opacity 0.12s; }
-.view-all-link:hover { opacity: 0.75; }
+.table-empty { padding: 2rem 1.25rem; color: var(--text-muted); font-size: 13px; text-align: center; }
+.table-footer { display: flex; align-items: center; justify-content: space-between; padding: 8px 1rem; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-muted); }
 
-.insights-bar { margin: 0.75rem 1.5rem 0.25rem; background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem; font-size: 13px; color: var(--text-secondary); line-height: 1.65; box-shadow: var(--shadow-card); }
-.insights-bar strong { color: var(--text-primary); font-weight: 650; }
-.missing-source-note { padding: 6px 1.5rem 0; font-size: 11.5px; color: var(--status-warning); }
+.excl-badge { font-size: 10px; padding: 2px 7px; border-radius: 20px; background: color-mix(in srgb, var(--loc-asia) 22%, transparent); color: var(--loc-asia); white-space: nowrap; font-weight: 600; }
+.locale-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
+.locale-dot.en { background: var(--loc-en); } .locale-dot.fr { background: var(--loc-fr); }
+.locale-dot.vn { background: var(--loc-vn); } .locale-dot.id { background: var(--loc-id); }
+.locale-dot.asia { background: var(--loc-asia); }
 
-/* ---------- global cards ---------- */
-.global-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; padding: 0 1.5rem; }
-@media (max-width: 860px) { .global-grid { grid-template-columns: 1fr; } }
-.global-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow-card); }
-.global-card-header { padding: 0.7rem 1rem; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 650; color: var(--text-secondary); letter-spacing: 0.01em; }
-.global-full { grid-column: 1 / -1; }
-
-.rank-row { display: flex; align-items: center; padding: 8px 1rem; border-bottom: 1px solid var(--border); gap: 12px; font-size: 12.5px; transition: background 0.1s; }
-.rank-row:hover { background: var(--surface-2); }
-.rank-row:last-child { border-bottom: none; }
-.rank-source { width: 66px; flex-shrink: 0; }
-.rank-bar-wrap { flex: 1; background: var(--surface-3); border-radius: 4px; height: 8px; overflow: hidden; }
-.rank-bar { height: 8px; border-radius: 4px; background: var(--hue-campaign); transition: width 0.4s var(--ease); }
-.rank-count { width: 50px; text-align: right; color: var(--text-muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
-.rank-row.inactive .rank-source, .rank-row.inactive .rank-count { color: var(--text-muted); }
-.rank-row.inactive .rank-bar { background: var(--border-strong); }
-
-.missing-row { display: flex; align-items: center; padding: 8px 1rem; border-bottom: 1px solid var(--border); gap: 8px; font-size: 12.5px; }
-.missing-row:last-child { border-bottom: none; }
-.missing-title { flex: 1; color: var(--text-primary); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* ---------- Markets ---------- */
+.market-tabs { display: flex; gap: 4px; padding: 0.5rem 1.5rem 0; flex-wrap: wrap; }
+.market-tab {
+  padding: 6px 14px; font-size: 12px; color: var(--text-muted); border-radius: var(--radius-sm);
+  border-bottom: 2px solid transparent; transition: all 0.12s var(--ease); font-weight: 500;
+}
+.market-tab:hover { color: var(--text-primary); background: var(--surface-1); }
+.market-tab.active { color: var(--text-primary); background: var(--surface-1); border-bottom-color: var(--border-strong); font-weight: 650; }
+.market-tab.disabled { color: var(--border-strong); cursor: default; }
+.market-tab.disabled:hover { background: none; color: var(--border-strong); }
+.market-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; padding: 0.75rem 1.5rem 0; }
+@media (max-width: 860px) { .market-summary-grid { grid-template-columns: 1fr; } }
+.market-section { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-card); overflow: hidden; }
+.market-section-head { padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 650; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; }
+.market-section-body { padding: 0.6rem 0.9rem; display: flex; flex-direction: column; gap: 8px; }
+.market-item { font-size: 12px; line-height: 1.5; }
+.market-item-title { color: var(--text-primary); font-weight: 500; }
+.market-empty { color: var(--text-muted); font-size: 12px; padding: 0.4rem 0; }
 
 .region-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .region-table th { padding: 8px 1rem; text-align: left; font-size: 10.5px; font-weight: 650; color: var(--text-muted); letter-spacing: 0.04em; text-transform: uppercase; border-bottom: 1px solid var(--border); }
@@ -235,69 +239,43 @@ a { color: inherit; }
 .region-table tr:hover { background: var(--surface-2); }
 .region-table tr:last-child td { border-bottom: none; }
 .region-table .td-title { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-.locale-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
-.locale-dot.en { background: var(--loc-en); } .locale-dot.fr { background: var(--loc-fr); }
-.locale-dot.vn { background: var(--loc-vn); } .locale-dot.id { background: var(--loc-id); }
-.locale-dot.asia { background: var(--loc-asia); }
-.excl-badge { font-size: 10px; padding: 2px 7px; border-radius: 20px; background: color-mix(in srgb, var(--loc-asia) 22%, transparent); color: var(--loc-asia); white-space: nowrap; font-weight: 600; }
 
-/* stacked bar chart */
-.stackbar-chart { padding: 0.9rem 1rem; }
-.stackbar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 11.5px; }
-.stackbar-row:last-child { margin-bottom: 0; }
-.stackbar-label { width: 56px; flex-shrink: 0; color: var(--text-secondary); font-weight: 600; }
-.stackbar-track { flex: 1; height: 18px; border-radius: 4px; overflow: hidden; display: flex; background: var(--surface-3); }
-.stackbar-seg { height: 100%; position: relative; transition: opacity 0.12s; }
-.stackbar-seg:hover { opacity: 0.8; }
-.stackbar-total { width: 38px; text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums; }
-.stackbar-legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 0.6rem 1rem 0.85rem; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-secondary); }
-.legend-item { display: flex; align-items: center; gap: 6px; }
-.legend-swatch { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+.baseline-card { margin: 0.75rem 1.5rem 0; background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); padding: 0.85rem 1rem; font-size: 12.5px; color: var(--text-secondary); line-height: 1.65; box-shadow: var(--shadow-card); }
+.baseline-card strong { color: var(--text-primary); }
+.zoomex-cats { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
 
-.source-status-row { display: flex; align-items: center; padding: 8px 1rem; border-bottom: 1px solid var(--border); gap: 10px; font-size: 12.5px; }
-.source-status-row:last-child { border-bottom: none; }
-.source-status-row .status-icon { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.source-status-row .status-icon.ok { background: var(--status-good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-good) 18%, transparent); }
-.source-status-row .status-icon.broken { background: var(--status-critical); box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-critical) 18%, transparent); }
-.source-status-note { color: var(--text-muted); font-size: 11.5px; margin-left: auto; }
-
-.zoomex-cats { padding: 0.9rem 1rem; display: flex; flex-wrap: wrap; gap: 7px; }
-
-.placeholder-card { margin: 0.75rem 1.5rem 0; background: var(--surface-1); border: 1px dashed var(--border-strong); border-radius: var(--radius); padding: 1.75rem; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 13px; text-align: center; }
+/* ---------- Search ---------- */
+.search-toolbar { display: flex; flex-direction: column; gap: 10px; padding: 0.5rem 1.5rem 0.75rem; }
+.search-filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.search-filter-label { font-size: 11px; color: var(--text-muted); font-weight: 600; width: 68px; flex-shrink: 0; }
+.search-input {
+  flex: 1; min-width: 180px; background: var(--surface-1); border: 1px solid var(--border); color: var(--text-primary);
+  border-radius: 20px; padding: 6px 14px; font-size: 12.5px; transition: border-color 0.12s var(--ease);
+}
+.search-input:focus { border-color: var(--hue-campaign); }
+.search-input::placeholder { color: var(--text-muted); }
+.search-summary { padding: 0 1.5rem; font-size: 12px; color: var(--text-muted); }
+.search-summary strong { color: var(--text-primary); }
+.pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 1rem; font-size: 12px; color: var(--text-secondary); }
+.page-btn { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary); border-radius: var(--radius-sm); padding: 5px 12px; font-size: 12px; transition: all 0.12s var(--ease); }
+.page-btn:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text-primary); }
+.page-btn:disabled { opacity: 0.35; cursor: default; }
 
 .footnote { padding: 1.5rem; font-size: 11.5px; color: var(--text-muted); line-height: 1.7; border-top: 1px solid var(--border); margin-top: 1.5rem; }
 .footnote code { font-family: var(--font-mono); background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 10.5px; }
 .mock-note { display: inline-flex; align-items: center; gap: 4px; }
 
-/* ---------- archive tab ---------- */
-.archive-toolbar { display: flex; flex-direction: column; gap: 10px; padding: 0.5rem 1.5rem 0.75rem; }
-.archive-filter-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.archive-filter-label { font-size: 11px; color: var(--text-muted); font-weight: 600; width: 68px; flex-shrink: 0; }
-.archive-search {
-  flex: 1; min-width: 180px; background: var(--surface-1); border: 1px solid var(--border); color: var(--text-primary);
-  border-radius: 20px; padding: 6px 14px; font-size: 12.5px; transition: border-color 0.12s var(--ease);
-}
-.archive-search:focus { border-color: var(--hue-campaign); }
-.archive-search::placeholder { color: var(--text-muted); }
-.archive-summary { padding: 0 1.5rem; font-size: 12px; color: var(--text-muted); }
-.archive-summary strong { color: var(--text-primary); }
-.archive-pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 1rem; font-size: 12px; color: var(--text-secondary); }
-.page-btn { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary); border-radius: var(--radius-sm); padding: 5px 12px; font-size: 12px; transition: all 0.12s var(--ease); }
-.page-btn:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text-primary); }
-.page-btn:disabled { opacity: 0.35; cursor: default; }
-
-/* simple hover tooltip */
-#tooltip {
-  position: fixed; pointer-events: none; background: var(--surface-3); color: var(--text-primary); font-size: 11.5px;
-  padding: 6px 10px; border-radius: 6px; z-index: 50; max-width: 260px; line-height: 1.45; opacity: 0;
-  transition: opacity 0.1s; border: 1px solid var(--border-strong); box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-}
-#tooltip.show { opacity: 1; }
-
 .loading, .load-error { padding: 4rem 1.25rem; text-align: center; color: var(--text-muted); font-size: 13px; }
+
+/* ---------- push view (compact per-locale digest, URL-only: ?view=push&locale=EN) ---------- */
+/* 不是六个顶层 tab 之一，专门给 src/dashboard/screenshot.py 截图 + 推送飞书群用，
+   不挂 .tab-pane（避免 fadeIn 动画影响截图时机判断），也刻意不含 .category-tabs。 */
+.push-view { padding-bottom: 1rem; }
+.push-header { display: flex; align-items: baseline; justify-content: space-between; padding: 1rem 1.25rem 0.25rem; border-bottom: 1px solid var(--border); margin-bottom: 0.25rem; }
+.push-title { font-size: 15px; font-weight: 650; }
+.push-date { font-size: 12px; color: var(--text-muted); }
 </style>
 
-<div id="tooltip"></div>
 <div id="app">
   <div class="loading" id="loadingMsg">加载看板数据…</div>
 </div>
@@ -305,39 +283,71 @@ a { color: inherit; }
 <script>
 const DATA_URL = './data/dashboard.json';
 
+const TOP_TABS = [
+  { key: 'overview', label: 'Overview' },
+  { key: 'campaign', label: 'Campaign' },
+  { key: 'product', label: 'Product' },
+  { key: 'listing', label: 'Listing' },
+  { key: 'markets', label: 'Markets' },
+  { key: 'search', label: 'Search' },
+];
 const CATEGORY_ORDER = ['campaign', 'product', 'listing', 'delisting'];
 const CATEGORY_LABEL = { campaign: '活动 Campaign', product: '产品 Product', listing: '上币 Listing', delisting: '下架 Delisting', other: '其他' };
 const DIFF_LABEL = { missing: 'ZMX缺失', diff: 'ZMX玩法不同', same: 'ZMX已有', mixed: '混合', na: '不适用', pending: '待分析' };
 const STATUS_LABEL = { new: '新增', changed: '变更', unchanged: '未变' };
 const SOURCES = ['Bitunix', 'Weex', 'BingX', 'Phemex', 'Lbank'];
 const LOCALE_LABEL = { EN: 'EN', FR: 'FR', VN: 'VN', ID: 'ID', 'EN-Asia': 'EN-Asia' };
-const ARCHIVE_PAGE_SIZE = 50;
+const LOCALE_DOT_CLASS = { EN: 'en', FR: 'fr', VN: 'vn', ID: 'id', 'EN-Asia': 'asia' };
+const PRIORITY_ORDER = { '高': 0, '中': 1, '低': 2 };
+const DIFF_SORT_ORDER = { missing: 0, diff: 1, mixed: 2, same: 3, na: 3 };
+const SEARCH_PAGE_SIZE = 50;
 
 let DATA = null;
-let state = { locale: 'EN', category: 'campaign', source: 'all' };
-let archiveState = { locale: 'all', source: 'all', category: 'all', range: 'all', query: '', page: 1 };
+let state = { tab: 'overview' };
+let campaignState = { source: 'all' };
+let productState = { source: 'all' };
+let listingState = { source: 'all' };
+let marketsState = { market: 'EN' };
+let searchState = { locale: 'all', source: 'all', category: 'all', diffType: 'all', range: 'all', query: '', page: 1 };
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 function mockBadge(isMock) { return isMock ? `<span class="tag tag-mock">模拟</span>` : ''; }
-
-function showTooltip(evt, html) {
-  const tip = document.getElementById('tooltip');
-  tip.innerHTML = html;
-  tip.classList.add('show');
-  const x = evt.clientX + 14, y = evt.clientY + 14;
-  tip.style.left = Math.min(x, window.innerWidth - 270) + 'px';
-  tip.style.top = y + 'px';
+function priorityClass(p) { return p === '高' ? 'priority-high' : p === '中' ? 'priority-medium' : 'priority-low'; }
+function priorityRank(p) { return PRIORITY_ORDER[p] ?? 3; }
+function diffRank(tag) { return DIFF_SORT_ORDER[tag] ?? 4; }
+// 全局共用的排序规则：priority 高->中->低，同级内按 diff_type 严重度
+// (ZMX缺失 -> 玩法不同 -> 混合 -> 已有/不适用)。每个 tab 的列表都调这同一个函数，
+// 不各自重新实现一遍，避免六个 tab 的"优先级排序"行为悄悄产生差异。
+function sortByPriorityThenDiff(rows) {
+  return [...rows].sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority) || diffRank(a.diff_tag) - diffRank(b.diff_tag));
 }
-function hideTooltip() { document.getElementById('tooltip').classList.remove('show'); }
+function formatTime(iso) {
+  if (!iso) return '--:--';
+  const t = iso.split('T')[1];
+  return t ? t.slice(0, 5) : '--:--';
+}
+function formatDate(iso) {
+  return iso ? iso.slice(0, 10) : '—';
+}
+function localeDot(locale) {
+  const cls = LOCALE_DOT_CLASS[locale];
+  return cls ? `<span class="locale-dot ${cls}"></span> ` : '';
+}
 
 async function loadData() {
   try {
     const res = await fetch(DATA_URL, { cache: 'no-store' });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     DATA = await res.json();
-    render();
+    const params = new URLSearchParams(location.search);
+    const pushLocale = params.get('view') === 'push' ? params.get('locale') : null;
+    if (pushLocale) {
+      renderPushView(pushLocale);
+    } else {
+      render();
+    }
   } catch (err) {
     document.getElementById('app').innerHTML =
       `<div class="load-error">数据加载失败：${esc(err.message)}<br>` +
@@ -345,25 +355,109 @@ async function loadData() {
   }
 }
 
+/* ==================== Push view (compact per-locale digest for Feishu push) ====================
+ * 触发方式：URL 带 ?view=push&locale=EN，不是六个顶层 tab 之一，用户正常点击浏览
+ * 不会到达这里。src/dashboard/screenshot.py 直接导航到这个 URL 并等
+ * [data-push-ready="{locale}"] 出现后截图。不新增任何导出字段——所有内容都是对
+ * 已经随 DATA.campaign/product/listing 下发的数据做客户端过滤/聚合，保持导出
+ * schema 稳定。 */
+const PUSH_HIGHLIGHTS_CAP = 8;
+
+function pushChipCard(label, rows) {
+  const diffs = {};
+  rows.forEach(r => { diffs[r.diff_tag] = (diffs[r.diff_tag] || 0) + 1; });
+  const diffEntries = Object.entries(diffs).filter(([, n]) => n > 0);
+  return `
+    <div class="stat-card">
+      <div class="stat-label">${esc(label)}</div>
+      <div class="stat-value accent">${rows.length}</div>
+      ${diffEntries.length ? `<div class="chip-diffs">${diffEntries.map(([t, n]) => `<span class="tag tag-${t}">${esc(DIFF_LABEL[t] || t)} ${n}</span>`).join('')}</div>` : ''}
+    </div>
+  `;
+}
+
+function renderPushView(locale) {
+  const app = document.getElementById('app');
+
+  // EN-Asia 没有任何竞品配置（COMPETITORS 里没有任何源列出 EN-Asia），推送视图
+  // 展示 Zoomex 基线状态，不是一个空的、看起来像出错的高亮列表。
+  if (locale === 'EN-Asia') {
+    const baseline = (DATA.markets && DATA.markets.baseline_by_locale['EN-Asia']) || { total: 0, categories: {} };
+    const cats = Object.entries(baseline.categories).sort((a, b) => b[1] - a[1]);
+    app.innerHTML = `
+      <div class="push-view">
+        <div class="push-header">
+          <span class="push-title">竞品情报日报 · EN-Asia</span>
+          <span class="push-date">${esc(DATA.meta.batch_date)}</span>
+        </div>
+        <div class="baseline-card" style="margin:0.75rem 1.25rem 0">
+          本地区无竞品数据，仅展示 Zoomex 基线：累计 <strong>${baseline.total}</strong> 条。
+          <div class="zoomex-cats">
+            ${cats.length ? cats.map(([c, n]) => `<span class="tag tag-${c}">${esc(CATEGORY_LABEL[c] || c)} · ${n}</span>`).join('') : '<span style="color:var(--text-muted);font-size:12px">无数据</span>'}
+          </div>
+        </div>
+      </div>
+      <div data-push-ready="EN-Asia"></div>
+    `;
+    return;
+  }
+
+  const byLocale = arr => (arr || []).filter(r => r.locale === locale);
+  const campaignRows = byLocale(DATA.campaign);
+  const productRows = byLocale(DATA.product);
+  const listingRows = byLocale(DATA.listing);
+  const allRows = [...campaignRows, ...productRows, ...listingRows];
+  const highlights = sortByPriorityThenDiff(allRows.filter(r => r.priority === '高')).slice(0, PUSH_HIGHLIGHTS_CAP);
+
+  app.innerHTML = `
+    <div class="push-view">
+      <div class="push-header">
+        <span class="push-title">竞品情报日报 · ${esc(locale)}</span>
+        <span class="push-date">${esc(DATA.meta.batch_date)}</span>
+      </div>
+      <div class="overview-grid" style="padding:0.75rem 1.25rem 0">
+        ${pushChipCard('Campaign', campaignRows)}
+        ${pushChipCard('Product', productRows)}
+        ${pushChipCard('Listing（含下架）', listingRows)}
+      </div>
+      <div class="section-label">今日重点 · priority 高</div>
+      <div class="detail-list" style="padding:0 1.25rem">
+        ${highlights.length ? highlights.map(r => `
+          <div class="highlight-card ${r.diff_tag === 'missing' ? 'accent-missing' : ''}">
+            <div class="hl-source">${esc(r.source)}</div>
+            <div class="hl-body">
+              <div class="hl-title">${esc(r.title)}</div>
+              ${(r.description || r.follow_up) ? `<div class="hl-summary">${esc((r.description || r.follow_up || '').slice(0, 140))}</div>` : ''}
+              <div class="hl-meta">
+                <span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || r.diff_tag)}</span>
+                <span class="tag tag-${r.category}">${esc(CATEGORY_LABEL[r.category] || r.category)}</span>
+                ${mockBadge(r.is_mock)}
+                <span class="hl-time">${formatTime(r.post_time)}</span>
+              </div>
+            </div>
+          </div>
+        `).join('') : `<div class="table-empty">最新一批（${esc(DATA.overview.batch_date)}）没有 priority=高 的重点</div>`}
+      </div>
+    </div>
+    <div data-push-ready="${esc(locale)}"></div>
+  `;
+}
+
 function render() {
   const app = document.getElementById('app');
-  const locales = DATA.locales;
   app.innerHTML = `
     <div class="topbar">
       <div class="topbar-left">
         <span class="topbar-title">竞品情报看板</span>
-        <span class="topbar-date">${esc(DATA.meta.as_of_date)}</span>
+        <span class="topbar-date">${esc(DATA.meta.batch_date)}</span>
       </div>
       <div class="topbar-right">
         <span class="status-dot"></span>
         <span>数据生成于 ${esc(DATA.meta.generated_at)}</span>
       </div>
     </div>
-    <div class="locale-tabs" id="localeTabs">
-      ${locales.map(l => `<div class="locale-tab" data-tab="${l}">${esc(LOCALE_LABEL[l] || l)}</div>`).join('')}
-      <div class="tabs-divider"></div>
-      <div class="locale-tab accent-tab" data-tab="archive">全量</div>
-      <div class="locale-tab global" data-tab="global">全局视角</div>
+    <div class="category-tabs" id="categoryTabs">
+      ${TOP_TABS.map(t => `<div class="category-tab" data-tab="${t.key}">${esc(t.label)}</div>`).join('')}
     </div>
     <div id="paneHost"></div>
     <div class="footnote">
@@ -371,502 +465,486 @@ function render() {
       不含实时查询。标注 <span class="mock-note"><span class="tag tag-mock">模拟</span></span> 的条目是本次演示为填补
       insights 缺口生成的占位内容（非真实 LLM 分析结果），详见项目 CLAUDE.md「Phase 7」。
       共 ${DATA.meta.insights_total} 个分析批次（真实 ${DATA.meta.insights_total - DATA.meta.insights_mock} / 模拟 ${DATA.meta.insights_mock}），
-      Zoomex 基线累计 ${DATA.meta.zoomex_baseline_total} 条。区域 tab 只展示最新一批更新，完整历史数据请见「全量」tab。
+      Zoomex 基线累计 ${DATA.meta.zoomex_baseline_total} 条。Overview/Campaign/Product/Listing/Markets 的明细部分只展示
+      最新一批（${esc(DATA.meta.batch_date)}）的数据，完整历史请见「Search」tab。
     </div>
   `;
 
-  document.getElementById('localeTabs').addEventListener('click', e => {
+  document.getElementById('categoryTabs').addEventListener('click', e => {
     const t = e.target.closest('[data-tab]');
     if (!t) return;
-    state.locale = t.dataset.tab;
-    document.querySelectorAll('.locale-tab').forEach(x => x.classList.toggle('active', x.dataset.tab === state.locale));
-    renderActivePane();
+    switchTab(t.dataset.tab);
   });
-  document.querySelectorAll('.locale-tab')[0].classList.add('active');
+  document.querySelector('[data-tab="overview"]').classList.add('active');
   renderActivePane();
 }
 
-function switchToArchive(locale, category) {
-  archiveState = { locale: locale || 'all', source: 'all', category: category || 'all', range: 'all', query: '', page: 1 };
-  state.locale = 'archive';
-  document.querySelectorAll('.locale-tab').forEach(x => x.classList.toggle('active', x.dataset.tab === 'archive'));
+function switchTab(tab) {
+  state.tab = tab;
+  document.querySelectorAll('.category-tab').forEach(x => x.classList.toggle('active', x.dataset.tab === tab));
   renderActivePane();
 }
 
 function renderActivePane() {
   const host = document.getElementById('paneHost');
-  if (state.locale === 'global') {
-    host.innerHTML = renderGlobalPane();
-    wireGlobalPane();
-  } else if (state.locale === 'archive') {
-    host.innerHTML = renderArchivePane();
-    wireArchivePane();
-  } else if (state.locale === 'EN-Asia') {
-    host.innerHTML = renderAsiaPane();
-  } else {
-    host.innerHTML = renderLocalePane(state.locale);
-    wireLocalePane();
-  }
+  if (state.tab === 'overview') { host.innerHTML = renderOverviewPane(); wireOverviewPane(); }
+  else if (state.tab === 'campaign') { host.innerHTML = renderCategoryPane('campaign'); wireCategoryPane('campaign'); }
+  else if (state.tab === 'product') { host.innerHTML = renderCategoryPane('product'); wireCategoryPane('product'); }
+  else if (state.tab === 'listing') { host.innerHTML = renderListingPane(); wireListingPane(); }
+  else if (state.tab === 'markets') { host.innerHTML = renderMarketsPane(); wireMarketsPane(); }
+  else if (state.tab === 'search') { host.innerHTML = renderSearchPane(); wireSearchPane(); }
 }
 
-/* ---------------- per-locale pane ---------------- */
+/* ==================== Overview ==================== */
 
-function renderAnalysisBlocks(locale) {
-  const blocks = DATA.analysis_blocks[locale] || [];
-  if (!blocks.length) return '';
-  const byCat = {};
-  blocks.forEach(b => { (byCat[b.category] = byCat[b.category] || []).push(b); });
+function computeActivityRanking() {
+  const entries = Object.entries(DATA.meta.source_coverage).map(([source, info]) => ({ source, count: info.today, active: info.active }));
+  entries.sort((a, b) => b.count - a.count);
+  const max = Math.max(1, ...entries.map(e => e.count));
+  return entries.map(e => ({ ...e, pct: Math.round(1000 * e.count / max) / 10 }));
+}
 
+function chipCard(key, label, chip) {
+  const total = chip.count_new + chip.count_changed;
+  const diffs = Object.entries(chip.diff_breakdown).filter(([, n]) => n > 0);
   return `
-    <div>
-      <div class="section-label">分类分析简报</div>
-      <div class="analysis-groups">
-        ${CATEGORY_ORDER.filter(c => byCat[c]).map(c => `
-          <div class="analysis-group">
-            <div class="analysis-group-title">
-              <span class="tag tag-${c}">${CATEGORY_LABEL[c]}</span>
-              <span class="analysis-group-count">${byCat[c].length} 个批次</span>
-            </div>
-            ${byCat[c].map(b => {
-              // 只保留一份连续文本（LLM 对这个批次的原始输出：summary + zmx 对比结论），
-              // 不再拆成两个视觉上分离的框——之前的版本让两段读起来像重复内容。
-              const combined = [b.summary, b.zmx_diff].filter(Boolean).join('\n\n');
-              const isLong = combined.length > 140;
-              return `
-              <div class="analysis-card">
-                <div class="analysis-card-head">
-                  <span class="hl-source">${esc(b.source)}</span>
-                  <span style="font-size:11.5px;color:var(--text-muted)">${b.article_count} 篇公告</span>
-                  ${b.is_locale_derived ? `<span class="tag tag-na">复用自 EN 分析</span>` : ''}
-                  ${mockBadge(b.is_mock)}
-                  <span style="flex:1"></span>
-                  ${b.priority ? `<span class="tag tag-${b.priority === '高' ? 'missing' : (b.priority === '中' ? 'diff' : 'na')}">优先级 ${esc(b.priority)}</span>` : ''}
-                  <span class="tag tag-${b.diff_tag}">${esc(DIFF_LABEL[b.diff_tag] || b.diff_tag)}</span>
-                </div>
-                ${combined ? `<div class="analysis-body ${isLong ? 'clamped' : ''}">${esc(combined)}</div>` : ''}
-                ${isLong ? `<button class="analysis-toggle" data-toggle>展开全文 ▾</button>` : ''}
-              </div>
-            `;}).join('')}
-          </div>
-        `).join('')}
-      </div>
+    <div class="stat-card">
+      <div class="stat-label">${esc(label)}</div>
+      <div class="stat-value ${key === 'announcement' ? '' : 'accent'}">${total}</div>
+      <div class="stat-delta">新增 ${chip.count_new} · 变更 ${chip.count_changed}</div>
+      ${diffs.length ? `<div class="chip-diffs">${diffs.map(([tag, n]) => `<span class="tag tag-${tag}">${esc(DIFF_LABEL[tag] || tag)} ${n}</span>`).join('')}</div>` : ''}
     </div>
   `;
 }
 
-function renderLocalePane(locale) {
-  const ov = DATA.overview[locale];
-  const hl = DATA.highlights[locale] || [];
-  const cexCounts = DATA.cex_counts[locale] || {};
-  const digest = DATA.daily_digest[locale] || { text: '', source: 'stats_fallback' };
-  const missingSourceNames = ov.sources_list.filter(s => !(DATA.sources[s] && DATA.sources[s].today > 0));
+function renderOverviewPane() {
+  const ov = DATA.overview;
+  const ranking = computeActivityRanking();
+  const maxRank = Math.max(1, ...ranking.map(r => r.count));
 
   return `
-    <div class="digest-hero">
-      <div class="digest-hero-label">今日 Summary · ${esc(locale)}${
-        digest.source === 'stats_fallback'
-          ? `<span class="digest-badge">占位符 · 待接入 LLM 生成</span>`
-          : `<span class="digest-badge" style="color:var(--hue-campaign);border-color:var(--hue-campaign);border-style:solid">LLM 生成</span>`
-      }</div>
-      <div class="digest-hero-text">${esc(digest.text)}</div>
-      ${digest.priority_focus ? `<div class="digest-focus">→ ${esc(digest.priority_focus)}</div>` : ''}
+    <div class="quick-jump">
+      <button class="quick-jump-btn" data-jump="campaign">→ Campaign</button>
+      <button class="quick-jump-btn" data-jump="product">→ Product</button>
+      <button class="quick-jump-btn" data-jump="listing">→ Listing</button>
     </div>
 
-    ${renderAnalysisBlocks(locale)}
-
-    <div>
-      <div class="section-label">最新一批概览</div>
-      <div class="overview-grid">
-        <div class="stat-card"><div class="stat-label">抓取</div><div class="stat-value">${ov.fetched_today}</div><div class="stat-delta">${ov.sources_active}/${ov.sources_configured} 源 · ${esc(locale)}</div></div>
-        <div class="stat-card"><div class="stat-label">新增</div><div class="stat-value accent">${ov.new_count}</div><div class="stat-delta">status = new</div></div>
-        <div class="stat-card"><div class="stat-label">内容变更</div><div class="stat-value warn">${ov.changed_count}</div><div class="stat-delta">status = changed</div></div>
-        <div class="stat-card"><div class="stat-label">地区独占</div><div class="stat-value">${ov.region_exclusive_count}</div><div class="stat-delta">仅本 locale 出现</div></div>
-        <div class="stat-card"><div class="stat-label">ZMX 缺失·高优</div><div class="stat-value danger">${ov.zmx_missing_high}</div><div class="stat-delta">批次数</div></div>
-        <div class="stat-card"><div class="stat-label">推送候选</div><div class="stat-value">${ov.push_candidates}</div><div class="stat-delta">按规则预览 · Phase 6 未上线</div></div>
-      </div>
-      ${missingSourceNames.length ? `<div class="missing-source-note">⚠ ${missingSourceNames.map(esc).join(', ')} 本次无数据</div>` : ''}
+    <div class="section-label">最新一批概览 · ${esc(ov.batch_date)}</div>
+    <div class="overview-grid">
+      ${chipCard('campaign', '活动 Campaign', ov.chips.campaign)}
+      ${chipCard('product', '产品 Product', ov.chips.product)}
+      ${chipCard('listing', '上币 Listing', ov.chips.listing)}
+      ${chipCard('announcement', '公告 Announcement（下架+其他）', ov.chips.announcement)}
     </div>
 
-    <div>
-      <div class="section-label">今日重点 · priority 高</div>
-      <div class="highlights-list">
-        ${hl.length ? hl.map(h => `
-          <div class="highlight-card ${h.diff_tag === 'missing' ? 'pri-high' : ''}">
-            <div class="priority-dot" style="${h.diff_tag === 'missing' ? '' : 'background:var(--status-warning);box-shadow:0 0 0 3px color-mix(in srgb, var(--status-warning) 18%, transparent)'}"></div>
-            <div class="hl-source">${esc(h.source)}</div>
-            <div class="hl-body">
-              <div class="hl-title">${esc(h.title)}</div>
-              ${h.summary ? `<div class="hl-summary">${esc(h.summary)}</div>` : ''}
-              <div class="hl-meta">
-                <span class="tag tag-${h.diff_tag}">${esc(DIFF_LABEL[h.diff_tag] || h.diff_tag)}</span>
-                <span class="tag tag-${h.category}">${esc(CATEGORY_LABEL[h.category] || h.category)}</span>
-                ${mockBadge(h.is_mock)}
-                <span class="hl-time">${h.status === 'changed' ? '变更 · ' : ''}${esc(h.time)}</span>
-              </div>
+    <div class="section-label">今日重点 · priority 高</div>
+    <div class="detail-list">
+      ${ov.highlights.length ? ov.highlights.map(h => `
+        <div class="highlight-card ${h.diff_tag === 'missing' ? 'accent-missing' : ''}">
+          <div class="hl-source">${esc(h.source)}</div>
+          <div class="hl-body">
+            <div class="hl-title">${h.url ? `<a href="${esc(h.url)}" target="_blank" rel="noopener">${esc(h.title)}</a>` : esc(h.title)}</div>
+            ${h.one_line_summary ? `<div class="hl-summary">${esc(h.one_line_summary)}</div>` : ''}
+            <div class="hl-meta">
+              <span class="tag tag-${h.diff_tag}">${esc(DIFF_LABEL[h.diff_tag] || h.diff_tag)}</span>
+              <span class="tag tag-${h.category}">${esc(CATEGORY_LABEL[h.category] || h.category)}</span>
+              ${mockBadge(h.is_mock)}
+              <span class="hl-time">${esc(h.time)}</span>
             </div>
           </div>
-        `).join('') : `<div class="cex-empty">本 locale 今日无高优先级重点</div>`}
-      </div>
+        </div>
+      `).join('') : `<div class="table-empty">最新一批没有 priority=高 的重点</div>`}
     </div>
 
-    <div>
-      <div class="cex-header">
-        <div class="section-label" style="padding:0">最新动态</div>
-        <div class="cex-filter" id="sourceFilter">
-          <button class="filter-btn active" data-src="all">全部</button>
-          ${SOURCES.map(s => `<button class="filter-btn" data-src="${s}">${s}</button>`).join('')}
+    <div class="section-label">今日采集量 · 按竞品</div>
+    <div class="rank-card">
+      ${ranking.map(r => `
+        <div class="rank-row ${r.count === 0 ? 'inactive' : ''}">
+          <span class="rank-source source-pill">${esc(r.source)}</span>
+          <div class="rank-bar-wrap"><div class="rank-bar" style="width:${r.pct}%"></div></div>
+          <span class="rank-count">${r.count}</span>
         </div>
-      </div>
-      <div class="cex-tabs" id="cexTabs">
-        ${CATEGORY_ORDER.map((c, i) => `<div class="cex-tab ${i === 0 ? 'active' : ''}" data-cat="${c}">${CATEGORY_LABEL[c]} <span style="color:var(--text-muted);font-weight:400">(${cexCounts[c] || 0})</span></div>`).join('')}
-      </div>
-      <div class="table-wrap">
-        <table class="cex-table">
-          <thead><tr><th style="width:90px">来源</th><th>标题</th><th class="td-time">时间</th><th style="width:110px">差异</th><th style="width:76px">状态</th></tr></thead>
-          <tbody id="cexBody"></tbody>
-        </table>
-        <div class="cex-footer">
-          <span id="cexFooterCount"></span>
-          <button class="view-all-link" id="viewAllBtn">在全量中查看全部 →</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="insights-bar">
-      最新一批 <strong>${esc(locale)}</strong> 共监测到 <strong>${ov.fetched_today}</strong> 条竞品动态，新增 <strong>${ov.new_count}</strong> 条、
-      变更 <strong>${ov.changed_count}</strong> 条，覆盖 <strong>${ov.sources_active}/${ov.sources_configured}</strong> 个竞品源。
-      ZMX 缺失高优先级批次 <strong>${ov.zmx_missing_high}</strong> 个，地区独占 <strong>${ov.region_exclusive_count}</strong> 条，
-      按现有规则预览可推送 <strong>${ov.push_candidates}</strong> 条（推送引擎 Phase 6 尚未上线，此数字仅供参考）。
-      本页只展示最新一批的 digest，完整历史请见「全量」tab。
+      `).join('')}
     </div>
   `;
 }
 
-function wireLocalePane() {
-  state.category = CATEGORY_ORDER[0];
-  state.source = 'all';
-  document.getElementById('cexTabs').addEventListener('click', e => {
-    const t = e.target.closest('[data-cat]');
-    if (!t) return;
-    document.querySelectorAll('.cex-tab').forEach(x => x.classList.remove('active'));
-    t.classList.add('active');
-    state.category = t.dataset.cat;
-    renderCexBody();
+function wireOverviewPane() {
+  document.querySelectorAll('[data-jump]').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.jump));
   });
-  document.getElementById('sourceFilter').addEventListener('click', e => {
-    const t = e.target.closest('[data-src]');
-    if (!t) return;
-    document.querySelectorAll('.filter-btn').forEach(x => x.classList.remove('active'));
-    t.classList.add('active');
-    state.source = t.dataset.src;
-    renderCexBody();
-  });
-  document.getElementById('viewAllBtn').addEventListener('click', () => {
-    switchToArchive(state.locale, state.category);
-  });
-  document.querySelectorAll('[data-toggle]').forEach(btn => {
+}
+
+/* ==================== Campaign / Product (detail cards) ==================== */
+
+function detailCard(r, expandedByDefault) {
+  const isLong = (r.description || '').length > 140;
+  const startClamped = !expandedByDefault && isLong;
+  return `
+    <div class="detail-card ${r.diff_tag === 'missing' ? 'accent-missing' : ''}">
+      <div class="detail-card-head">
+        <span class="source-pill">${esc(r.source)}</span>
+        <span>${localeDot(r.locale)}${esc(LOCALE_LABEL[r.locale] || r.locale)}</span>
+        ${r.is_region_exclusive ? `<span class="excl-badge">地区独占</span>` : ''}
+        ${r.is_locale_derived ? `<span class="tag tag-na">复用自 EN</span>` : ''}
+        ${mockBadge(r.is_mock)}
+        <span style="flex:1"></span>
+        ${r.priority ? `<span class="tag ${priorityClass(r.priority)}">优先级 ${esc(r.priority)}</span>` : ''}
+        <span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || r.diff_tag)}</span>
+      </div>
+      <div class="detail-title">
+        ${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title)}
+        <span class="status-chip ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span>
+      </div>
+      ${r.description ? `<div class="detail-body ${startClamped ? 'clamped' : ''}">${esc(r.description)}</div>` : ''}
+      ${isLong ? `<button class="analysis-toggle" data-toggle>${startClamped ? '展开全文 ▾' : '收起 ▴'}</button>` : ''}
+      ${r.follow_up ? `<div class="follow-up">→ ${esc(r.follow_up)}</div>` : ''}
+      <div class="detail-meta"><span>${formatTime(r.post_time)}</span></div>
+    </div>
+  `;
+}
+
+function categoryStateFor(category) {
+  return category === 'campaign' ? campaignState : productState;
+}
+
+function renderCategoryPane(category) {
+  const rows = DATA[category] || [];
+  const label = category === 'campaign' ? 'Campaign' : 'Product';
+  return `
+    <div class="filter-bar">
+      <div class="section-label" style="padding:0">${esc(label)} · 最新一批（${esc(DATA.overview.batch_date)}）共 ${rows.length} 条</div>
+      <div class="filter-group" id="${category}SourceFilter">
+        <button class="filter-btn active" data-src="all">全部</button>
+        ${SOURCES.map(s => `<button class="filter-btn" data-src="${s}">${s}</button>`).join('')}
+      </div>
+    </div>
+    <div class="detail-list" id="${category}Body"></div>
+  `;
+}
+
+function renderCategoryBody(category) {
+  const rows = DATA[category] || [];
+  const st = categoryStateFor(category);
+  const filtered = st.source === 'all' ? rows : rows.filter(r => r.source === st.source);
+  const sorted = sortByPriorityThenDiff(filtered);
+  const expandedByDefault = category === 'campaign'; // Campaign 最详细，默认展开；Product 默认收起
+  const body = document.getElementById(`${category}Body`);
+  body.innerHTML = sorted.length
+    ? sorted.map(r => detailCard(r, expandedByDefault)).join('')
+    : `<div class="table-empty">无匹配数据</div>`;
+  body.querySelectorAll('[data-toggle]').forEach(btn => {
     btn.addEventListener('click', () => {
-      const body = btn.previousElementSibling;
-      const collapsed = body.classList.toggle('clamped');
+      const el = btn.previousElementSibling;
+      const collapsed = el.classList.toggle('clamped');
       btn.textContent = collapsed ? '展开全文 ▾' : '收起 ▴';
     });
   });
-  renderCexBody();
 }
 
-function renderCexBody() {
-  const rows = (DATA.cex_tables[state.locale] || {})[state.category] || [];
-  const totalForCat = (DATA.cex_counts[state.locale] || {})[state.category] || 0;
-  const filtered = state.source === 'all' ? rows : rows.filter(r => r.source === state.source);
-  const body = document.getElementById('cexBody');
-  body.innerHTML = filtered.length ? filtered.map(r => `
-    <tr>
+function wireCategoryPane(category) {
+  categoryStateFor(category).source = 'all';
+  document.getElementById(`${category}SourceFilter`).addEventListener('click', e => {
+    const t = e.target.closest('[data-src]');
+    if (!t) return;
+    document.querySelectorAll(`#${category}SourceFilter .filter-btn`).forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    categoryStateFor(category).source = t.dataset.src;
+    renderCategoryBody(category);
+  });
+  renderCategoryBody(category);
+}
+
+/* ==================== Listing (compact table, incl. delisting) ==================== */
+
+function listingKindLabel(r) {
+  if (r.category === 'delisting') return '下架';
+  if (r.listing_kind === 'spot') return '现货';
+  if (r.listing_kind === 'perp') return '合约';
+  return '—';
+}
+
+function renderListingRow(r) {
+  return `
+    <tr class="${r.diff_tag === 'missing' ? 'row-accent-missing' : ''}">
       <td><span class="source-pill">${esc(r.source)}</span></td>
-      <td class="td-title">${esc(r.title)} ${mockBadge(r.is_mock)}</td>
-      <td class="td-time">${esc(r.time)}</td>
+      <td>${localeDot(r.locale)}${esc(LOCALE_LABEL[r.locale] || r.locale)}</td>
+      <td class="td-title">
+        ${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title)}
+        ${mockBadge(r.is_mock)}
+      </td>
+      <td><span class="tag ${r.category === 'delisting' ? 'tag-delisting' : 'tag-listing'}">${esc(listingKindLabel(r))}</span></td>
+      <td class="td-time">${formatDate(r.post_time)}</td>
+      <td>${r.priority ? `<span class="tag ${priorityClass(r.priority)}">${esc(r.priority)}</span>` : '—'}</td>
       <td><span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || r.diff_tag)}</span></td>
       <td><span class="status-chip ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span></td>
     </tr>
-  `).join('') : `<tr><td colspan="5" class="cex-empty">无匹配数据</td></tr>`;
-  document.getElementById('cexFooterCount').textContent =
-    `本类目共 ${totalForCat} 条，当前展示最新 ${filtered.length} 条`;
+  `;
 }
 
-/* ---------------- EN-Asia pane (baseline only) ---------------- */
-
-function renderAsiaPane() {
-  const z = DATA.zoomex_by_locale['EN-Asia'] || { total: 0, categories: {} };
-  const cats = Object.entries(z.categories).sort((a,b) => b[1]-a[1]);
+function renderListingPane() {
+  const rows = DATA.listing || [];
   return `
-    <div>
-      <div class="section-label">基线概览</div>
-      <div class="overview-grid">
-        <div class="stat-card"><div class="stat-label">基线累计</div><div class="stat-value">${z.total}</div><div class="stat-delta">Zoomex EN-Asia</div></div>
-        <div class="stat-card"><div class="stat-label">覆盖竞品</div><div class="stat-value">0</div><div class="stat-delta">无竞品配置此 locale</div></div>
-        <div class="stat-card"><div class="stat-label">推送</div><div class="stat-value">—</div><div class="stat-delta">ZMX 自身数据不推送</div></div>
+    <div class="filter-bar">
+      <div class="section-label" style="padding:0">Listing · 最新一批（${esc(DATA.overview.batch_date)}）共 ${rows.length} 条（含下架）</div>
+      <div class="filter-group" id="listingSourceFilter">
+        <button class="filter-btn active" data-src="all">全部</button>
+        ${SOURCES.map(s => `<button class="filter-btn" data-src="${s}">${s}</button>`).join('')}
       </div>
     </div>
-    <div>
-      <div class="section-label">基线分类分布</div>
-      <div class="zoomex-cats">
-        ${cats.length ? cats.map(([c,n]) => `<span class="tag tag-${c}">${esc(CATEGORY_LABEL[c] || c)} · ${n}</span>`).join('') : '<span style="color:var(--text-muted);font-size:12px">无数据</span>'}
-      </div>
-    </div>
-    <div class="insights-bar">
-      EN-Asia 目前仅 <strong>Zoomex</strong>（我方基线）配置此 locale（Exclusive Events 专属分类），
-      根据 CLAUDE.md「竞品与语言范围」表，没有任何竞品在该 locale 有对应数据。本 tab 仅用于观察 ZMX 基线自身，
-      不产出推送候选。
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th style="width:90px">来源</th><th style="width:64px">地区</th><th>标题</th><th style="width:80px">类型</th><th class="td-time">日期</th><th style="width:70px">优先级</th><th style="width:110px">差异</th><th style="width:76px">状态</th></tr></thead>
+        <tbody id="listingBody"></tbody>
+      </table>
     </div>
   `;
 }
 
-/* ---------------- global pane ---------------- */
-
-function renderGlobalPane() {
-  const rank = DATA.activity_ranking;
-  const maxRank = Math.max(1, ...rank.map(r => r.count));
-  const missing = DATA.zmx_missing_summary;
-  const region = DATA.region_table;
-
-  return `
-    <div class="global-grid" style="padding-top:0.75rem">
-      <div class="global-card global-full">
-        <div class="global-card-header">数据源状态</div>
-        ${SOURCES.map(s => {
-          const info = DATA.sources[s];
-          const ok = info.active;
-          return `<div class="source-status-row">
-            <span class="status-icon ${ok ? 'ok' : 'broken'}"></span>
-            <span class="source-pill">${s}</span>
-            <span style="color:var(--text-muted)">${info.locales.join(' · ')}</span>
-            <span class="source-status-note">${ok ? `最新一批 ${info.today} / 累计 ${info.total}` : '本次无数据（采集暂停）'}</span>
-          </div>`;
-        }).join('')}
-      </div>
-
-      <div class="global-card global-full">
-        <div class="global-card-header">各竞品本次采集量对比</div>
-        <div style="padding:0.4rem 0">
-          ${rank.map(r => `
-            <div class="rank-row ${r.count === 0 ? 'inactive' : ''}" data-tip="${esc(r.source)}：${r.count} 条">
-              <span class="rank-source source-pill">${esc(r.source)}</span>
-              <div class="rank-bar-wrap"><div class="rank-bar" style="width:${maxRank ? (100*r.count/maxRank) : 0}%"></div></div>
-              <span class="rank-count">${r.count}</span>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-
-      <div class="global-card global-full">
-        <div class="global-card-header">分类分布 · 按竞品</div>
-        <div class="stackbar-chart" id="stackChart"></div>
-        <div class="stackbar-legend">
-          ${CATEGORY_ORDER.map(c => `<span class="legend-item"><span class="legend-swatch" style="background:var(--hue-${c})"></span>${CATEGORY_LABEL[c]}</span>`).join('')}
-          <span class="legend-item"><span class="legend-swatch" style="background:var(--text-muted)"></span>其他（不参与分析）</span>
-        </div>
-      </div>
-
-      <div class="global-card">
-        <div class="global-card-header">ZMX 缺失汇总 · 高优先级</div>
-        ${missing.length ? missing.map(m => `
-          <div class="missing-row">
-            <span class="tag tag-${m.category}" style="flex-shrink:0">${esc(CATEGORY_LABEL[m.category] || m.category)}</span>
-            <span class="missing-title">${esc(m.title)}</span>
-            ${mockBadge(m.is_mock)}
-            <span class="tag tag-missing" style="flex-shrink:0">缺失</span>
-          </div>
-        `).join('') : `<div class="cex-empty">暂无高优先级缺口</div>`}
-      </div>
-
-      <div class="global-card">
-        <div class="global-card-header">Zoomex 基线 · 按 locale</div>
-        ${(() => {
-          const maxZ = Math.max(1, ...Object.values(DATA.zoomex_by_locale).map(i => i.total));
-          const varName = { EN: 'en', FR: 'fr', VN: 'vn', ID: 'id', 'EN-Asia': 'asia' };
-          return Object.entries(DATA.zoomex_by_locale).map(([loc, info]) => `
-            <div class="rank-row">
-              <span class="rank-source source-pill">${esc(loc)}</span>
-              <div class="rank-bar-wrap"><div class="rank-bar" style="background:var(--loc-${varName[loc] || 'en'});width:${100*info.total/maxZ}%"></div></div>
-              <span class="rank-count">${info.total}</span>
-            </div>
-          `).join('');
-        })()}
-      </div>
-
-      <div class="global-card global-full">
-        <div class="global-card-header">跨区域公告对比 · group 粒度</div>
-        <div class="table-wrap" style="margin:0;border:none;border-radius:0;box-shadow:none">
-          <table class="region-table">
-            <thead><tr><th>标题</th><th>来源</th><th>EN</th><th>FR</th><th>VN</th><th>ID</th><th>Asia</th><th>独占</th></tr></thead>
-            <tbody>
-              ${region.length ? region.map(g => `
-                <tr>
-                  <td class="td-title">${esc(g.title)}</td>
-                  <td><span class="source-pill">${esc(g.source)}</span></td>
-                  <td>${g.locales.includes('EN') ? '<span class="locale-dot en"></span>' : ''}</td>
-                  <td>${g.locales.includes('FR') ? '<span class="locale-dot fr"></span>' : ''}</td>
-                  <td>${g.locales.includes('VN') ? '<span class="locale-dot vn"></span>' : ''}</td>
-                  <td>${g.locales.includes('ID') ? '<span class="locale-dot id"></span>' : ''}</td>
-                  <td>${g.locales.includes('EN-Asia') ? '<span class="locale-dot asia"></span>' : ''}</td>
-                  <td>${g.exclusive ? `<span class="excl-badge">${esc(g.locales[0])} only</span>` : ''}</td>
-                </tr>
-              `).join('') : `<tr><td colspan="8" class="cex-empty">无数据</td></tr>`}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <div class="placeholder-card">行业热点模块 — Phase 2 规划中，待业务定义后启动</div>
-  `;
+function renderListingBody() {
+  const rows = DATA.listing || [];
+  const filtered = listingState.source === 'all' ? rows : rows.filter(r => r.source === listingState.source);
+  const sorted = sortByPriorityThenDiff(filtered);
+  document.getElementById('listingBody').innerHTML = sorted.length
+    ? sorted.map(renderListingRow).join('')
+    : `<tr><td colspan="8" class="table-empty">无匹配数据</td></tr>`;
 }
 
-function wireGlobalPane() {
-  const dist = DATA.category_distribution;
-  const chart = document.getElementById('stackChart');
-  chart.innerHTML = dist.map(row => {
-    const total = CATEGORY_ORDER.reduce((s,c) => s + row[c], 0) + row.other;
-    const segs = [...CATEGORY_ORDER, 'other'].map(c => {
-      const n = row[c];
-      if (!n) return '';
-      const pct = total ? (100 * n / total) : 0;
-      const color = c === 'other' ? 'var(--text-muted)' : `var(--hue-${c})`;
-      return `<div class="stackbar-seg" data-tip="${esc(CATEGORY_LABEL[c])}：${n} 条" style="width:${pct}%;background:${color};margin-right:${c === 'other' ? 0 : '2px'}"></div>`;
-    }).join('');
-    return `<div class="stackbar-row">
-      <div class="stackbar-label">${esc(row.source)}</div>
-      <div class="stackbar-track">${total ? segs : ''}</div>
-      <div class="stackbar-total">${total}</div>
-    </div>`;
-  }).join('');
-
-  document.querySelectorAll('[data-tip]').forEach(el => {
-    el.addEventListener('mousemove', e => showTooltip(e, el.dataset.tip));
-    el.addEventListener('mouseleave', hideTooltip);
+function wireListingPane() {
+  listingState.source = 'all';
+  document.getElementById('listingSourceFilter').addEventListener('click', e => {
+    const t = e.target.closest('[data-src]');
+    if (!t) return;
+    document.querySelectorAll('#listingSourceFilter .filter-btn').forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    listingState.source = t.dataset.src;
+    renderListingBody();
   });
+  renderListingBody();
 }
 
-/* ---------------- archive pane (full history, filterable) ---------------- */
+/* ==================== Markets ==================== */
+
+const MARKET_TABS = [
+  { key: 'EN', label: 'EN', locales: ['EN'] },
+  { key: 'FR', label: 'FR', locales: ['FR'] },
+  { key: 'SEA', label: 'SEA (VN+ID)', locales: ['VN', 'ID'] },
+  { key: 'KR', label: 'KR', locales: [], disabled: true },
+];
+
+function marketSection(category, label, rows) {
+  const top = sortByPriorityThenDiff(rows).slice(0, 5);
+  return `
+    <div class="market-section">
+      <div class="market-section-head"><span>${esc(label)}</span><span style="color:var(--text-muted);font-weight:400">${rows.length} 条</span></div>
+      <div class="market-section-body">
+        ${top.length ? top.map(r => `
+          <div class="market-item">
+            <span class="tag tag-${r.diff_tag}" style="margin-right:6px">${esc(DIFF_LABEL[r.diff_tag] || r.diff_tag)}</span>
+            <span class="market-item-title">${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title)}</span>
+            ${mockBadge(r.is_mock)}
+          </div>
+        `).join('') : `<div class="market-empty">本地区最新一批无数据</div>`}
+      </div>
+    </div>
+  `;
+}
+
+function renderMarketsPane() {
+  const tab = MARKET_TABS.find(m => m.key === marketsState.market) || MARKET_TABS[0];
+  const inLocales = row => tab.locales.includes(row.locale);
+  const campaignRows = (DATA.campaign || []).filter(inLocales);
+  const productRows = (DATA.product || []).filter(inLocales);
+  const listingRows = (DATA.listing || []).filter(inLocales);
+  const region = DATA.markets.regions;
+  const baseline = DATA.markets.baseline_by_locale['EN-Asia'] || { total: 0, categories: {} };
+  const baselineCats = Object.entries(baseline.categories).sort((a, b) => b[1] - a[1]);
+
+  return `
+    <div class="market-tabs" id="marketTabs">
+      ${MARKET_TABS.map(m => `<div class="market-tab ${m.disabled ? 'disabled' : ''}" data-market="${m.key}">${esc(m.label)}${m.disabled ? ' · 暂未支持' : ''}</div>`).join('')}
+    </div>
+
+    <div class="section-label">${esc(tab.label)} · 最新一批明细（复用 Campaign/Product/Listing 卡片组件，按地区过滤）</div>
+    <div class="market-summary-grid">
+      ${marketSection('campaign', 'Campaign', campaignRows)}
+      ${marketSection('product', 'Product', productRows)}
+      ${marketSection('listing', 'Listing（含下架）', listingRows)}
+    </div>
+
+    <div class="section-label">跨地区公告对比 · group 粒度（全部历史）</div>
+    <div class="table-wrap">
+      <table class="region-table">
+        <thead><tr><th>标题</th><th>来源</th><th>EN</th><th>FR</th><th>VN</th><th>ID</th><th>Asia</th><th>独占</th></tr></thead>
+        <tbody>
+          ${region.length ? region.map(g => `
+            <tr>
+              <td class="td-title">${esc(g.title)}</td>
+              <td><span class="source-pill">${esc(g.source)}</span></td>
+              <td>${g.locales.includes('EN') ? '<span class="locale-dot en"></span>' : ''}</td>
+              <td>${g.locales.includes('FR') ? '<span class="locale-dot fr"></span>' : ''}</td>
+              <td>${g.locales.includes('VN') ? '<span class="locale-dot vn"></span>' : ''}</td>
+              <td>${g.locales.includes('ID') ? '<span class="locale-dot id"></span>' : ''}</td>
+              <td>${g.locales.includes('EN-Asia') ? '<span class="locale-dot asia"></span>' : ''}</td>
+              <td>${g.exclusive ? `<span class="excl-badge">${esc(g.locales[0])} only</span>` : ''}</td>
+            </tr>
+          `).join('') : `<tr><td colspan="8" class="table-empty">无数据</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="baseline-card">
+      <strong>EN-Asia</strong> 目前仅 Zoomex（我方基线）配置此 locale，没有任何竞品数据（见 CLAUDE.md「竞品与语言范围」表），
+      不作为独立市场 tab、也不进入推送，这里仅展示基线自身分布供参考：基线累计 <strong>${baseline.total}</strong> 条。
+      <div class="zoomex-cats">
+        ${baselineCats.length ? baselineCats.map(([c, n]) => `<span class="tag tag-${c}">${esc(CATEGORY_LABEL[c] || c)} · ${n}</span>`).join('') : ''}
+      </div>
+    </div>
+  `;
+}
+
+function wireMarketsPane() {
+  document.getElementById('marketTabs').addEventListener('click', e => {
+    const t = e.target.closest('[data-market]');
+    if (!t || t.classList.contains('disabled')) return;
+    marketsState.market = t.dataset.market;
+    renderActivePane();
+  });
+  document.querySelectorAll('.market-tab').forEach(x => x.classList.toggle('active', x.dataset.market === marketsState.market));
+}
+
+/* ==================== Search ==================== */
 
 function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
 
-function archiveFilteredRows() {
-  const rows = DATA.archive.rows;
-  const anchor = DATA.meta.as_of_date;
-  const rangeDays = { '30d': 30, '90d': 90, '365d': 365 }[archiveState.range];
-  const q = archiveState.query.trim().toLowerCase();
+function searchFilteredRows() {
+  const rows = DATA.search_index.rows;
+  const anchor = DATA.meta.batch_date;
+  const rangeDays = { '30d': 30, '90d': 90, '365d': 365 }[searchState.range];
+  const q = searchState.query.trim().toLowerCase();
   return rows.filter(r => {
-    if (archiveState.locale !== 'all' && r.locale !== archiveState.locale) return false;
-    if (archiveState.source !== 'all' && r.source !== archiveState.source) return false;
-    if (archiveState.category !== 'all' && r.category !== archiveState.category) return false;
-    if (rangeDays && (!r.date || daysBetween(r.date, anchor) > rangeDays)) return false;
+    if (searchState.locale !== 'all' && r.locale !== searchState.locale) return false;
+    if (searchState.source !== 'all' && r.source !== searchState.source) return false;
+    if (searchState.category !== 'all' && r.category !== searchState.category) return false;
+    if (searchState.diffType !== 'all' && (r.diff_type ? { 'ZMX缺失': 'missing', 'ZMX玩法不同': 'diff', 'ZMX已有': 'same', '混合': 'mixed', '不适用': 'na' }[r.diff_type] : 'na') !== searchState.diffType) return false;
+    const date = r.post_time ? r.post_time.slice(0, 10) : null;
+    if (rangeDays && (!date || daysBetween(date, anchor) > rangeDays)) return false;
     if (q && !r.title.toLowerCase().includes(q)) return false;
     return true;
   });
 }
 
-function renderArchivePane() {
-  const a = DATA.archive;
+function renderSearchPane() {
+  const idx = DATA.search_index;
   return `
-    <div class="archive-toolbar">
-      <div class="archive-filter-row">
-        <span class="archive-filter-label">地区</span>
+    <div class="search-toolbar">
+      <div class="search-filter-row">
+        <span class="search-filter-label">地区</span>
         <button class="filter-btn active" data-f="locale" data-v="all">全部</button>
-        ${DATA.locales.map(l => `<button class="filter-btn" data-f="locale" data-v="${l}">${esc(LOCALE_LABEL[l] || l)}</button>`).join('')}
+        ${Object.keys(LOCALE_LABEL).map(l => `<button class="filter-btn" data-f="locale" data-v="${l}">${esc(LOCALE_LABEL[l])}</button>`).join('')}
       </div>
-      <div class="archive-filter-row">
-        <span class="archive-filter-label">时间</span>
+      <div class="search-filter-row">
+        <span class="search-filter-label">时间</span>
         <button class="filter-btn active" data-f="range" data-v="all">全部时间</button>
         <button class="filter-btn" data-f="range" data-v="30d">近 30 天</button>
         <button class="filter-btn" data-f="range" data-v="90d">近 90 天</button>
         <button class="filter-btn" data-f="range" data-v="365d">近 1 年</button>
-        <span style="font-size:11px;color:var(--text-muted);margin-left:4px">数据跨度 ${esc(a.date_min)} ~ ${esc(a.date_max)}</span>
+        <span style="font-size:11px;color:var(--text-muted);margin-left:4px">数据跨度 ${esc(idx.date_min)} ~ ${esc(idx.date_max)}</span>
       </div>
-      <div class="archive-filter-row">
-        <span class="archive-filter-label">来源</span>
+      <div class="search-filter-row">
+        <span class="search-filter-label">来源</span>
         <button class="filter-btn active" data-f="source" data-v="all">全部</button>
         ${SOURCES.map(s => `<button class="filter-btn" data-f="source" data-v="${s}">${s}</button>`).join('')}
       </div>
-      <div class="archive-filter-row">
-        <span class="archive-filter-label">分类</span>
+      <div class="search-filter-row">
+        <span class="search-filter-label">分类</span>
         <button class="filter-btn active" data-f="category" data-v="all">全部</button>
         ${CATEGORY_ORDER.map(c => `<button class="filter-btn" data-f="category" data-v="${c}">${CATEGORY_LABEL[c]}</button>`).join('')}
         <button class="filter-btn" data-f="category" data-v="other">其他</button>
-        <input type="text" class="archive-search" id="archiveSearch" placeholder="搜索标题…">
+      </div>
+      <div class="search-filter-row">
+        <span class="search-filter-label">差异</span>
+        <button class="filter-btn active" data-f="diffType" data-v="all">全部</button>
+        ${Object.entries(DIFF_LABEL).filter(([k]) => k !== 'pending').map(([k, v]) => `<button class="filter-btn" data-f="diffType" data-v="${k}">${esc(v)}</button>`).join('')}
+        <input type="text" class="search-input" id="searchQuery" placeholder="搜索标题…">
       </div>
     </div>
-    <div class="archive-summary" id="archiveSummary"></div>
+    <div class="search-summary" id="searchSummary"></div>
     <div class="table-wrap" style="margin-top:8px">
-      <table class="cex-table">
-        <thead><tr><th style="width:90px">来源</th><th style="width:64px">地区</th><th>标题</th><th style="width:110px">分类</th><th class="td-time" style="width:88px">日期</th><th style="width:110px">差异</th><th style="width:76px">状态</th></tr></thead>
-        <tbody id="archiveBody"></tbody>
+      <table class="data-table">
+        <thead><tr><th style="width:90px">来源</th><th style="width:64px">地区</th><th>标题</th><th style="width:110px">分类</th><th class="td-time" style="width:88px">日期</th><th style="width:110px">差异</th><th style="width:70px">优先级</th><th style="width:76px">状态</th></tr></thead>
+        <tbody id="searchBody"></tbody>
       </table>
     </div>
-    <div class="archive-pagination" id="archivePagination"></div>
+    <div class="pagination" id="searchPagination"></div>
   `;
 }
 
-function renderArchiveTable() {
-  const filtered = archiveFilteredRows();
-  const totalPages = Math.max(1, Math.ceil(filtered.length / ARCHIVE_PAGE_SIZE));
-  archiveState.page = Math.min(archiveState.page, totalPages);
-  const start = (archiveState.page - 1) * ARCHIVE_PAGE_SIZE;
-  const pageRows = filtered.slice(start, start + ARCHIVE_PAGE_SIZE);
+function renderSearchTable() {
+  const filtered = searchFilteredRows();
+  const totalPages = Math.max(1, Math.ceil(filtered.length / SEARCH_PAGE_SIZE));
+  searchState.page = Math.min(searchState.page, totalPages);
+  const start = (searchState.page - 1) * SEARCH_PAGE_SIZE;
+  const pageRows = filtered.slice(start, start + SEARCH_PAGE_SIZE);
 
-  document.getElementById('archiveSummary').innerHTML =
-    `共 <strong>${filtered.length}</strong> 条匹配结果（全量归档共 ${DATA.archive.total} 条）`;
+  document.getElementById('searchSummary').innerHTML =
+    `共 <strong>${filtered.length}</strong> 条匹配结果（全量共 ${DATA.search_index.total} 条）`;
 
-  document.getElementById('archiveBody').innerHTML = pageRows.length ? pageRows.map(r => `
+  document.getElementById('searchBody').innerHTML = pageRows.length ? pageRows.map(r => {
+    const diffTag = r.diff_type ? { 'ZMX缺失': 'missing', 'ZMX玩法不同': 'diff', 'ZMX已有': 'same', '混合': 'mixed', '不适用': 'na' }[r.diff_type] || 'na' : 'na';
+    return `
     <tr>
       <td><span class="source-pill">${esc(r.source)}</span></td>
       <td>${esc(LOCALE_LABEL[r.locale] || r.locale)}</td>
-      <td class="td-title">${esc(r.title)} ${mockBadge(r.is_mock)}</td>
+      <td class="td-title">${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title)}</td>
       <td><span class="tag tag-${r.category}">${esc(CATEGORY_LABEL[r.category] || r.category)}</span></td>
-      <td class="td-time">${esc(r.date || '—')}</td>
-      <td><span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || r.diff_tag)}</span></td>
+      <td class="td-time">${formatDate(r.post_time)}</td>
+      <td><span class="tag tag-${diffTag}">${esc(DIFF_LABEL[diffTag] || diffTag)}</span></td>
+      <td>${r.priority ? `<span class="tag ${priorityClass(r.priority)}">${esc(r.priority)}</span>` : '—'}</td>
       <td><span class="status-chip ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span></td>
     </tr>
-  `).join('') : `<tr><td colspan="7" class="cex-empty">无匹配数据，试试放宽筛选条件</td></tr>`;
+  `;
+  }).join('') : `<tr><td colspan="8" class="table-empty">无匹配数据，试试放宽筛选条件</td></tr>`;
 
-  document.getElementById('archivePagination').innerHTML = `
-    <button class="page-btn" id="pagePrev" ${archiveState.page <= 1 ? 'disabled' : ''}>← 上一页</button>
-    <span>第 ${archiveState.page} / ${totalPages} 页</span>
-    <button class="page-btn" id="pageNext" ${archiveState.page >= totalPages ? 'disabled' : ''}>下一页 →</button>
+  document.getElementById('searchPagination').innerHTML = `
+    <button class="page-btn" id="pagePrev" ${searchState.page <= 1 ? 'disabled' : ''}>← 上一页</button>
+    <span>第 ${searchState.page} / ${totalPages} 页</span>
+    <button class="page-btn" id="pageNext" ${searchState.page >= totalPages ? 'disabled' : ''}>下一页 →</button>
   `;
   const prev = document.getElementById('pagePrev'), next = document.getElementById('pageNext');
-  if (prev) prev.addEventListener('click', () => { archiveState.page--; renderArchiveTable(); });
-  if (next) next.addEventListener('click', () => { archiveState.page++; renderArchiveTable(); });
+  if (prev) prev.addEventListener('click', () => { searchState.page--; renderSearchTable(); });
+  if (next) next.addEventListener('click', () => { searchState.page++; renderSearchTable(); });
 }
 
-function wireArchivePane() {
+function wireSearchPane() {
   document.querySelectorAll('[data-f]').forEach(btn => {
     const field = btn.dataset.f, val = btn.dataset.v;
-    if (archiveState[field] === val) btn.classList.add('active'); else btn.classList.remove('active');
+    btn.classList.toggle('active', searchState[field] === val);
   });
-  document.querySelectorAll('.archive-filter-row').forEach(row => {
+  document.querySelectorAll('.search-filter-row').forEach(row => {
     row.addEventListener('click', e => {
       const t = e.target.closest('[data-f]');
       if (!t) return;
       const field = t.dataset.f;
       row.querySelectorAll(`[data-f="${field}"]`).forEach(b => b.classList.remove('active'));
       t.classList.add('active');
-      archiveState[field] = t.dataset.v;
-      archiveState.page = 1;
-      renderArchiveTable();
+      searchState[field] = t.dataset.v;
+      searchState.page = 1;
+      renderSearchTable();
     });
   });
-  const search = document.getElementById('archiveSearch');
-  search.value = archiveState.query;
+  const q = document.getElementById('searchQuery');
+  q.value = searchState.query;
   let debounce;
-  search.addEventListener('input', () => {
+  q.addEventListener('input', () => {
     clearTimeout(debounce);
     debounce = setTimeout(() => {
-      archiveState.query = search.value;
-      archiveState.page = 1;
-      renderArchiveTable();
+      searchState.query = q.value;
+      searchState.page = 1;
+      renderSearchTable();
     }, 200);
   });
-  renderArchiveTable();
+  renderSearchTable();
 }
 
 loadData();

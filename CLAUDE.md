@@ -3633,3 +3633,184 @@ python -m src.sinks.feishu_bitable --db-path data/competitor_intel.db
 `competitor_intel.db` 里的数据（不管是重跑采集、Phase 4 分析产出新 insights，还是
 Phase 3 pipeline 改了 category/is_region_exclusive）都可以直接重跑同一条命令
 增量同步，不需要额外操作。
+
+## Phase 4 逐条字段扩展 + Phase 7 看板 category-first 重构 + 推送管道重设计（2026-07-20）
+
+用户给出一份完整的三段式实现 prompt（Phase 4 逐条字段扩展 → export 改造 → 看板
+重构）。计划阶段探索发现一个真实冲突：新的 category-first 看板 IA 会移除
+`src/dashboard/screenshot.py` 依赖的顶层 `.locale-tab` 元素，导致飞书群截图推送
+失效——用户选择"围绕新 IA 重新设计推送机制"（而不是保留兼容的 locale-tab 标签、
+也不是放任推送损坏），所以本次实际是 4 段：Phase 4 字段扩展 → export 改造 → 看板
+重构 → 推送管道重设计。**真实 LLM 调用严格限制在 20 次以内**（用户明确要求），
+实际只用了 4 次（campaign/product/listing/delisting 各 1 批），验证在从主库拷贝
+出的 scratch db 上进行，主库 `data/competitor_intel.db` 全程未被真实 LLM 调用
+触碰。
+
+### Stage 1：Phase 4 每篇公告逐条分析字段扩展
+
+`insights.articles_analysis[]`（每篇公告的结构化分析）从只有描述性字段
+（mechanics/feature_description/token_symbol/...）扩展成额外携带 5 个新字段：
+`diff_type`/`priority`/`follow_up`（四个 category 通用）+ `evidence_indices`
+（campaign/product/listing，delisting 无 ZMX 对比不需要）+ `change_kind`
+（**仅 campaign**，仅当该条自己 status=changed 时才可能有值）+ `listing_kind`
+（**仅 listing**，spot/perp，从 market_type 归约，两者均有/不明时填 null 不猜测）。
+
+- `config/analysis.yaml`：四个 `prompt_versions` 全部 v1→v2（改了 prompt 正文，
+  按项目铁律必须递增，这会让 `llm_cache` 全部失效、下次真实全量重跑会重新调用
+  LLM——预期成本，不是 bug）；`max_tokens_by_category` 各上调 500-800（响应体
+  随文章数线性增长，不再是单个 zmx_comparison 对象的固定开销）。
+- `src/analysis/prompts.py`：四套模板的 `articles[]` JSON 示例块逐条加了上述
+  字段+强制规则说明；模板顶部注释标注这些字段的合法性由 `llm.py` 程序性强制，
+  不是单纯信任 LLM 输出遵守文字说明。
+- `src/analysis/llm.py`：`validate_and_normalize()` 新增
+  `article_status: dict[uid, status] | None = None` 参数（默认 None 保证既有
+  调用方/测试不受影响，等价于"每条状态都不是 changed"）；新增
+  `_normalize_article_fields()`，在既有的 uid-membership 过滤循环内，对每条
+  articles 做字段级校验——**只置空/强制单个字段，绝不因为某个字段不合法丢弃
+  整条**（丢弃整条的唯一触发条件仍是 uid 不在 related_uids 内，这条既有约束
+  没有变）。`priority` 无法识别时置 `null` 而不是编造一个"低"的安全默认值
+  （沿用项目"宁可 null 不要编造"的一贯做法）。
+- `src/analysis/run.py`：调用点新增 `article_status = {r["uid"]: r["status"]
+  for r in rows}` 并传入 `validate_and_normalize()`。`_remap_articles_to_locale()`
+  （EN→FR/VN/ID 复用）完全不需要改——它对每条 article dict 做的是浅拷贝再只覆盖
+  `uid` 键，5 个新字段作为兄弟键自动跟着透传。
+- **零 DB migration**：`articles_analysis` 从 Phase 4 建表起就是无 CHECK 约束的
+  schemaless TEXT 列（跟有 CHECK 约束的批次级 `diff_type`/`priority` 列不同），
+  5 个新字段完全是应用层（prompts.py + llm.py）的事。
+
+**真实数据验证（cursor_agent，4 次真实调用，Bitunix 2026-07-15 批次，scratch db）**：
+campaign/product/listing/delisting 各 1 个真实批次全部产出正确形状——
+`listing_kind` 正确归约成 `perp`（4 篇美股永续合约上币公告）；`change_kind` 在
+这批真实数据里全部正确为 `null`（因为这批公告全部是 `status=new`，没有一条
+`changed`，程序性门控生效，不是恰好没测到）；delisting 正确不产出
+`evidence_indices`/`listing_kind`/`change_kind`；EN→FR/ID 复用正确把新字段原样
+带过去。`pytest` 全量 64 个 analysis 测试通过（新增 13 个逐条字段校验测试）。
+
+### Stage 2：export 层重写（`src/dashboard/export_data.py`，locale-first → category-first）
+
+顶层 schema 从 `overview/daily_digest/analysis_blocks/highlights/cex_tables/
+cex_counts`（全部按 locale 分 key）改成 `meta/overview/trend/campaign/product/
+listing/markets/search_index`（按 category 分 key，locale 变成每行的一个字段）。
+
+- 新增 `_load_article_index(conn)`：把全部 insights 行的 `articles_analysis`
+  展开成 `{uid: {diff_type, priority, follow_up, change_kind, listing_kind,
+  description, is_mock, is_locale_derived}}` 的扁平索引（`description` 是新增的
+  便利字段，从每个 category 对应的描述性字段——mechanics/feature_description/
+  project_brief/reason——里取一个统一名字，供看板直接展示用）。老数据/校验失败
+  批次（`articles_analysis` 为 NULL 或不含新字段）一律 `.get()` 取默认值，
+  不抛异常。
+- `build_category_section()`：campaign/product/listing/delisting/other 共用的
+  单 category 构建函数（最新一批，`status IN (new, changed)`），listing 对外
+  的 `listing` 段是 `listing_only + delisting` 两次调用结果拼接，delisting
+  行显式标 `category: "delisting"` 供前端区分。
+- `overview`：4 个 chip（Campaign/Product/Listing/Announcement=delisting+other），
+  每个带 diff_type 分布；highlights 是跨 category 的 priority=高 逐条公告，按
+  "priority 高→中→低，同级内 diff_type 严重度"排序。
+- `trend`/`markets`/`search_index`：全部历史（不限最新一批），`search_index`
+  字段刻意窄（不含正文），`markets` 只有跨地区矩阵（不重复导出按 locale 切片
+  的数据，前端对 campaign/product/listing 自己按 locale 客户端再过滤）。
+- **今日 Summary（daily-digest-v1 LLM 综述）整体移除**：用户明确决定"drop it
+  from the rewrite"——新 Overview（chip+highlights）没有它的位置。
+  `src/analysis/daily_digest.py` 本身不动（仍然是正确、有测试覆盖的模块），只是
+  不再被 export_data.py 调用，成为暂时未使用但保留的代码。
+- `src/dashboard/__main__.py` 同步更新（`meta.as_of_date`→`meta.batch_date`，
+  顶层 `sources`→`meta.source_coverage`）。
+
+新增 `tests/dashboard/test_export_data.py`（8 个用例，覆盖 8 个顶层 key 齐全、
+search_index 不泄漏正文、老数据优雅降级、delisting 行正确打标、EN-Asia 无竞品
+数据不报错、overview chip 计数/highlights 排序）。真实导出验证：对主库
+`data/competitor_intel.db`（尚未跑 Stage 1 的真实 LLM 全量重跑，insights 还是
+老形状）导出，确认新老数据混跑不报错、老数据正确显示中性默认——这本身就是一次
+"优雅降级"要求的真实数据验证，不只是合成测试。
+
+### Stage 3：看板重构（`docs/index.html`，locale-first tabs → category-first tabs）
+
+顶层 tab 从 `EN/FR/VN/ID/EN-Asia/全量/全局视角` 改成 `Overview/Campaign/Product/
+Listing/Markets/Search`，默认落地 Overview。完整沿用旧文件的 `:root` 设计
+token（`--hue-*`/`--status-*`/`--loc-*`/`--font-*`）和组件（`.tag`/`.tag-mock`/
+`.status-chip`/`.locale-dot`），新增 `.priority-high/-medium/-low` 三个正式的
+优先级 CSS class（旧版是内联 style 现改成语义类）、全局共用的
+`sortByPriorityThenDiff()` 排序函数（每个 tab 的列表都调用同一个函数，不各自
+重新实现一遍）。
+
+- Overview：4 个 chip + 跨 category highlights + 当日按竞品采集量排行（复用
+  `meta.source_coverage`，客户端计算，未新增导出字段）+ Quick Jump 按钮。
+- Campaign（最详细，卡片默认展开）/ Product（默认折叠）：共用同一个
+  `detailCard()` 渲染函数，只有"是否默认展开"这一个参数不同。
+- Listing：紧凑表格，delisting 行以 `category=delisting` 内嵌展示（无独立
+  diff 列，因为 delisting 恒"不适用"）。
+- Markets：EN/FR/SEA(=VN+ID 显示层 rollup)/KR(灰显占位，本期不做) 四个市场
+  sub-tab，复用 Campaign/Product/Listing 的同一套卡片渲染（按 locale 过滤），
+  外加跨地区矩阵（全部历史）+ EN-Asia 基线专属说明卡片。
+- Search：完整复用旧版"全量"tab 的筛选/分页模式（locale/来源/分类/差异/
+  日期区间 + 标题搜索），数据源从 `archive` 换成 `search_index`。
+
+**手工验证（Playwright 无头浏览器，本地 http.server，真实 `data/competitor_intel.db`
+导出的数据）**：6 个 tab 全部渲染无 console/page error；Listing 来源筛选、
+Markets 切换 EN/FR/SEA（KR 正确不可点）、Search 文本+分类组合筛选、Campaign
+展开/收起按钮，全部真实点击验证工作正常；"计数只算一次"规则用真实数据核对——
+`overview.chips.campaign` 总数与 `data.campaign.length` 逐一对上，
+`listing`（71 条 = listing 43 + delisting 28）在 Overview/Listing tab 两处
+显示一致。
+
+### Stage 4：推送管道重设计（新增范围，非原始 prompt 要求）
+
+用户在计划阶段被告知一个真实冲突：`src/dashboard/screenshot.py` 靠点击顶层
+`.locale-tab` 截图推送到飞书群，新 IA 移除了这个顶层入口——用户选择"围绕新 IA
+重新设计"而不是保留兼容标签或放任其损坏。
+
+- `docs/index.html` 新增 URL 触发的推送视图：`?view=push&locale=EN`（不是
+  六个 tab 之一，正常点击不可达），`renderPushView()` 渲染紧凑内容（该 locale
+  的 campaign/product/listing 统计条 + 最多 8 条 priority=高 重点，客户端从
+  已有导出数据过滤/聚合，未新增导出字段），EN-Asia 走基线专属分支。渲染完成后
+  设置 `[data-push-ready="<locale>"]` 标记供截图脚本等待。
+- `src/dashboard/screenshot.py`：`capture_locale_tabs()`（单次加载+逐个点击）
+  换成 `capture_push_views()`（每个 locale 各自 `page.goto()` 到推送视图 URL，
+  等 `[data-push-ready]` 出现再截图）——代价是 dashboard.json 多 fetch 4 次
+  （数据量小，可接受），换来不需要 Playwright 感知页面内部 JS 函数名。
+- **真实发现的 bug**：`wait_for_selector` 默认要求元素"可见"（非零宽高），
+  但 push-ready 标记是个空 `<div>`，永远等不到——真实 Playwright 跑第一次就
+  超时暴露，改成 `state="attached"` 修复（不是等可见，只等元素挂载到 DOM）。
+  这是纯手工合成测试测不出来的一类 bug，靠真实浏览器跑一遍才发现。
+- `src/sinks/feishu_bot.py`：只改了 import 名 + 一处调用（`capture_locale_tabs`
+  → `capture_push_views`），其余（chat 解析、图片上传、消息发送、sync_log、
+  `PUSH_LOCALES` 常量、graceful skip 逻辑）完全不动，按计划确认过这是唯一
+  需要碰这个文件的地方。
+
+**真实验证**：本地 http.server + 真实 Playwright 对 5 个 locale 各自截图，
+文件从旧版整页截图的 934KB（EN，3742px 高）降到新版 ~25KB（同样是 EN）——直接
+解决了此前一直标注"未验证图片在飞书聊天里是否好看"的遗留疑虑。`python -m
+src.sinks.feishu_bot --dashboard-url ... --dry-run` 真实跑通全流程（截图 5 张 +
+正确解析出 5 个真实群名，无一失败）。
+
+新增 `tests/dashboard/test_screenshot.py`（3 个用例：URL 构造、连字符 locale
+文件名、单 locale 失败不影响其它），`tests/sinks/test_feishu_bot.py` 的 6 处
+`capture_locale_tabs` mock 全部改名同步。
+
+### 验收记录汇总
+
+```
+pytest
+# 302 通过（Phase 5 完成时的 268 个 + Stage 1 新增 13 个 + Stage 2 新增 8 个 +
+# Stage 4 新增 3 个 tests/dashboard/test_screenshot.py，tests/sinks/test_feishu_bot.py
+# 既有 18 个原样通过，只是 mock 目标改名）
+```
+
+### 已知限制 / 遗留
+
+- **主库 `data/competitor_intel.db` 的 22 条 `insights` 仍是 Phase 4 -v2 之前
+  的老形状**（本次真实 LLM 验证只在 scratch db 上跑了 4 次，主库全程未碰）——
+  下次对主库跑一次不限 `--max-calls` 的 `python -m src.analysis` 才会让新的
+  5 个字段在生产数据里真正出现；在此之前，看板的 Campaign/Product/Listing/
+  Overview 会一直显示"不适用"/无优先级（这是本次验证过的正确降级行为，不是
+  bug，但如实记录：这是"数据还没跑"而不是"功能坏了"）。
+- **`src/analysis/daily_digest.py` 变成暂时未使用的代码**：模块本身、其
+  prompt（daily-digest-v1）、`peek_cached_digest()` 全部原样保留（仍有测试
+  覆盖，仍然正确），只是新看板不再调用它，如果以后想恢复"今日综述"功能，
+  逻辑都还在，只需要在 Overview 里重新接一个入口。
+- **`docs/data/dashboard.json` 已用新 schema 重新生成并覆盖本地文件**，但
+  **本次 session 没有执行任何 git 操作**，是否 commit/push 由用户决定。
+- **GitHub Pages 仍未启用**（此前 session 遗留问题，本次未涉及）。
+- Markets 的 KR 市场 tab 按原计划保持灰显占位，未接入任何数据（本期不做，
+  跟更早 session 记录的"KR 是否复用 CompAgent_KR 群"悬而未决的问题一致，
+  未在本次擅自决定）。

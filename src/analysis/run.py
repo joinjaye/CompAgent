@@ -295,8 +295,10 @@ def run(
             report.llm_calls += 1
             report.total_tokens += tokens_used or 0
 
+        article_status = {r["uid"]: r["status"] for r in rows}
         result = validate_and_normalize(
-            raw_text, category=key.category, related_uids=set(related_uids), zmx_hits=zmx_hits
+            raw_text, category=key.category, related_uids=set(related_uids), zmx_hits=zmx_hits,
+            article_status=article_status,
         )
         if not result.valid:
             report.validation_failed += 1

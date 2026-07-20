@@ -1,14 +1,22 @@
-"""飞书群机器人推送（看板截图版）：把每个区域 tab（EN/FR/VN/ID/EN-Asia）当前渲染的
-截图，推送到该 locale 在 `config/push_targets.yaml` 里配置的独立飞书群。
+"""飞书群机器人推送（看板截图版）：把每个 locale 的"推送视图"（`docs/index.html` 的
+`renderPushView()`，URL 触发 `?view=push&locale=<X>`，不是六个顶层 tab 之一）当前
+渲染的截图，推送到该 locale 在 `config/push_targets.yaml` 里配置的独立飞书群。
+
+2026-07-20 起：看板从 locale-first（顶层 `.locale-tab`）改成 category-first（顶层
+Overview/Campaign/Product/Listing/Markets/Search 六个 tab）之后，不再有能直接点出
+"这个 locale 的一整页内容"的顶层入口，所以新增了这个专门给推送用的紧凑视图（也顺带
+解决了旧版整页截图从未验证过的"图片在飞书里是不是太长"的问题），见
+`src/dashboard/screenshot.py::capture_push_views()`。
 
 跟 CLAUDE.md 原先规划的「Phase 6 推送规则引擎」（逐条公告按 push_rules.yaml 匹配、
 推送文字消息）是两条不同的路径——本模块是"每日一张图"的看板快照推送，不逐条判断
 单篇公告要不要推，也不touch `announcements.push_status`（那一列的语义是"这条公告
-有没有被单独推送过"，跟"今天有没有把整个 locale tab 的截图发过群"是两回事）。
+有没有被单独推送过"，跟"今天有没有把这个 locale 的推送视图截图发过群"是两回事）。
 Phase 6 的规则引擎如果以后要做，是另一条独立路径，不依赖本模块。
 
-「全量」「全局视角」两个 tab 不推送——业务决定，见调用方 `push_dashboard_screenshots`
-的 `locales` 参数（固定传 `EN/FR/VN/ID/EN-Asia`，不包含 `archive`/`global`）。
+EN-Asia 之外的其余四个真实竞品 locale 都会推送；「Markets」「Search」两个 tab
+本身不对应任何单一 locale，不在推送范围内——业务决定，见调用方
+`push_dashboard_screenshots` 的 `PUSH_LOCALES` 常量（固定 `EN/FR/VN/ID/EN-Asia`）。
 
 **2026-07-15 架构变更：从"自定义机器人 webhook"改成"应用机器人 im/v1/messages"**，
 不再是最初设计（见 git 历史）。原因：自定义机器人 webhook 虽然协议上支持
@@ -41,7 +49,7 @@ from typing import Optional
 import yaml
 
 from src.collectors.http import HttpError, fetch
-from src.dashboard.screenshot import capture_locale_tabs
+from src.dashboard.screenshot import capture_push_views
 from src.db.connection import DEFAULT_DB_PATH, connect
 from src.db.operations import utcnow_iso
 
@@ -304,7 +312,7 @@ def push_dashboard_screenshots(
     report = PushReport()
     batch_date = batch_date or time.strftime("%Y-%m-%d", time.gmtime())
 
-    screenshots = capture_locale_tabs(dashboard_url, PUSH_LOCALES, screenshot_dir)
+    screenshots = capture_push_views(dashboard_url, PUSH_LOCALES, screenshot_dir)
 
     targets = load_push_targets(PUSH_TARGETS_PATH)
     credentials = load_bot_credentials(env) if not dry_run else None

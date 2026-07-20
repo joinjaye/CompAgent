@@ -113,7 +113,9 @@ def test_full_run_creates_insight_row(conn, fake_credentials, monkeypatch):
     assert row["article_count"] == 1
     assert json.loads(row["related_uids"]) == [uid]
     assert row["is_locale_derived"] == 0
-    assert row["prompt_version"] == "campaign-v1"
+    # config/analysis.yaml 的 prompt_versions.campaign 在 2026-07-20 从 v1 升到 v2
+    # （articles[] 逐条新增字段，见 CLAUDE.md），这里跟随真实配置更新，不是巧合。
+    assert row["prompt_version"] == "campaign-v2"
 
 
 def test_rerun_same_day_hits_cache_and_skips_llm_call(conn, fake_credentials, monkeypatch):

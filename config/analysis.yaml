@@ -23,16 +23,16 @@ llm:
   timeout_s: 60
   max_retries: 3
   max_tokens_by_category:
-    campaign: 2000
-    product: 2000
-    listing: 1500
-    delisting: 800
+    campaign: 2800   # v2（2026-07-20）：每篇 article 新增 5 个字段，随批次文章数
+    product: 2800    # 线性增长（不再只是单个 zmx_comparison 对象的固定开销），
+    listing: 2200    # 上调后的数值是经验起点，真实 --dry-run/小批量验收后可再校准
+    delisting: 1300
 
 prompt_versions:          # 改某个 category 的 prompt 正文后必须递增这里的版本号
-  campaign: campaign-v1
-  product: product-v1
-  listing: listing-v1
-  delisting: delisting-v1
+  campaign: campaign-v2   # v2（2026-07-20）：articles[] 逐条新增 diff_type/priority/
+  product: product-v2     # follow_up/change_kind(仅campaign)/listing_kind(仅listing)/
+  listing: listing-v2     # evidence_indices(campaign/product/listing)，详见模板正文
+  delisting: delisting-v2
 
 zmx_baseline:              # 结构化 Zoomex 基线（取代原来的 zmx_index TF-IDF 检索，
                             # 见 src/analysis/zmx_baseline.py 顶部注释 / CLAUDE.md）

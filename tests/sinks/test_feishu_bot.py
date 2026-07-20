@@ -1,5 +1,5 @@
 """src/sinks/feishu_bot.py 单测：全部离线（mock fetch/fetch_json + mock
-capture_locale_tabs，不启动真实 Playwright/浏览器，不发真实网络请求）。
+capture_push_views，不启动真实 Playwright/浏览器，不发真实网络请求）。
 
 真实网络验收记录（2026-07-15，用真实 FEISHU_APP_ID/SECRET）：
 - 截图（src/dashboard/screenshot.py）对本地 http.server 跑通，5 个 locale 全部
@@ -317,7 +317,7 @@ def _fake_push_targets(tmp_path, mapping: dict[str, str]) -> Path:
 
 def test_dry_run_captures_screenshots_but_calls_no_feishu_api(tmp_path, monkeypatch, db_path):
     monkeypatch.setattr(
-        bot, "capture_locale_tabs",
+        bot, "capture_push_views",
         lambda url, locales, out_dir, **kw: _fake_screenshots(tmp_path, locales),
     )
 
@@ -337,7 +337,7 @@ def test_dry_run_captures_screenshots_but_calls_no_feishu_api(tmp_path, monkeypa
 
 def test_missing_chat_name_is_skipped_not_failed(tmp_path, monkeypatch, db_path):
     monkeypatch.setattr(
-        bot, "capture_locale_tabs",
+        bot, "capture_push_views",
         lambda url, locales, out_dir, **kw: _fake_screenshots(tmp_path, locales),
     )
     monkeypatch.setattr(bot, "PUSH_TARGETS_PATH", _fake_push_targets(tmp_path, {}))
@@ -349,7 +349,7 @@ def test_missing_chat_name_is_skipped_not_failed(tmp_path, monkeypatch, db_path)
 
 def test_real_run_pushes_via_bot_and_logs_sync_log(tmp_path, monkeypatch, db_path):
     monkeypatch.setattr(
-        bot, "capture_locale_tabs",
+        bot, "capture_push_views",
         lambda url, locales, out_dir, **kw: _fake_screenshots(tmp_path, locales),
     )
     monkeypatch.setattr(bot, "load_env", lambda: {
@@ -390,7 +390,7 @@ def test_chat_not_found_is_skipped_not_failed(tmp_path, monkeypatch, db_path):
     """配了 chat_name，但机器人没有加入这个群（或群名不匹配）——`list_bot_chats()`
     查不到对应 chat_id，应该 skip，不是 failed（跟 EN-Asia 目前的真实状态一致）。"""
     monkeypatch.setattr(
-        bot, "capture_locale_tabs",
+        bot, "capture_push_views",
         lambda url, locales, out_dir, **kw: _fake_screenshots(tmp_path, locales),
     )
     monkeypatch.setattr(bot, "load_env", lambda: {
@@ -430,7 +430,7 @@ def test_screenshot_failure_for_one_locale_is_skipped(tmp_path, monkeypatch, db_
         del result["FR"]  # 模拟 FR 截图失败
         return result
 
-    monkeypatch.setattr(bot, "capture_locale_tabs", _partial_screenshots)
+    monkeypatch.setattr(bot, "capture_push_views", _partial_screenshots)
     monkeypatch.setattr(bot, "load_env", lambda: {
         "FEISHU_APP_ID": "app-x", "FEISHU_APP_SECRET": "secret-x",
     })

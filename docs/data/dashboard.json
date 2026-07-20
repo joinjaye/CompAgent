@@ -1,2737 +1,3529 @@
 {
   "meta": {
-    "generated_at": "2026-07-15T10:24:00Z",
-    "as_of_date": "2026-07-15",
+    "generated_at": "2026-07-15T08:48:23Z",
+    "batch_date": "2026-07-15",
     "db_path": "competitor_intel.db",
     "insights_total": 22,
     "insights_mock": 0,
-    "zoomex_baseline_total": 2018
-  },
-  "sources": {
-    "Bitunix": {
-      "locales": [
-        "EN",
-        "FR",
-        "ID"
-      ],
-      "today": 26,
-      "total": 26,
-      "active": true
-    },
-    "Weex": {
-      "locales": [
-        "EN",
-        "FR"
-      ],
-      "today": 0,
-      "total": 0,
-      "active": false
-    },
-    "BingX": {
-      "locales": [
-        "EN",
-        "VN"
-      ],
-      "today": 16,
-      "total": 16,
-      "active": true
-    },
-    "Phemex": {
-      "locales": [
-        "EN",
-        "FR"
-      ],
-      "today": 18,
-      "total": 18,
-      "active": true
-    },
-    "Lbank": {
-      "locales": [
-        "EN",
-        "VN",
-        "ID"
-      ],
-      "today": 39,
-      "total": 39,
-      "active": true
+    "zoomex_baseline_total": 2018,
+    "source_coverage": {
+      "Bitunix": {
+        "locales": [
+          "EN",
+          "FR",
+          "ID"
+        ],
+        "today": 26,
+        "total": 26,
+        "active": true
+      },
+      "Weex": {
+        "locales": [
+          "EN",
+          "FR"
+        ],
+        "today": 0,
+        "total": 0,
+        "active": false
+      },
+      "BingX": {
+        "locales": [
+          "EN",
+          "VN"
+        ],
+        "today": 16,
+        "total": 16,
+        "active": true
+      },
+      "Phemex": {
+        "locales": [
+          "EN",
+          "FR"
+        ],
+        "today": 18,
+        "total": 18,
+        "active": true
+      },
+      "Lbank": {
+        "locales": [
+          "EN",
+          "VN",
+          "ID"
+        ],
+        "today": 39,
+        "total": 39,
+        "active": true
+      }
     }
   },
-  "locales": [
-    "EN",
-    "FR",
-    "VN",
-    "ID",
-    "EN-Asia"
-  ],
   "overview": {
-    "EN": {
-      "locale": "EN",
-      "fetched_today": 40,
-      "new_count": 40,
-      "changed_count": 0,
-      "sources_active": 4,
-      "sources_configured": 5,
-      "sources_list": [
-        "BingX",
-        "Bitunix",
-        "Lbank",
-        "Phemex",
-        "Weex"
-      ],
-      "region_exclusive_count": 0,
-      "zmx_missing_high": 0,
-      "push_candidates": 14
+    "batch_date": "2026-07-15",
+    "chips": {
+      "campaign": {
+        "count_new": 1,
+        "count_changed": 0,
+        "diff_breakdown": {
+          "missing": 0,
+          "diff": 0,
+          "same": 0,
+          "mixed": 0,
+          "na": 1
+        }
+      },
+      "product": {
+        "count_new": 7,
+        "count_changed": 0,
+        "diff_breakdown": {
+          "missing": 0,
+          "diff": 0,
+          "same": 0,
+          "mixed": 0,
+          "na": 7
+        }
+      },
+      "listing": {
+        "count_new": 43,
+        "count_changed": 0,
+        "diff_breakdown": {
+          "missing": 0,
+          "diff": 0,
+          "same": 0,
+          "mixed": 0,
+          "na": 43
+        }
+      },
+      "announcement": {
+        "count_new": 48,
+        "count_changed": 0,
+        "diff_breakdown": {
+          "missing": 0,
+          "diff": 0,
+          "same": 0,
+          "mixed": 0,
+          "na": 48
+        }
+      }
     },
-    "FR": {
-      "locale": "FR",
-      "fetched_today": 16,
-      "new_count": 16,
-      "changed_count": 0,
-      "sources_active": 2,
-      "sources_configured": 3,
-      "sources_list": [
-        "Bitunix",
-        "Phemex",
-        "Weex"
-      ],
-      "region_exclusive_count": 9,
-      "zmx_missing_high": 0,
-      "push_candidates": 10
-    },
-    "VN": {
-      "locale": "VN",
-      "fetched_today": 21,
-      "new_count": 21,
-      "changed_count": 0,
-      "sources_active": 2,
-      "sources_configured": 2,
-      "sources_list": [
-        "BingX",
-        "Lbank"
-      ],
-      "region_exclusive_count": 0,
-      "zmx_missing_high": 0,
-      "push_candidates": 3
-    },
-    "ID": {
-      "locale": "ID",
-      "fetched_today": 22,
-      "new_count": 22,
-      "changed_count": 0,
-      "sources_active": 2,
-      "sources_configured": 2,
-      "sources_list": [
-        "Bitunix",
-        "Lbank"
-      ],
-      "region_exclusive_count": 0,
-      "zmx_missing_high": 0,
-      "push_candidates": 2
-    },
-    "EN-Asia": {
-      "locale": "EN-Asia",
-      "fetched_today": 0,
-      "new_count": 0,
-      "changed_count": 0,
-      "sources_active": 0,
-      "sources_configured": 0,
-      "sources_list": [],
-      "region_exclusive_count": 0,
-      "zmx_missing_high": 0,
-      "push_candidates": 0
-    },
-    "global": {
-      "locale": "ALL",
-      "fetched_today": 99,
-      "new_count": 99,
-      "changed_count": 0,
-      "sources_active": 4,
-      "sources_configured": 5,
-      "sources_list": [
-        "BingX",
-        "Bitunix",
-        "Lbank",
-        "Phemex",
-        "Weex"
-      ],
-      "region_exclusive_count": 9,
-      "zmx_missing_high": 0,
-      "push_candidates": 29
-    }
+    "highlights": []
   },
-  "daily_digest": {
-    "EN": {
-      "text": "EN 本次共产出 9 个分析批次（真实 9 / 模拟 0），覆盖 4 个竞品源（BingX、Bitunix、Lbank、Phemex）。 按类目：活动 1 批、产品 1 批、上币 3 批、下架 4 批。 ZMX 基线比对：ZMX缺失 1 批（其中高优先级 0 批）。",
-      "priority_focus": null,
-      "source": "stats_fallback"
-    },
-    "FR": {
-      "text": "FR 本次共产出 4 个分析批次（真实 4 / 模拟 0），覆盖 2 个竞品源（Bitunix、Phemex）。 按类目：产品 1 批、上币 1 批、下架 2 批。 另有 9 条地区独占公告。",
-      "priority_focus": null,
-      "source": "stats_fallback"
-    },
-    "VN": {
-      "text": "VN 本次共产出 4 个分析批次（真实 4 / 模拟 0），覆盖 2 个竞品源（BingX、Lbank）。 按类目：上币 2 批、下架 2 批。",
-      "priority_focus": null,
-      "source": "stats_fallback"
-    },
-    "ID": {
-      "text": "ID 本次共产出 5 个分析批次（真实 5 / 模拟 0），覆盖 2 个竞品源（Bitunix、Lbank）。 按类目：产品 1 批、上币 2 批、下架 2 批。",
-      "priority_focus": null,
-      "source": "stats_fallback"
-    },
-    "EN-Asia": {
-      "text": "EN-Asia 本次没有产出任何分析批次（无 status=new/changed 的 campaign/product/listing/delisting 公告）。",
-      "priority_focus": null,
-      "source": "stats_fallback"
-    }
-  },
-  "analysis_blocks": {
-    "EN": [
-      {
-        "category": "campaign",
-        "source": "Bitunix",
-        "summary": "本日 Bitunix 发布 1 条 EN 公告，主题为墨西哥城首届 Ultra Trading Conference（UTC）线下会议。活动以 40+ KOL、60+ trader 到场知识分享与社交为主，含主题演讲、圆桌、产品介绍、问答及互动抽奖，并与 Mexico Blockchain Week 联办 After Party，正文未披露活动时间、奖池金额或线上交易任务。",
-        "zmx_diff": "本批次为拉美市场线下品牌会议，非线上交易激励。[Z4]、[Z14] 所示 Zoomex 社群玩法为线上合约交易量阶梯瓜分 50000 USDT 奖池；[Z3] 为累计交易量里程碑换抽奖券转动幸运转盘。[Z1]-[Z20] 基线均为线上拉新、交易、理财或产品任务类活动，无线下会议、KOL 峰会或区块链周联办 After Party 形态。\n优先级依据：活动无 USDT 奖池或交易量任务等可落地对标机制，仅 40+ KOL、60+ trader 线下参会，与 Zoomex [Z4] 50000 USDT 线上社群交易活动运营转化路径不同。",
-        "diff_type": "ZMX缺失",
-        "diff_tag": "missing",
-        "priority": "低",
-        "article_count": 1,
-        "is_mock": false,
-        "is_locale_derived": false
-      },
-      {
-        "category": "product",
-        "source": "Bitunix",
-        "summary": "本批次 Bitunix 更新集中在 K 线图交易执行链路，包括快捷下单、条件触发单、分批/闪电平仓、交易模板及全仓与分段止盈止损。同步上线税务报告页全量交易历史 CSV 导出，并在图表端推出 Super Alerts 复合告警体系，覆盖价格、指标、画线、蜡烛形态及 TradingView 策略信号。",
-        "zmx_diff": "Zoomex 近 90 天基线以钱包维护[Z1][Z5]、MCP 交易信息查询[Z2]、预测市场[Z3]、策略中心自动交易[Z4]为主，未见 K 线图集成下单/平仓、税务历史导出及复合图表告警同类记录，上述能力基线中未见相关记录，建议人工复核。[Z4]虽覆盖技术指标策略与止盈止损，但定位为策略账户自动执行与回测，与 Bitunix 图表端手动下单、实时监控告警玩法不同。\n优先级依据：竞品在图表交易执行、智能告警与税务导出三条核心交易链路形成产品组合，基线未见对等能力，对活跃交易者留存与合规需求影响直接。",
-        "diff_type": "混合",
-        "diff_tag": "mixed",
-        "priority": "高",
-        "article_count": 3,
-        "is_mock": false,
-        "is_locale_derived": false
-      },
-      {
-        "category": "listing",
-        "source": "BingX",
-        "summary": "本批次 BingX 共 5 条公告，以 TradFi 类永续合约扩品为主：涵盖美股个股（CUS、WFC 等）、黄金外汇对（XAUCAD 等）、ETF（XLP、LQD 等）及 DRVUSDT，均同步支持网格交易；另有一条 EventX 事件预测市场上线，覆盖世界杯、美联储决议、AI 模型等热点话题。",
-        "zmx_diff": "EventX 事件预测市场为 BingX 独有玩法，基线中无同类记录，不适用代币对标。DRVUSDT：基线中未见 DRVUSDT 上币记录。CUS、WFC、IYF、VFH、SPCH、AMDL、YPF、SECZ：基线中未见上述标的永续上币记录；Zoomex 基线存在股票永续品类 [Z1]、[Z5]，但标的为 PURRUSDT/SNOWUSDT/VRTUSDT/GEVUSDT/SKHYUSDT 及 SONYUSDT/SHAZUSDT/COSTUSDT，与本批次美股个股不重叠。XAUCAD、XAUCHF、XAUGBP：基线中未见上述黄金外汇对永续上币记录。XLP、LQD、UMC、LYG、ZS、VWO：基线中未见上述 ETF 类永续上币记录。\n优先级依据：本批次多为 TradFi 合成永续标的，基线中均未见对应记录，但 Zoomex 已有股票永续产品线，竞品扩品方向可参考；无基线确认的主流加密现货/合约缺口。",
-        "diff_type": "混合",
-        "diff_tag": "mixed",
-        "priority": "中",
-        "article_count": 5,
-        "is_mock": false,
-        "is_locale_derived": false
-      },
-      {
-        "category": "listing",
-        "source": "Bitunix",
-        "summary": "本批次 Bitunix 共 4 条公告、7 个美股永续合约交易对，全部为 USDT-M 股票永续（Stock Perps），无现货或加密资产合约。标的覆盖半导体（SK Hynix、Texas Instruments）、能源/基础设施（GE Vernova、Vertiv）、游戏（Take-Two）及机器人/小盘股（RoboStrategy、Forward Industries）等方向，杠杆多为 25x–50x，体现其持续扩充股票永续产品线的策略。",
-        "zmx_diff": "SKHYUSDT：基线中已有对应记录，见 [Z1]（与 PURRUSDT、SNOWUSDT、VRTUSDT、GEVUSDT 同期上线的股票永续批次）。BOTUSDT：基线中未见 BOTUSDT 上币记录。FWDIUSDT：基线中未见 FWDIUSDT 上币记录。GEVUSDT：基线中已有对应记录，见 [Z1]。VRTUSDT：基线中已有对应记录，见 [Z1]。TTWOUSDT：基线中未见 TTWOUSDT 上币记录。TXNUSDT：基线中未见 TXNUSDT 上币记录。本批次 7 个代币中 3 个（SKHYUSDT、GEVUSDT、VRTUSDT）已在 Zoomex 基线股票永续批次中出现，4 个（BOTUSDT、FWDIUSDT、TTWOUSDT、TXNUSDT）基线中未见记录。\n优先级依据：基线中未见 Texas Instruments（TTWOUSDT）与 Take-Two Interactive（TXNUSDT）等具一定市值的主流美股标的，存在明显补齐股票永续版图的机会。",
-        "diff_type": "混合",
-        "diff_tag": "mixed",
-        "priority": "高",
-        "article_count": 4,
-        "is_mock": false,
-        "is_locale_derived": false
-      },
-      {
-        "category": "listing",
-        "source": "Lbank",
-        "summary": "本批次 LBank 共 7 条上币公告，涵盖 bStocks 代币化股票现货（SOXLB、DRAMB）、Robinhood Chain 生态 MEME 现货（INDEX、WEN、WALLET、PONS）及 PONS USDT 永续合约全球首发。整体呈现「代币化股票 + 新兴链 MEME 集群」双线布局，bStocks 现货 0 手续费，PONS 同日现货与合约双轨上线。",
-        "zmx_diff": "SOXLB：基线中未见 SOXLB 上币记录；Zoomex 基线仅有股票永续（如 [Z1] PURRUSDT 等、[Z5] SONYUSDT 等），未见 bStocks 代币化股票现货形态。DRAMB：基线中未见 DRAMB 上币记录。INDEX：基线中未见 INDEX 上币记录。WEN：基线中未见 WEN 上币记录。WALLET：基线中未见 WALLET 上币记录。PONS：基线中未见 PONS 上币记录；LBank 同日上线 PONS 现货与 USDT 永续合约，基线中亦无对应合约记录（[Z3][Z4][Z7][Z8] 均为其他代币永续）。本批次 7 条公告涉及 6 个独立代币符号，均不在近 90 天 Zoomex 基线检索结果中。\n优先级依据：基线均未命中对应上币记录，但本批次以 Robinhood Chain MEME 及 bStocks 代币化 ETF 现货为主，项目知名度与市值体量有限，尚不足以构成高优先级跟进信号。",
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "中",
-        "article_count": 7,
-        "is_mock": false,
-        "is_locale_derived": false
-      },
-      {
-        "category": "delisting",
-        "source": "BingX",
-        "summary": "BingX 今日发布 2 条下架公告：现货下架 7 个交易对（GFI、MANYU、PAAL、NUM、KGEN、HEMI、OBOL），将于 7 月 17 日执行；永续合约下架 5 个交易对（KIN、TEA、MEZO、ASTEROIDETH、REAL），将于 7 月 20 日执行。",
-        "zmx_diff": null,
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "article_count": 2,
-        "is_mock": false,
-        "is_locale_derived": false
-      },
-      {
-        "category": "delisting",
-        "source": "Bitunix",
-        "summary": "Bitunix 今日宣布将于 2026-07-17 02:00 UTC 下架 2 个现货交易对（ES/USDT、P/USDT），涉及 Eclipse (ES) 与 PoP Planet (P) 两个代币。",
-        "zmx_diff": null,
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "article_count": 1,
-        "is_mock": false,
-        "is_locale_derived": false
-      },
-      {
-        "category": "delisting",
-        "source": "Lbank",
-        "summary": "LBank 今日公告将下架 8 个现货 USDT 交易对（RKC、GOBLIN、TJR、TESTIBULL、BULL、BUILDNBUILD、MAXXING、LION），原因为流动性不足，下架时间为 2026-07-18 12:00 UTC，充值将于 2026-07-17 12:00 UTC 永久关闭。",
-        "zmx_diff": null,
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "article_count": 1,
-        "is_mock": false,
-        "is_locale_derived": false
-      },
-      {
-        "category": "delisting",
-        "source": "Phemex",
-        "summary": "Phemex 本批次共 9 条下架公告：8 个现货交易对（STRK、POLYX、0G、MOVR、INIT、CKB、A、GUN/USDT）统一于 2026-07-16 10:00 UTC 下架并同步关闭充提；1 个合约交易对 KORUUSDT 已于 2026-07-15 02:30 UTC 完成交易关闭与持仓强平，公告均未说明下架原因。",
-        "zmx_diff": null,
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "article_count": 9,
-        "is_mock": false,
-        "is_locale_derived": false
-      }
+  "trend": {
+    "dates": [
+      "2026-07-15"
     ],
-    "FR": [
-      {
-        "category": "product",
-        "source": "Bitunix",
-        "summary": "本批次 Bitunix 更新集中在 K 线图交易执行链路，包括快捷下单、条件触发单、分批/闪电平仓、交易模板及全仓与分段止盈止损。同步上线税务报告页全量交易历史 CSV 导出，并在图表端推出 Super Alerts 复合告警体系，覆盖价格、指标、画线、蜡烛形态及 TradingView 策略信号。",
-        "zmx_diff": "Zoomex 近 90 天基线以钱包维护[Z1][Z5]、MCP 交易信息查询[Z2]、预测市场[Z3]、策略中心自动交易[Z4]为主，未见 K 线图集成下单/平仓、税务历史导出及复合图表告警同类记录，上述能力基线中未见相关记录，建议人工复核。[Z4]虽覆盖技术指标策略与止盈止损，但定位为策略账户自动执行与回测，与 Bitunix 图表端手动下单、实时监控告警玩法不同。\n优先级依据：竞品在图表交易执行、智能告警与税务导出三条核心交易链路形成产品组合，基线未见对等能力，对活跃交易者留存与合规需求影响直接。",
-        "diff_type": "混合",
-        "diff_tag": "mixed",
-        "priority": "高",
-        "article_count": 1,
-        "is_mock": false,
-        "is_locale_derived": true
-      },
-      {
-        "category": "listing",
-        "source": "Bitunix",
-        "summary": "本批次 Bitunix 共 4 条公告、7 个美股永续合约交易对，全部为 USDT-M 股票永续（Stock Perps），无现货或加密资产合约。标的覆盖半导体（SK Hynix、Texas Instruments）、能源/基础设施（GE Vernova、Vertiv）、游戏（Take-Two）及机器人/小盘股（RoboStrategy、Forward Industries）等方向，杠杆多为 25x–50x，体现其持续扩充股票永续产品线的策略。",
-        "zmx_diff": "SKHYUSDT：基线中已有对应记录，见 [Z1]（与 PURRUSDT、SNOWUSDT、VRTUSDT、GEVUSDT 同期上线的股票永续批次）。BOTUSDT：基线中未见 BOTUSDT 上币记录。FWDIUSDT：基线中未见 FWDIUSDT 上币记录。GEVUSDT：基线中已有对应记录，见 [Z1]。VRTUSDT：基线中已有对应记录，见 [Z1]。TTWOUSDT：基线中未见 TTWOUSDT 上币记录。TXNUSDT：基线中未见 TXNUSDT 上币记录。本批次 7 个代币中 3 个（SKHYUSDT、GEVUSDT、VRTUSDT）已在 Zoomex 基线股票永续批次中出现，4 个（BOTUSDT、FWDIUSDT、TTWOUSDT、TXNUSDT）基线中未见记录。\n优先级依据：基线中未见 Texas Instruments（TTWOUSDT）与 Take-Two Interactive（TXNUSDT）等具一定市值的主流美股标的，存在明显补齐股票永续版图的机会。",
-        "diff_type": "混合",
-        "diff_tag": "mixed",
-        "priority": "高",
-        "article_count": 4,
-        "is_mock": false,
-        "is_locale_derived": true
-      },
-      {
-        "category": "delisting",
-        "source": "Bitunix",
-        "summary": "Bitunix 今日宣布将于 2026-07-17 02:00 UTC 下架 2 个现货交易对（ES/USDT、P/USDT），涉及 Eclipse (ES) 与 PoP Planet (P) 两个代币。",
-        "zmx_diff": null,
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "article_count": 1,
-        "is_mock": false,
-        "is_locale_derived": true
-      },
-      {
-        "category": "delisting",
-        "source": "Phemex",
-        "summary": "Phemex 本批次共 9 条下架公告：8 个现货交易对（STRK、POLYX、0G、MOVR、INIT、CKB、A、GUN/USDT）统一于 2026-07-16 10:00 UTC 下架并同步关闭充提；1 个合约交易对 KORUUSDT 已于 2026-07-15 02:30 UTC 完成交易关闭与持仓强平，公告均未说明下架原因。",
-        "zmx_diff": null,
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "article_count": 9,
-        "is_mock": false,
-        "is_locale_derived": false
-      }
-    ],
-    "VN": [
-      {
-        "category": "listing",
-        "source": "BingX",
-        "summary": "本批次 BingX 共 5 条公告，以 TradFi 类永续合约扩品为主：涵盖美股个股（CUS、WFC 等）、黄金外汇对（XAUCAD 等）、ETF（XLP、LQD 等）及 DRVUSDT，均同步支持网格交易；另有一条 EventX 事件预测市场上线，覆盖世界杯、美联储决议、AI 模型等热点话题。",
-        "zmx_diff": "EventX 事件预测市场为 BingX 独有玩法，基线中无同类记录，不适用代币对标。DRVUSDT：基线中未见 DRVUSDT 上币记录。CUS、WFC、IYF、VFH、SPCH、AMDL、YPF、SECZ：基线中未见上述标的永续上币记录；Zoomex 基线存在股票永续品类 [Z1]、[Z5]，但标的为 PURRUSDT/SNOWUSDT/VRTUSDT/GEVUSDT/SKHYUSDT 及 SONYUSDT/SHAZUSDT/COSTUSDT，与本批次美股个股不重叠。XAUCAD、XAUCHF、XAUGBP：基线中未见上述黄金外汇对永续上币记录。XLP、LQD、UMC、LYG、ZS、VWO：基线中未见上述 ETF 类永续上币记录。\n优先级依据：本批次多为 TradFi 合成永续标的，基线中均未见对应记录，但 Zoomex 已有股票永续产品线，竞品扩品方向可参考；无基线确认的主流加密现货/合约缺口。",
-        "diff_type": "混合",
-        "diff_tag": "mixed",
-        "priority": "中",
-        "article_count": 5,
-        "is_mock": false,
-        "is_locale_derived": true
-      },
-      {
-        "category": "listing",
-        "source": "Lbank",
-        "summary": "本批次 LBank 共 7 条上币公告，涵盖 bStocks 代币化股票现货（SOXLB、DRAMB）、Robinhood Chain 生态 MEME 现货（INDEX、WEN、WALLET、PONS）及 PONS USDT 永续合约全球首发。整体呈现「代币化股票 + 新兴链 MEME 集群」双线布局，bStocks 现货 0 手续费，PONS 同日现货与合约双轨上线。",
-        "zmx_diff": "SOXLB：基线中未见 SOXLB 上币记录；Zoomex 基线仅有股票永续（如 [Z1] PURRUSDT 等、[Z5] SONYUSDT 等），未见 bStocks 代币化股票现货形态。DRAMB：基线中未见 DRAMB 上币记录。INDEX：基线中未见 INDEX 上币记录。WEN：基线中未见 WEN 上币记录。WALLET：基线中未见 WALLET 上币记录。PONS：基线中未见 PONS 上币记录；LBank 同日上线 PONS 现货与 USDT 永续合约，基线中亦无对应合约记录（[Z3][Z4][Z7][Z8] 均为其他代币永续）。本批次 7 条公告涉及 6 个独立代币符号，均不在近 90 天 Zoomex 基线检索结果中。\n优先级依据：基线均未命中对应上币记录，但本批次以 Robinhood Chain MEME 及 bStocks 代币化 ETF 现货为主，项目知名度与市值体量有限，尚不足以构成高优先级跟进信号。",
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "中",
-        "article_count": 7,
-        "is_mock": false,
-        "is_locale_derived": true
-      },
-      {
-        "category": "delisting",
-        "source": "BingX",
-        "summary": "BingX 今日发布 2 条下架公告：现货下架 7 个交易对（GFI、MANYU、PAAL、NUM、KGEN、HEMI、OBOL），将于 7 月 17 日执行；永续合约下架 5 个交易对（KIN、TEA、MEZO、ASTEROIDETH、REAL），将于 7 月 20 日执行。",
-        "zmx_diff": null,
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "article_count": 2,
-        "is_mock": false,
-        "is_locale_derived": true
-      },
-      {
-        "category": "delisting",
-        "source": "Lbank",
-        "summary": "LBank 今日公告将下架 8 个现货 USDT 交易对（RKC、GOBLIN、TJR、TESTIBULL、BULL、BUILDNBUILD、MAXXING、LION），原因为流动性不足，下架时间为 2026-07-18 12:00 UTC，充值将于 2026-07-17 12:00 UTC 永久关闭。",
-        "zmx_diff": null,
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "article_count": 1,
-        "is_mock": false,
-        "is_locale_derived": true
-      }
-    ],
-    "ID": [
-      {
-        "category": "product",
-        "source": "Bitunix",
-        "summary": "本批次 Bitunix 更新集中在 K 线图交易执行链路，包括快捷下单、条件触发单、分批/闪电平仓、交易模板及全仓与分段止盈止损。同步上线税务报告页全量交易历史 CSV 导出，并在图表端推出 Super Alerts 复合告警体系，覆盖价格、指标、画线、蜡烛形态及 TradingView 策略信号。",
-        "zmx_diff": "Zoomex 近 90 天基线以钱包维护[Z1][Z5]、MCP 交易信息查询[Z2]、预测市场[Z3]、策略中心自动交易[Z4]为主，未见 K 线图集成下单/平仓、税务历史导出及复合图表告警同类记录，上述能力基线中未见相关记录，建议人工复核。[Z4]虽覆盖技术指标策略与止盈止损，但定位为策略账户自动执行与回测，与 Bitunix 图表端手动下单、实时监控告警玩法不同。\n优先级依据：竞品在图表交易执行、智能告警与税务导出三条核心交易链路形成产品组合，基线未见对等能力，对活跃交易者留存与合规需求影响直接。",
-        "diff_type": "混合",
-        "diff_tag": "mixed",
-        "priority": "高",
-        "article_count": 3,
-        "is_mock": false,
-        "is_locale_derived": true
-      },
-      {
-        "category": "listing",
-        "source": "Bitunix",
-        "summary": "本批次 Bitunix 共 4 条公告、7 个美股永续合约交易对，全部为 USDT-M 股票永续（Stock Perps），无现货或加密资产合约。标的覆盖半导体（SK Hynix、Texas Instruments）、能源/基础设施（GE Vernova、Vertiv）、游戏（Take-Two）及机器人/小盘股（RoboStrategy、Forward Industries）等方向，杠杆多为 25x–50x，体现其持续扩充股票永续产品线的策略。",
-        "zmx_diff": "SKHYUSDT：基线中已有对应记录，见 [Z1]（与 PURRUSDT、SNOWUSDT、VRTUSDT、GEVUSDT 同期上线的股票永续批次）。BOTUSDT：基线中未见 BOTUSDT 上币记录。FWDIUSDT：基线中未见 FWDIUSDT 上币记录。GEVUSDT：基线中已有对应记录，见 [Z1]。VRTUSDT：基线中已有对应记录，见 [Z1]。TTWOUSDT：基线中未见 TTWOUSDT 上币记录。TXNUSDT：基线中未见 TXNUSDT 上币记录。本批次 7 个代币中 3 个（SKHYUSDT、GEVUSDT、VRTUSDT）已在 Zoomex 基线股票永续批次中出现，4 个（BOTUSDT、FWDIUSDT、TTWOUSDT、TXNUSDT）基线中未见记录。\n优先级依据：基线中未见 Texas Instruments（TTWOUSDT）与 Take-Two Interactive（TXNUSDT）等具一定市值的主流美股标的，存在明显补齐股票永续版图的机会。",
-        "diff_type": "混合",
-        "diff_tag": "mixed",
-        "priority": "高",
-        "article_count": 4,
-        "is_mock": false,
-        "is_locale_derived": true
-      },
-      {
-        "category": "listing",
-        "source": "Lbank",
-        "summary": "本批次 LBank 共 7 条上币公告，涵盖 bStocks 代币化股票现货（SOXLB、DRAMB）、Robinhood Chain 生态 MEME 现货（INDEX、WEN、WALLET、PONS）及 PONS USDT 永续合约全球首发。整体呈现「代币化股票 + 新兴链 MEME 集群」双线布局，bStocks 现货 0 手续费，PONS 同日现货与合约双轨上线。",
-        "zmx_diff": "SOXLB：基线中未见 SOXLB 上币记录；Zoomex 基线仅有股票永续（如 [Z1] PURRUSDT 等、[Z5] SONYUSDT 等），未见 bStocks 代币化股票现货形态。DRAMB：基线中未见 DRAMB 上币记录。INDEX：基线中未见 INDEX 上币记录。WEN：基线中未见 WEN 上币记录。WALLET：基线中未见 WALLET 上币记录。PONS：基线中未见 PONS 上币记录；LBank 同日上线 PONS 现货与 USDT 永续合约，基线中亦无对应合约记录（[Z3][Z4][Z7][Z8] 均为其他代币永续）。本批次 7 条公告涉及 6 个独立代币符号，均不在近 90 天 Zoomex 基线检索结果中。\n优先级依据：基线均未命中对应上币记录，但本批次以 Robinhood Chain MEME 及 bStocks 代币化 ETF 现货为主，项目知名度与市值体量有限，尚不足以构成高优先级跟进信号。",
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "中",
-        "article_count": 7,
-        "is_mock": false,
-        "is_locale_derived": true
-      },
-      {
-        "category": "delisting",
-        "source": "Bitunix",
-        "summary": "Bitunix 今日宣布将于 2026-07-17 02:00 UTC 下架 2 个现货交易对（ES/USDT、P/USDT），涉及 Eclipse (ES) 与 PoP Planet (P) 两个代币。",
-        "zmx_diff": null,
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "article_count": 1,
-        "is_mock": false,
-        "is_locale_derived": true
-      },
-      {
-        "category": "delisting",
-        "source": "Lbank",
-        "summary": "LBank 今日公告将下架 8 个现货 USDT 交易对（RKC、GOBLIN、TJR、TESTIBULL、BULL、BUILDNBUILD、MAXXING、LION），原因为流动性不足，下架时间为 2026-07-18 12:00 UTC，充值将于 2026-07-17 12:00 UTC 永久关闭。",
-        "zmx_diff": null,
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "article_count": 1,
-        "is_mock": false,
-        "is_locale_derived": true
-      }
-    ],
-    "EN-Asia": []
-  },
-  "highlights": {
-    "EN": [
-      {
-        "source": "Phemex",
-        "category": "delisting",
-        "title": "Phemex Will Delist the A / USDT Spot Trading Pair on July 16, 2026",
-        "summary": "Phemex 本批次共 9 条下架公告：8 个现货交易对（STRK、POLYX、0G、MOVR、INIT、CKB、A、GUN/USDT）统一于 2026-07-16 10:00 UTC 下架并同步关闭充提；1 个合约交易对 KORUUSDT 已于 2026-07-15 02:30 UTC 完成交易关闭与持仓强平，公告均",
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "time": "03:35",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 9
-      },
-      {
-        "source": "Bitunix",
-        "category": "listing",
-        "title": "Bitunix to Launch SKHYUSDT in Perpetual Futures",
-        "summary": "本批次 Bitunix 共 4 条公告、7 个美股永续合约交易对，全部为 USDT-M 股票永续（Stock Perps），无现货或加密资产合约。标的覆盖半导体（SK Hynix、Texas Instruments）、能源/基础设施（GE Vernova、Vertiv）、游戏（Take-Two）及机器人/小盘股（Rob",
-        "diff_type": "混合",
-        "diff_tag": "mixed",
-        "priority": "高",
-        "time": "00:45",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 4
-      },
-      {
-        "source": "Bitunix",
-        "category": "product",
-        "title": "Introducing Super Alerts: Smarter Market Monitoring on Bitunix Charts",
-        "summary": "本批次 Bitunix 更新集中在 K 线图交易执行链路，包括快捷下单、条件触发单、分批/闪电平仓、交易模板及全仓与分段止盈止损。同步上线税务报告页全量交易历史 CSV 导出，并在图表端推出 Super Alerts 复合告警体系，覆盖价格、指标、画线、蜡烛形态及 TradingView 策略信号。",
-        "diff_type": "混合",
-        "diff_tag": "mixed",
-        "priority": "高",
-        "time": "03:58",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 3
-      },
-      {
-        "source": "BingX",
-        "category": "delisting",
-        "title": "BingX Delists KINUSDT, TEAUSDT, MEZOUSDT, ASTEROIDETHUSDT and REALUSDT for Perpetual Futures",
-        "summary": "BingX 今日发布 2 条下架公告：现货下架 7 个交易对（GFI、MANYU、PAAL、NUM、KGEN、HEMI、OBOL），将于 7 月 17 日执行；永续合约下架 5 个交易对（KIN、TEA、MEZO、ASTEROIDETH、REAL），将于 7 月 20 日执行。",
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "time": "02:55",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 2
-      },
-      {
-        "source": "Bitunix",
-        "category": "delisting",
-        "title": "Bitunix to Delist Eclipse (ES), PoP Planet (P) From the Spot Market",
-        "summary": "Bitunix 今日宣布将于 2026-07-17 02:00 UTC 下架 2 个现货交易对（ES/USDT、P/USDT），涉及 Eclipse (ES) 与 PoP Planet (P) 两个代币。",
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "time": "02:36",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 1
-      },
-      {
-        "source": "Lbank",
-        "category": "delisting",
-        "title": "LBank Will Delist Certain Trading Pairs (2026.07.15)",
-        "summary": "LBank 今日公告将下架 8 个现货 USDT 交易对（RKC、GOBLIN、TJR、TESTIBULL、BULL、BUILDNBUILD、MAXXING、LION），原因为流动性不足，下架时间为 2026-07-18 12:00 UTC，充值将于 2026-07-17 12:00 UTC 永久关闭。",
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "time": "07:02",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 1
-      }
-    ],
-    "FR": [
-      {
-        "source": "Phemex",
-        "category": "delisting",
-        "title": "Phemex Will Delist the A / USDT Spot Trading Pair on July 16, 2026",
-        "summary": "Phemex 本批次共 9 条下架公告：8 个现货交易对（STRK、POLYX、0G、MOVR、INIT、CKB、A、GUN/USDT）统一于 2026-07-16 10:00 UTC 下架并同步关闭充提；1 个合约交易对 KORUUSDT 已于 2026-07-15 02:30 UTC 完成交易关闭与持仓强平，公告均",
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "time": "03:35",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 9
-      },
-      {
-        "source": "Bitunix",
-        "category": "listing",
-        "title": "Bitunix va Lancer SKHYUSDT dans les Futures Perpétuels",
-        "summary": "本批次 Bitunix 共 4 条公告、7 个美股永续合约交易对，全部为 USDT-M 股票永续（Stock Perps），无现货或加密资产合约。标的覆盖半导体（SK Hynix、Texas Instruments）、能源/基础设施（GE Vernova、Vertiv）、游戏（Take-Two）及机器人/小盘股（Rob",
-        "diff_type": "混合",
-        "diff_tag": "mixed",
-        "priority": "高",
-        "time": "00:45",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 4
-      },
-      {
-        "source": "Bitunix",
-        "category": "delisting",
-        "title": "Bitunix Retirera Eclipse (ES), PoP Planet (P) du Marché Spot",
-        "summary": "Bitunix 今日宣布将于 2026-07-17 02:00 UTC 下架 2 个现货交易对（ES/USDT、P/USDT），涉及 Eclipse (ES) 与 PoP Planet (P) 两个代币。",
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "time": "02:36",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 1
-      },
-      {
-        "source": "Bitunix",
-        "category": "product",
-        "title": "Comment exporter votre historique de transactions pour un rapport fiscal",
-        "summary": "本批次 Bitunix 更新集中在 K 线图交易执行链路，包括快捷下单、条件触发单、分批/闪电平仓、交易模板及全仓与分段止盈止损。同步上线税务报告页全量交易历史 CSV 导出，并在图表端推出 Super Alerts 复合告警体系，覆盖价格、指标、画线、蜡烛形态及 TradingView 策略信号。",
-        "diff_type": "混合",
-        "diff_tag": "mixed",
-        "priority": "高",
-        "time": "15:40",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 1
-      }
-    ],
-    "VN": [
-      {
-        "source": "BingX",
-        "category": "delisting",
-        "title": "BingX thông báo hủy niêm yết KINUSDT, TEAUSDT, MEZOUSDT, ASTEROIDETHUSDT và REALUSDT cho Hợp đồng vĩnh viễn",
-        "summary": "BingX 今日发布 2 条下架公告：现货下架 7 个交易对（GFI、MANYU、PAAL、NUM、KGEN、HEMI、OBOL），将于 7 月 17 日执行；永续合约下架 5 个交易对（KIN、TEA、MEZO、ASTEROIDETH、REAL），将于 7 月 20 日执行。",
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "time": "02:55",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 2
-      },
-      {
-        "source": "Lbank",
-        "category": "delisting",
-        "title": "LBank Sẽ Huỷ Niêm Yết Một Số Cặp Giao Dịch (2026.07.15)",
-        "summary": "LBank 今日公告将下架 8 个现货 USDT 交易对（RKC、GOBLIN、TJR、TESTIBULL、BULL、BUILDNBUILD、MAXXING、LION），原因为流动性不足，下架时间为 2026-07-18 12:00 UTC，充值将于 2026-07-17 12:00 UTC 永久关闭。",
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "time": "07:02",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 1
-      }
-    ],
-    "ID": [
-      {
-        "source": "Bitunix",
-        "category": "listing",
-        "title": "SKHYUSDT Terdaftar di Bitunix!",
-        "summary": "本批次 Bitunix 共 4 条公告、7 个美股永续合约交易对，全部为 USDT-M 股票永续（Stock Perps），无现货或加密资产合约。标的覆盖半导体（SK Hynix、Texas Instruments）、能源/基础设施（GE Vernova、Vertiv）、游戏（Take-Two）及机器人/小盘股（Rob",
-        "diff_type": "混合",
-        "diff_tag": "mixed",
-        "priority": "高",
-        "time": "00:45",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 4
-      },
-      {
-        "source": "Bitunix",
-        "category": "product",
-        "title": "Memperkenalkan Super Alerts di Bitunix Charts | Peningkatan dalam Perdagangan Kripto",
-        "summary": "本批次 Bitunix 更新集中在 K 线图交易执行链路，包括快捷下单、条件触发单、分批/闪电平仓、交易模板及全仓与分段止盈止损。同步上线税务报告页全量交易历史 CSV 导出，并在图表端推出 Super Alerts 复合告警体系，覆盖价格、指标、画线、蜡烛形态及 TradingView 策略信号。",
-        "diff_type": "混合",
-        "diff_tag": "mixed",
-        "priority": "高",
-        "time": "03:58",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 3
-      },
-      {
-        "source": "Bitunix",
-        "category": "delisting",
-        "title": "Bitunix Akan Menghapus Eclipse (ES), PoP Planet (P) dari Pasar Spot",
-        "summary": "Bitunix 今日宣布将于 2026-07-17 02:00 UTC 下架 2 个现货交易对（ES/USDT、P/USDT），涉及 Eclipse (ES) 与 PoP Planet (P) 两个代币。",
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "time": "02:36",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 1
-      },
-      {
-        "source": "Lbank",
-        "category": "delisting",
-        "title": "LBank Akan Men-Delisting Beberapa Pasangan Trading (2026.07.15)",
-        "summary": "LBank 今日公告将下架 8 个现货 USDT 交易对（RKC、GOBLIN、TJR、TESTIBULL、BULL、BUILDNBUILD、MAXXING、LION），原因为流动性不足，下架时间为 2026-07-18 12:00 UTC，充值将于 2026-07-17 12:00 UTC 永久关闭。",
-        "diff_type": "不适用",
-        "diff_tag": "na",
-        "priority": "高",
-        "time": "07:02",
-        "status": "new",
-        "is_mock": false,
-        "article_count": 1
-      }
-    ],
-    "EN-Asia": []
-  },
-  "cex_tables": {
-    "EN": {
+    "series": {
       "campaign": [
-        {
-          "source": "Bitunix",
-          "title": "Bitunix Ultra Trading Conference (UTC)  Brings Traders and KOLs to Strengthen the LATAM Trading Community",
-          "time": "09:38",
-          "status": "new",
-          "diff_tag": "missing",
-          "is_mock": false
-        }
+        1
       ],
       "product": [
-        {
-          "source": "Bitunix",
-          "title": "Introducing Super Alerts: Smarter Market Monitoring on Bitunix Charts",
-          "time": "03:58",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "Bitunix Chart Trading Upgrade: Faster Orders and TP/SL",
-          "time": "08:31",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "Bitunix Launches Full Transaction History Export Function for a Tax Report",
-          "time": "15:40",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        }
+        7
       ],
       "listing": [
-        {
-          "source": "Lbank",
-          "title": "World Premiere | LBank Futures Will Launch PONS (Pons) USDT-Margined Perpetual Contract",
-          "time": "08:46",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "BingX",
-          "title": "BingX Adds DRVUSDT  for Perpetual Futures",
-          "time": "08:32",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "PONS (Pons) Will Be Listed on LBank",
-          "time": "06:50",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "WEN (Wen Lambo) Will Be Listed on LBank",
-          "time": "05:39",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "WALLET (Robinhood Wallet) Will Be Listed on LBank",
-          "time": "05:34",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "INDEX (The Index) Will Be Listed on LBank",
-          "time": "02:59",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "BingX",
-          "title": "Announcement: Launch of BingX EventX Events Including \"World Cup: Golden Ball Winner\"",
-          "time": "15:10",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "BingX",
-          "title": "BingX Adds XLP, LQD and More for Perpetual Futures",
-          "time": "13:56",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "BingX",
-          "title": "BingX Adds CUS, WFC and More for Perpetual Futures",
-          "time": "13:53",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock)) Will Be Listed on LBank",
-          "time": "13:45",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock)) Will Be Listed on LBank",
-          "time": "12:54",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "BingX",
-          "title": "BingX Adds XAUCAD, XAUCHF and More for Perpetual Futures",
-          "time": "09:48",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "Bitunix to Launch SKHYUSDT in Perpetual Futures",
-          "time": "00:45",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "Bitunix to Launch GEVUSDT, VRTUSDT in Perpetual Futures",
-          "time": "09:56",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "Bitunix to Launch BOTUSDT, FWDIUSDT in Perpetual Futures",
-          "time": "02:24",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        }
+        43
       ],
       "delisting": [
-        {
-          "source": "Lbank",
-          "title": "LBank Will Delist Certain Trading Pairs (2026.07.15)",
-          "time": "07:02",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the A / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:35",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the 0G / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:30",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the INIT / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:30",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the GUN / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:30",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the STRK / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:30",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the CKB / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:30",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the MOVR / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:30",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the POLYX / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:30",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "BingX",
-          "title": "BingX Delists KINUSDT, TEAUSDT, MEZOUSDT, ASTEROIDETHUSDT and REALUSDT for Perpetual Futures",
-          "time": "02:55",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "Bitunix to Delist Eclipse (ES), PoP Planet (P) From the Spot Market",
-          "time": "02:36",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the KORUUSDT Futures on July 15, 2026",
-          "time": "01:55",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "BingX",
-          "title": "BingX Will Delist GFI, MANYU, PAAL, NUM, KGEN & Other Assets From Spot Trading & Other Services",
-          "time": "09:03",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        }
+        28
       ]
-    },
-    "FR": {
-      "campaign": [],
-      "product": [
-        {
-          "source": "Bitunix",
-          "title": "Comment exporter votre historique de transactions pour un rapport fiscal",
-          "time": "15:40",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        }
-      ],
-      "listing": [
-        {
-          "source": "Bitunix",
-          "title": "Bitunix va Lancer SKHYUSDT dans les Futures Perpétuels",
-          "time": "00:45",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "Bitunix va Lancer GEVUSDT, VRTUSDT dans les Futures Perpétuels",
-          "time": "09:56",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "Bitunix va Lancer BOTUSDT, FWDIUSDT dans les Futures Perpétuels",
-          "time": "02:24",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "Bitunix va Lancer TTWOUSDT, TXNUSDT dans les Futures Perpétuels",
-          "time": "01:54",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        }
-      ],
-      "delisting": [
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the A / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:35",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the 0G / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:30",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the INIT / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:30",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the GUN / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:30",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the STRK / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:30",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the CKB / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:30",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the MOVR / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:30",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the POLYX / USDT Spot Trading Pair on July 16, 2026",
-          "time": "03:30",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "Bitunix Retirera Eclipse (ES), PoP Planet (P) du Marché Spot",
-          "time": "02:36",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Phemex",
-          "title": "Phemex Will Delist the KORUUSDT Futures on July 15, 2026",
-          "time": "01:55",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        }
-      ]
-    },
-    "VN": {
-      "campaign": [],
-      "product": [],
-      "listing": [
-        {
-          "source": "Lbank",
-          "title": "World Premiere | LBank Futures sẽ niêm yết hợp đồng PONS (Pons) USDT-Margined Vĩnh viễn",
-          "time": "08:46",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "BingX",
-          "title": "BingX bổ sung DRVUSDT  cho Hợp đồng vĩnh viễn",
-          "time": "08:32",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "PONS (Pons) Sẽ được niêm yết trên LBank",
-          "time": "06:50",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "WEN (Wen Lambo) Sẽ được niêm yết trên LBank",
-          "time": "05:39",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "WALLET (Robinhood Wallet) Sẽ được niêm yết trên LBank",
-          "time": "05:34",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "INDEX (The Index) Sẽ được niêm yết trên LBank",
-          "time": "02:59",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "BingX",
-          "title": "Thông báo: Ra mắt các sự kiện EventX trên BingX, bao gồm \"World Cup: Người giành Quả bóng Vàng\"",
-          "time": "15:10",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "BingX",
-          "title": "BingX bổ sung XLP, LQD và nhiều hơn nữa cho Hợp đồng vĩnh viễn",
-          "time": "13:56",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "BingX",
-          "title": "BingX bổ sung CUS, WFC và nhiều hơn nữa cho Hợp đồng vĩnh viễn",
-          "time": "13:53",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock)) Sẽ được niêm yết trên LBank",
-          "time": "13:45",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock)) Sẽ được niêm yết trên LBank",
-          "time": "12:54",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "BingX",
-          "title": "BingX bổ sung XAUCAD, XAUCHF và nhiều hơn nữa cho Hợp đồng vĩnh viễn",
-          "time": "09:48",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        }
-      ],
-      "delisting": [
-        {
-          "source": "Lbank",
-          "title": "LBank Sẽ Huỷ Niêm Yết Một Số Cặp Giao Dịch (2026.07.15)",
-          "time": "07:02",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "BingX",
-          "title": "BingX thông báo hủy niêm yết KINUSDT, TEAUSDT, MEZOUSDT, ASTEROIDETHUSDT và REALUSDT cho Hợp đồng vĩnh viễn",
-          "time": "02:55",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "BingX",
-          "title": "BingX Sẽ Hủy Niêm Yết GFI, MANYU, PAAL, NUM, KGEN & Các Tài Sản Khác Khỏi Giao Dịch Spot & Các Dịch Vụ Liên Quan",
-          "time": "09:03",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        }
-      ]
-    },
-    "ID": {
-      "campaign": [],
-      "product": [
-        {
-          "source": "Bitunix",
-          "title": "Memperkenalkan Super Alerts di Bitunix Charts | Peningkatan dalam Perdagangan Kripto",
-          "time": "03:58",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "Peningkatan Bitunix Chart Trading: Order dan TP/SL Lebih Cepat",
-          "time": "08:31",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "Cara Mengekspor Riwayat Transaksi Anda untuk Laporan Pajak",
-          "time": "15:40",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        }
-      ],
-      "listing": [
-        {
-          "source": "Lbank",
-          "title": "Perdana di Dunia | LBank Futures Akan Meluncurkan Kontrak Perpetual Margin USDT untuk PONS (Pons)",
-          "time": "08:46",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "PONS (Pons) Akan didaftarkan di LBank",
-          "time": "06:50",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "WEN (Wen Lambo) Akan didaftarkan di LBank",
-          "time": "05:39",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "WALLET (Robinhood Wallet) Akan didaftarkan di LBank",
-          "time": "05:34",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "INDEX (The Index) Akan didaftarkan di LBank",
-          "time": "02:59",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock)) Akan didaftarkan di LBank",
-          "time": "13:45",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Lbank",
-          "title": "DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock)) Akan didaftarkan di LBank",
-          "time": "12:54",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "SKHYUSDT Terdaftar di Bitunix!",
-          "time": "00:45",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "GEVUSDT, VRTUSDT Terdaftar di Bitunix!",
-          "time": "09:56",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "BOTUSDT, FWDIUSDT Terdaftar di Bitunix!",
-          "time": "02:24",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "TTWOUSDT, TXNUSDT Terdaftar di Bitunix!",
-          "time": "01:54",
-          "status": "new",
-          "diff_tag": "mixed",
-          "is_mock": false
-        }
-      ],
-      "delisting": [
-        {
-          "source": "Lbank",
-          "title": "LBank Akan Men-Delisting Beberapa Pasangan Trading (2026.07.15)",
-          "time": "07:02",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        },
-        {
-          "source": "Bitunix",
-          "title": "Bitunix Akan Menghapus Eclipse (ES), PoP Planet (P) dari Pasar Spot",
-          "time": "02:36",
-          "status": "new",
-          "diff_tag": "na",
-          "is_mock": false
-        }
-      ]
-    },
-    "EN-Asia": {
-      "campaign": [],
-      "product": [],
-      "listing": [],
-      "delisting": []
     }
   },
-  "cex_counts": {
-    "EN": {
-      "campaign": 1,
-      "product": 3,
-      "listing": 16,
-      "delisting": 13
-    },
-    "FR": {
-      "campaign": 0,
-      "product": 1,
-      "listing": 4,
-      "delisting": 10
-    },
-    "VN": {
-      "campaign": 0,
-      "product": 0,
-      "listing": 12,
-      "delisting": 3
-    },
-    "ID": {
-      "campaign": 0,
-      "product": 3,
-      "listing": 11,
-      "delisting": 2
-    },
-    "EN-Asia": {
-      "campaign": 0,
-      "product": 0,
-      "listing": 0,
-      "delisting": 0
-    }
-  },
-  "activity_ranking": [
+  "campaign": [
     {
-      "source": "Lbank",
-      "count": 39,
-      "pct": 100.0
-    },
-    {
+      "uid": "d588e3a2b0a4aecc52af6d3caeab051a3e57239541e1ff571091dd3eff42643c",
       "source": "Bitunix",
-      "count": 26,
-      "pct": 66.7
-    },
-    {
-      "source": "Phemex",
-      "count": 18,
-      "pct": 46.2
-    },
-    {
-      "source": "BingX",
-      "count": 16,
-      "pct": 41.0
-    },
-    {
-      "source": "Weex",
-      "count": 0,
-      "pct": 0.0
+      "locale": "EN",
+      "category": "campaign",
+      "title": "Bitunix Ultra Trading Conference (UTC)  Brings Traders and KOLs to Strengthen the LATAM Trading Community",
+      "post_time": "2026-06-30T09:38:36Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/en-us/articles/59530367696281-Bitunix-Ultra-Trading-Conference-UTC-Brings-Traders-and-KOLs-to-Strengthen-the-LATAM-Trading-Community",
+      "is_region_exclusive": false,
+      "description": "墨西哥城线下首届 Ultra Trading Conference，邀请 40+ KOL 与 60+ trader 参与主题演讲、圆桌讨论、产品介绍、问答及互动抽奖，会后与 Mexico Blockchain Week 联办 After Party；原文未披露奖池金额或报名门槛。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
     }
   ],
-  "category_distribution": [
+  "product": [
     {
+      "uid": "736fbdfa244e116317251d376b19ad8a79b6afe6f77d0538ebb9d8b0a9f3b02f",
       "source": "Bitunix",
-      "campaign": 1,
-      "product": 7,
-      "listing": 12,
-      "delisting": 3,
-      "other": 3
+      "locale": "EN",
+      "category": "product",
+      "title": "Introducing Super Alerts: Smarter Market Monitoring on Bitunix Charts",
+      "post_time": "2026-06-26T03:58:23Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/en-us/articles/59392955004313-Introducing-Super-Alerts-Smarter-Market-Monitoring-on-Bitunix-Charts",
+      "is_region_exclusive": false,
+      "description": "在 K 线图上线 Super Alerts 统一告警体系，支持模板告警、最多 5 条件 AND/OR 复合告警、价格/指标/画线/蜡烛形态告警，并可接入 TradingView 策略信号并通过 Bitunix 渠道推送通知。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
     },
     {
-      "source": "Weex",
-      "campaign": 0,
-      "product": 0,
-      "listing": 0,
-      "delisting": 0,
-      "other": 0
+      "uid": "e6ce9b8666987a757523514c9974c434a7e5f7c3684193b955b208d63222fecb",
+      "source": "Bitunix",
+      "locale": "ID",
+      "category": "product",
+      "title": "Memperkenalkan Super Alerts di Bitunix Charts | Peningkatan dalam Perdagangan Kripto",
+      "post_time": "2026-06-26T03:58:23Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/id/articles/59392955004313-Memperkenalkan-Super-Alerts-di-Bitunix-Charts-Peningkatan-dalam-Perdagangan-Kripto",
+      "is_region_exclusive": false,
+      "description": "在 K 线图上线 Super Alerts 统一告警体系，支持模板告警、最多 5 条件 AND/OR 复合告警、价格/指标/画线/蜡烛形态告警，并可接入 TradingView 策略信号并通过 Bitunix 渠道推送通知。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
     },
     {
-      "source": "BingX",
-      "campaign": 0,
-      "product": 0,
-      "listing": 10,
-      "delisting": 4,
-      "other": 2
+      "uid": "3262bcc1c1ec62b180ea9d05d32396edd7c5fa22615d00499774f71a46a7a9af",
+      "source": "Bitunix",
+      "locale": "EN",
+      "category": "product",
+      "title": "Bitunix Chart Trading Upgrade: Faster Orders and TP/SL",
+      "post_time": "2025-12-30T08:31:20Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/en-us/articles/53799031310361-Bitunix-Chart-Trading-Upgrade-Faster-Orders-and-TP-SL",
+      "is_region_exclusive": false,
+      "description": "升级 K 线图交易能力，整合快捷下单窗口与右键菜单支持市价/限价/条件单下单，新增分批平仓与闪电平仓、交易模板一键填充参数下单，以及全仓与分段止盈止损设置和持仓 ROI 分享图生成。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
     },
     {
-      "source": "Phemex",
-      "campaign": 0,
-      "product": 0,
-      "listing": 0,
-      "delisting": 18,
-      "other": 0
+      "uid": "09ed925ed8bfabb26e4c5152a513502f19da4912af2016dd30f27cc511a76718",
+      "source": "Bitunix",
+      "locale": "ID",
+      "category": "product",
+      "title": "Peningkatan Bitunix Chart Trading: Order dan TP/SL Lebih Cepat",
+      "post_time": "2025-12-30T08:31:20Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/id/articles/53799031310361-Peningkatan-Bitunix-Chart-Trading-Order-dan-TP-SL-Lebih-Cepat",
+      "is_region_exclusive": false,
+      "description": "升级 K 线图交易能力，整合快捷下单窗口与右键菜单支持市价/限价/条件单下单，新增分批平仓与闪电平仓、交易模板一键填充参数下单，以及全仓与分段止盈止损设置和持仓 ROI 分享图生成。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
     },
     {
-      "source": "Lbank",
-      "campaign": 0,
-      "product": 0,
-      "listing": 21,
-      "delisting": 3,
-      "other": 15
+      "uid": "39413aa9ee62cf6084a924d7bc195f1157ea3e5d6ca078954bf2751f6e452596",
+      "source": "Bitunix",
+      "locale": "EN",
+      "category": "product",
+      "title": "Bitunix Launches Full Transaction History Export Function for a Tax Report",
+      "post_time": "2025-12-26T15:40:00Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/en-us/articles/53704348774809-Bitunix-Launches-Full-Transaction-History-Export-Function-for-a-Tax-Report",
+      "is_region_exclusive": false,
+      "description": "在税务报告页面新增完整交易历史导出功能，支持按时间段选择数据类型与 CSV 等文件格式生成并下载，用于上传第三方税务软件计算应税事件并生成报税材料。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "6d0f1f7b94d1a8c7332675bef8b41cb6c3a4f1849161c4c5258061c092987c18",
+      "source": "Bitunix",
+      "locale": "FR",
+      "category": "product",
+      "title": "Comment exporter votre historique de transactions pour un rapport fiscal",
+      "post_time": "2025-12-26T15:40:00Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/fr/articles/53704348774809-Comment-exporter-votre-historique-de-transactions-pour-un-rapport-fiscal",
+      "is_region_exclusive": false,
+      "description": "在税务报告页面新增完整交易历史导出功能，支持按时间段选择数据类型与 CSV 等文件格式生成并下载，用于上传第三方税务软件计算应税事件并生成报税材料。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "f00971f8ea768dfe09479ced1f1a1b70261dc7266d5cb3ccd4abdab2ae79eedd",
+      "source": "Bitunix",
+      "locale": "ID",
+      "category": "product",
+      "title": "Cara Mengekspor Riwayat Transaksi Anda untuk Laporan Pajak",
+      "post_time": "2025-12-26T15:40:00Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/id/articles/53704348774809-Cara-Mengekspor-Riwayat-Transaksi-Anda-untuk-Laporan-Pajak",
+      "is_region_exclusive": false,
+      "description": "在税务报告页面新增完整交易历史导出功能，支持按时间段选择数据类型与 CSV 等文件格式生成并下载，用于上传第三方税务软件计算应税事件并生成报税材料。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
     }
   ],
-  "zmx_missing_summary": [],
-  "region_table": [
+  "listing": [
     {
-      "title": "Bitunix Launches Full Transaction History Export Function for a Tax Re",
-      "source": "Bitunix",
-      "locales": [
-        "EN",
-        "FR",
-        "ID"
-      ],
-      "exclusive": false
+      "uid": "257e1115847d119f89ab7b3b4aa87355cb251d805b649c1d213e91f6006d2219",
+      "source": "Lbank",
+      "locale": "EN",
+      "category": "listing",
+      "title": "World Premiere | LBank Futures Will Launch PONS (Pons) USDT-Margined Perpetual Contract",
+      "post_time": "2026-07-15T08:46:12Z",
+      "status": "new",
+      "url": "https://www.lbank.com/support/articles/2077313556386152448",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
     },
     {
-      "title": "Bitunix to Launch TTWOUSDT, TXNUSDT in Perpetual Futures",
-      "source": "Bitunix",
-      "locales": [
-        "EN",
-        "FR",
-        "ID"
-      ],
-      "exclusive": false
+      "uid": "cfc3b6e9a26bc958f61094096aedfbbccb1ec3dfd9793789199f810ad66d0b1d",
+      "source": "Lbank",
+      "locale": "VN",
+      "category": "listing",
+      "title": "World Premiere | LBank Futures sẽ niêm yết hợp đồng PONS (Pons) USDT-Margined Vĩnh viễn",
+      "post_time": "2026-07-15T08:46:12Z",
+      "status": "new",
+      "url": "https://www.lbank.com/vi-VN/support/articles/2077313556386152448",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
     },
     {
-      "title": "Bitunix to Cease Support for Vanar Chain (VANRY) on Polygon",
-      "source": "Bitunix",
-      "locales": [
-        "EN",
-        "FR",
-        "ID"
-      ],
-      "exclusive": false
+      "uid": "1f899aee9f6c696293477f3a056eb4cf936843adbcb93ddd1245f514b707bdbb",
+      "source": "Lbank",
+      "locale": "ID",
+      "category": "listing",
+      "title": "Perdana di Dunia | LBank Futures Akan Meluncurkan Kontrak Perpetual Margin USDT untuk PONS (Pons)",
+      "post_time": "2026-07-15T08:46:12Z",
+      "status": "new",
+      "url": "https://www.lbank.com/id/support/articles/2077313556386152448",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
     },
     {
-      "title": "Bitunix to Launch BOTUSDT, FWDIUSDT in Perpetual Futures",
-      "source": "Bitunix",
-      "locales": [
-        "EN",
-        "FR",
-        "ID"
-      ],
-      "exclusive": false
+      "uid": "bd72ed61f9b0d58b0e203c164b2efb3f8f87db5c2ae64f6e5726af6e43336f9b",
+      "source": "BingX",
+      "locale": "EN",
+      "category": "listing",
+      "title": "BingX Adds DRVUSDT  for Perpetual Futures",
+      "post_time": "2026-07-15T08:32:54Z",
+      "status": "new",
+      "url": "https://bingx.com/en/support/articles/16848821709327",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
     },
     {
-      "title": "Bitunix to Launch GEVUSDT, VRTUSDT in Perpetual Futures",
-      "source": "Bitunix",
-      "locales": [
-        "EN",
-        "FR",
-        "ID"
-      ],
-      "exclusive": false
+      "uid": "a54f13be448210fadce382c5921a6db80215f179856c983b98b4d47878ebe3db",
+      "source": "BingX",
+      "locale": "VN",
+      "category": "listing",
+      "title": "BingX bổ sung DRVUSDT  cho Hợp đồng vĩnh viễn",
+      "post_time": "2026-07-15T08:32:54Z",
+      "status": "new",
+      "url": "https://bingx.com/vi/support/articles/16848821709327",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
     },
     {
+      "uid": "e048302db12ea8984311a26e2184b47bf8832e4aec6372cd6ce143c00680cb0a",
+      "source": "Lbank",
+      "locale": "EN",
+      "category": "listing",
+      "title": "PONS (Pons) Will Be Listed on LBank",
+      "post_time": "2026-07-15T06:50:49Z",
+      "status": "new",
+      "url": "https://www.lbank.com/support/articles/2077284834639609856",
+      "is_region_exclusive": false,
+      "description": "Pons (PONS) is a MEME ecosystem token on Robinhood Chain, centered around the Pons launchpad for creating and exploring fixed-supply tokens.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "0eb44cf2f5cf87b517dce471b6e9c977389cb1769e972cf0af99e1f5d3738292",
+      "source": "Lbank",
+      "locale": "VN",
+      "category": "listing",
+      "title": "PONS (Pons) Sẽ được niêm yết trên LBank",
+      "post_time": "2026-07-15T06:50:49Z",
+      "status": "new",
+      "url": "https://www.lbank.com/vi-VN/support/articles/2077284834639609856",
+      "is_region_exclusive": false,
+      "description": "Pons (PONS) is a MEME ecosystem token on Robinhood Chain, centered around the Pons launchpad for creating and exploring fixed-supply tokens.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "ee0cacc3b9511130a733f5d7007936ec2548d4fcd561980dbb99e9decbc8382e",
+      "source": "Lbank",
+      "locale": "ID",
+      "category": "listing",
+      "title": "PONS (Pons) Akan didaftarkan di LBank",
+      "post_time": "2026-07-15T06:50:49Z",
+      "status": "new",
+      "url": "https://www.lbank.com/id/support/articles/2077284834639609856",
+      "is_region_exclusive": false,
+      "description": "Pons (PONS) is a MEME ecosystem token on Robinhood Chain, centered around the Pons launchpad for creating and exploring fixed-supply tokens.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "b782c729c74e807ac428654a485b5f3c14fe55b5caf73d634c32a4d62583493c",
+      "source": "Lbank",
+      "locale": "EN",
+      "category": "listing",
+      "title": "WEN (Wen Lambo) Will Be Listed on LBank",
+      "post_time": "2026-07-15T05:39:14Z",
+      "status": "new",
+      "url": "https://www.lbank.com/support/articles/2077266984193490944",
+      "is_region_exclusive": false,
+      "description": "Wen Lambo (WEN) is a MEME token deployed on robinhood.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "832bb63c226434a99f445b9151edcb7fc343bd4786cfb6dd11a4e0793efa4da3",
+      "source": "Lbank",
+      "locale": "VN",
+      "category": "listing",
+      "title": "WEN (Wen Lambo) Sẽ được niêm yết trên LBank",
+      "post_time": "2026-07-15T05:39:14Z",
+      "status": "new",
+      "url": "https://www.lbank.com/vi-VN/support/articles/2077266984193490944",
+      "is_region_exclusive": false,
+      "description": "Wen Lambo (WEN) is a MEME token deployed on robinhood.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "28e316e7fe6f51fdbe802e1eafe61b5202e418fd8ad20fbb4f15ad353a4153ca",
+      "source": "Lbank",
+      "locale": "ID",
+      "category": "listing",
+      "title": "WEN (Wen Lambo) Akan didaftarkan di LBank",
+      "post_time": "2026-07-15T05:39:14Z",
+      "status": "new",
+      "url": "https://www.lbank.com/id/support/articles/2077266984193490944",
+      "is_region_exclusive": false,
+      "description": "Wen Lambo (WEN) is a MEME token deployed on robinhood.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "d97825dcb3086e685a9e75a7cd53fd3df44531edf0546aacfea7bb33cf366a35",
+      "source": "Lbank",
+      "locale": "EN",
+      "category": "listing",
+      "title": "WALLET (Robinhood Wallet) Will Be Listed on LBank",
+      "post_time": "2026-07-15T05:34:41Z",
+      "status": "new",
+      "url": "https://www.lbank.com/support/articles/2077265590921199616",
+      "is_region_exclusive": false,
+      "description": "Robinhood Wallet (WALLET) is a MEME token deployed on robinhood.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "c0f47b2c6535f9f0f265ebd92fc9d8d4365dcf0f3ebad3d03c716781f9ad7426",
+      "source": "Lbank",
+      "locale": "VN",
+      "category": "listing",
+      "title": "WALLET (Robinhood Wallet) Sẽ được niêm yết trên LBank",
+      "post_time": "2026-07-15T05:34:41Z",
+      "status": "new",
+      "url": "https://www.lbank.com/vi-VN/support/articles/2077265590921199616",
+      "is_region_exclusive": false,
+      "description": "Robinhood Wallet (WALLET) is a MEME token deployed on robinhood.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "3e076e431b3e8d675137240e8ff5e0ced12e3bc5f9c4868f1a59c7dbbbb961f7",
+      "source": "Lbank",
+      "locale": "ID",
+      "category": "listing",
+      "title": "WALLET (Robinhood Wallet) Akan didaftarkan di LBank",
+      "post_time": "2026-07-15T05:34:41Z",
+      "status": "new",
+      "url": "https://www.lbank.com/id/support/articles/2077265590921199616",
+      "is_region_exclusive": false,
+      "description": "Robinhood Wallet (WALLET) is a MEME token deployed on robinhood.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "9143b5a342bc6cc4d5a501df072edcdcebac39fd74b41d09ad6d64dbf1a8dd94",
+      "source": "Lbank",
+      "locale": "EN",
+      "category": "listing",
+      "title": "INDEX (The Index) Will Be Listed on LBank",
+      "post_time": "2026-07-15T02:59:59Z",
+      "status": "new",
+      "url": "https://www.lbank.com/support/articles/2077226403744448512",
+      "is_region_exclusive": false,
+      "description": "The Index (INDEX) is a MEME token on Robinhood Chain that combines community-driven meme culture with an automated tokenized stock distribution mechanism.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "402c628b0064346628220f27118750b53574f7e7e2e214a39429a620c6f2d12e",
+      "source": "Lbank",
+      "locale": "VN",
+      "category": "listing",
+      "title": "INDEX (The Index) Sẽ được niêm yết trên LBank",
+      "post_time": "2026-07-15T02:59:59Z",
+      "status": "new",
+      "url": "https://www.lbank.com/vi-VN/support/articles/2077226403744448512",
+      "is_region_exclusive": false,
+      "description": "The Index (INDEX) is a MEME token on Robinhood Chain that combines community-driven meme culture with an automated tokenized stock distribution mechanism.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "77186c944a2e7a2ef9836e955182280cbf44d7a3461edfe796d5306cb62eba85",
+      "source": "Lbank",
+      "locale": "ID",
+      "category": "listing",
+      "title": "INDEX (The Index) Akan didaftarkan di LBank",
+      "post_time": "2026-07-15T02:59:59Z",
+      "status": "new",
+      "url": "https://www.lbank.com/id/support/articles/2077226403744448512",
+      "is_region_exclusive": false,
+      "description": "The Index (INDEX) is a MEME token on Robinhood Chain that combines community-driven meme culture with an automated tokenized stock distribution mechanism.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "74471c48b729a469ea9012ba9fb83512e2f8b981b2452a812d13b77229345556",
+      "source": "BingX",
+      "locale": "EN",
+      "category": "listing",
+      "title": "Announcement: Launch of BingX EventX Events Including \"World Cup: Golden Ball Winner\"",
+      "post_time": "2026-07-14T15:10:40Z",
+      "status": "new",
+      "url": "https://bingx.com/en/support/articles/16838450196623",
+      "is_region_exclusive": false,
+      "description": "BingX 上线 EventX 事件合约市场交易，涵盖世界杯金球奖得主、法/阿/英淘汰轮次、7 月底 AI 模型质量、美联储 7 月与 9 月决议、2026 年底伊朗领导人等话题，均为 Market 型 EventX 交易。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "85c8650b3581c5827dfb95ab49ec744eef40f3671ddaffefbbadfedac0c8715a",
+      "source": "BingX",
+      "locale": "VN",
+      "category": "listing",
+      "title": "Thông báo: Ra mắt các sự kiện EventX trên BingX, bao gồm \"World Cup: Người giành Quả bóng Vàng\"",
+      "post_time": "2026-07-14T15:10:40Z",
+      "status": "new",
+      "url": "https://bingx.com/vi/support/articles/16838450196623",
+      "is_region_exclusive": false,
+      "description": "BingX 上线 EventX 事件合约市场交易，涵盖世界杯金球奖得主、法/阿/英淘汰轮次、7 月底 AI 模型质量、美联储 7 月与 9 月决议、2026 年底伊朗领导人等话题，均为 Market 型 EventX 交易。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "e62de2dca45c9dba435453aca4b1c043c88463f5fd334ec5caab4638876cac44",
+      "source": "BingX",
+      "locale": "EN",
+      "category": "listing",
+      "title": "BingX Adds XLP, LQD and More for Perpetual Futures",
+      "post_time": "2026-07-14T13:56:55Z",
+      "status": "new",
+      "url": "https://bingx.com/en/support/articles/16837887309199",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "4b76f1832afada52acbfbed36b20bb59072f1b14a8a753379a4d9d2006d6518f",
+      "source": "BingX",
+      "locale": "VN",
+      "category": "listing",
+      "title": "BingX bổ sung XLP, LQD và nhiều hơn nữa cho Hợp đồng vĩnh viễn",
+      "post_time": "2026-07-14T13:56:55Z",
+      "status": "new",
+      "url": "https://bingx.com/vi/support/articles/16837887309199",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "ca9ce90357a41a0935e13263f3383314148a0884355b5e7a3e2d6fb22700829c",
+      "source": "BingX",
+      "locale": "EN",
+      "category": "listing",
+      "title": "BingX Adds CUS, WFC and More for Perpetual Futures",
+      "post_time": "2026-07-14T13:53:38Z",
+      "status": "new",
+      "url": "https://bingx.com/en/support/articles/16837899832207",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "88d98f7411b858ea1d482343758bb74d31e574a6c6e0d9d6da79e2fecd6e5c35",
+      "source": "BingX",
+      "locale": "VN",
+      "category": "listing",
+      "title": "BingX bổ sung CUS, WFC và nhiều hơn nữa cho Hợp đồng vĩnh viễn",
+      "post_time": "2026-07-14T13:53:38Z",
+      "status": "new",
+      "url": "https://bingx.com/vi/support/articles/16837899832207",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "187165e20d2eae5ace6d5d4a78fea5088eb22a762bcd20068475437a20ff0c7f",
+      "source": "Lbank",
+      "locale": "EN",
+      "category": "listing",
+      "title": "SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock)) Will Be Listed on LBank",
+      "post_time": "2026-07-14T13:45:49Z",
+      "status": "new",
+      "url": "https://www.lbank.com/support/articles/2077027077202116608",
+      "is_region_exclusive": false,
+      "description": "SOXLB is a tokenized bStocks that allows you to gain economic exposure to Semicon Bull 3X ETF tokenized bStocks.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "4ccb154fdebd8ebb4b70fa35a88d0424c5310ace4134da64672bf036f721793b",
+      "source": "Lbank",
+      "locale": "VN",
+      "category": "listing",
+      "title": "SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock)) Sẽ được niêm yết trên LBank",
+      "post_time": "2026-07-14T13:45:49Z",
+      "status": "new",
+      "url": "https://www.lbank.com/vi-VN/support/articles/2077027077202116608",
+      "is_region_exclusive": false,
+      "description": "SOXLB is a tokenized bStocks that allows you to gain economic exposure to Semicon Bull 3X ETF tokenized bStocks.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "e32d2ab2e2010efe4cd6c2fd897b641f09021c19d54ac4cd20e15ffe65d28a0e",
+      "source": "Lbank",
+      "locale": "ID",
+      "category": "listing",
+      "title": "SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock)) Akan didaftarkan di LBank",
+      "post_time": "2026-07-14T13:45:49Z",
+      "status": "new",
+      "url": "https://www.lbank.com/id/support/articles/2077027077202116608",
+      "is_region_exclusive": false,
+      "description": "SOXLB is a tokenized bStocks that allows you to gain economic exposure to Semicon Bull 3X ETF tokenized bStocks.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "6f3e82614d6e0b4253f35b428f36815800f467d198058bdabcec5e7f3ac8e8d6",
+      "source": "Lbank",
+      "locale": "EN",
+      "category": "listing",
+      "title": "DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock)) Will Be Listed on LBank",
+      "post_time": "2026-07-14T12:54:24Z",
+      "status": "new",
+      "url": "https://www.lbank.com/support/articles/2076996364255887360",
+      "is_region_exclusive": false,
+      "description": "DRAMB is a tokenized bStocks that allows you to gain economic exposure to Roundhill Memory ETF tokenized bStocks.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "25116ef2c976461ec2058eed48434bf7c9ff1e116f326be17f58e162e2b64833",
+      "source": "Lbank",
+      "locale": "VN",
+      "category": "listing",
+      "title": "DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock)) Sẽ được niêm yết trên LBank",
+      "post_time": "2026-07-14T12:54:24Z",
+      "status": "new",
+      "url": "https://www.lbank.com/vi-VN/support/articles/2076996364255887360",
+      "is_region_exclusive": false,
+      "description": "DRAMB is a tokenized bStocks that allows you to gain economic exposure to Roundhill Memory ETF tokenized bStocks.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "cc919398c92057a4cc625bf93c5145e0477a3fefcee2ed5bb40363c722589877",
+      "source": "Lbank",
+      "locale": "ID",
+      "category": "listing",
+      "title": "DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock)) Akan didaftarkan di LBank",
+      "post_time": "2026-07-14T12:54:24Z",
+      "status": "new",
+      "url": "https://www.lbank.com/id/support/articles/2076996364255887360",
+      "is_region_exclusive": false,
+      "description": "DRAMB is a tokenized bStocks that allows you to gain economic exposure to Roundhill Memory ETF tokenized bStocks.",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "cdb88d333b7b03ba1d22644e730fdb1e542466f5fcc0ca2033db9206cff31285",
+      "source": "BingX",
+      "locale": "EN",
+      "category": "listing",
+      "title": "BingX Adds XAUCAD, XAUCHF and More for Perpetual Futures",
+      "post_time": "2026-07-14T09:48:29Z",
+      "status": "new",
+      "url": "https://bingx.com/en/support/articles/16835949205007",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "af55274c7e13807531331fd4b31c3ba086a1450738ea3cbe5f0985d1500ff0af",
+      "source": "BingX",
+      "locale": "VN",
+      "category": "listing",
+      "title": "BingX bổ sung XAUCAD, XAUCHF và nhiều hơn nữa cho Hợp đồng vĩnh viễn",
+      "post_time": "2026-07-14T09:48:29Z",
+      "status": "new",
+      "url": "https://bingx.com/vi/support/articles/16835949205007",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "2b4d43fbcca94c04743f4b2a0cf603c7218617b1caf7587abd327b971979be0f",
+      "source": "Bitunix",
+      "locale": "EN",
+      "category": "listing",
       "title": "Bitunix to Launch SKHYUSDT in Perpetual Futures",
+      "post_time": "2026-07-11T00:45:26Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/en-us/articles/59923371883417-Bitunix-to-Launch-SKHYUSDT-in-Perpetual-Futures",
+      "is_region_exclusive": false,
+      "description": "SKHYUSDT 标的为 SK Hynix Inc. ADR 的美股 USDT-M 永续合约。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "ce06b638d3d4fc0b8d81fdbc823cff0602a10746f81d21c0b92680029041a546",
       "source": "Bitunix",
-      "locales": [
-        "EN",
-        "FR",
-        "ID"
-      ],
-      "exclusive": false
+      "locale": "FR",
+      "category": "listing",
+      "title": "Bitunix va Lancer SKHYUSDT dans les Futures Perpétuels",
+      "post_time": "2026-07-11T00:45:26Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/fr/articles/59923371883417-Bitunix-va-Lancer-SKHYUSDT-dans-les-Futures-Perp%C3%A9tuels",
+      "is_region_exclusive": false,
+      "description": "SKHYUSDT 标的为 SK Hynix Inc. ADR 的美股 USDT-M 永续合约。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
     },
     {
-      "title": "Announcement Regarding Wallet Maintenance on the ERC20 Chain (ETH Netw",
+      "uid": "aedf72c2bfa8b187e65cce3603fccddb37f5dd0167d53d9b4ba6e1b159699e54",
+      "source": "Bitunix",
+      "locale": "ID",
+      "category": "listing",
+      "title": "SKHYUSDT Terdaftar di Bitunix!",
+      "post_time": "2026-07-11T00:45:26Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/id/articles/59923371883417-SKHYUSDT-Terdaftar-di-Bitunix",
+      "is_region_exclusive": false,
+      "description": "SKHYUSDT 标的为 SK Hynix Inc. ADR 的美股 USDT-M 永续合约。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "4148f72fd7fca9998325f7026b725b6e0aefdd69feba6e3c3303f23c7663e530",
+      "source": "Bitunix",
+      "locale": "EN",
+      "category": "listing",
+      "title": "Bitunix to Launch GEVUSDT, VRTUSDT in Perpetual Futures",
+      "post_time": "2026-07-10T09:56:03Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/en-us/articles/59907915093657-Bitunix-to-Launch-GEVUSDT-VRTUSDT-in-Perpetual-Futures",
+      "is_region_exclusive": false,
+      "description": "GEVUSDT 标的为 GE Vernova Inc.，VRTUSDT 标的为 Vertiv Holdings, LLC 的美股 USDT-M 永续合约。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "ecf5af122612eada3463b415d8fb0357dcdcfeb8443ffcf4c345643f915d6c6d",
+      "source": "Bitunix",
+      "locale": "FR",
+      "category": "listing",
+      "title": "Bitunix va Lancer GEVUSDT, VRTUSDT dans les Futures Perpétuels",
+      "post_time": "2026-07-10T09:56:03Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/fr/articles/59907915093657-Bitunix-va-Lancer-GEVUSDT-VRTUSDT-dans-les-Futures-Perp%C3%A9tuels",
+      "is_region_exclusive": false,
+      "description": "GEVUSDT 标的为 GE Vernova Inc.，VRTUSDT 标的为 Vertiv Holdings, LLC 的美股 USDT-M 永续合约。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "9b902eaa63863b7f40b21261261e6dfcab164c93c4a07d1294d2497a8a5f9d6d",
+      "source": "Bitunix",
+      "locale": "ID",
+      "category": "listing",
+      "title": "GEVUSDT, VRTUSDT Terdaftar di Bitunix!",
+      "post_time": "2026-07-10T09:56:03Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/id/articles/59907915093657-GEVUSDT-VRTUSDT-Terdaftar-di-Bitunix",
+      "is_region_exclusive": false,
+      "description": "GEVUSDT 标的为 GE Vernova Inc.，VRTUSDT 标的为 Vertiv Holdings, LLC 的美股 USDT-M 永续合约。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "2de40e94225813ba1b044500d798638cb5a71f0da2e267fc964731380ed9f421",
+      "source": "Bitunix",
+      "locale": "EN",
+      "category": "listing",
+      "title": "Bitunix to Launch BOTUSDT, FWDIUSDT in Perpetual Futures",
+      "post_time": "2026-07-10T02:24:39Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/en-us/articles/59890811504025-Bitunix-to-Launch-BOTUSDT-FWDIUSDT-in-Perpetual-Futures",
+      "is_region_exclusive": false,
+      "description": "BOTUSDT 标的为 RoboStrategy, Inc.，FWDIUSDT 标的为 Forward Industries, Inc. 的美股 USDT-M 永续合约。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "f4c6e33a65b6b18c5bc9919232f3296ad94cb8287905ec2c279e94630228adfd",
+      "source": "Bitunix",
+      "locale": "FR",
+      "category": "listing",
+      "title": "Bitunix va Lancer BOTUSDT, FWDIUSDT dans les Futures Perpétuels",
+      "post_time": "2026-07-10T02:24:39Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/fr/articles/59890811504025-Bitunix-va-Lancer-BOTUSDT-FWDIUSDT-dans-les-Futures-Perp%C3%A9tuels",
+      "is_region_exclusive": false,
+      "description": "BOTUSDT 标的为 RoboStrategy, Inc.，FWDIUSDT 标的为 Forward Industries, Inc. 的美股 USDT-M 永续合约。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "d170cecfa6c8a7c87b8acd1af978a18f4c0a45d6fde05f6fe38e5517229c08e6",
+      "source": "Bitunix",
+      "locale": "ID",
+      "category": "listing",
+      "title": "BOTUSDT, FWDIUSDT Terdaftar di Bitunix!",
+      "post_time": "2026-07-10T02:24:39Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/id/articles/59890811504025-BOTUSDT-FWDIUSDT-Terdaftar-di-Bitunix",
+      "is_region_exclusive": false,
+      "description": "BOTUSDT 标的为 RoboStrategy, Inc.，FWDIUSDT 标的为 Forward Industries, Inc. 的美股 USDT-M 永续合约。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "92e31681114f46b80da3514165f3c5ecccdb29d6586f9c6cb9a42f94c1b96094",
+      "source": "Bitunix",
+      "locale": "EN",
+      "category": "listing",
+      "title": "Bitunix to Launch TTWOUSDT, TXNUSDT in Perpetual Futures",
+      "post_time": "2026-07-03T01:54:50Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/en-us/articles/59625299353241-Bitunix-to-Launch-TTWOUSDT-TXNUSDT-in-Perpetual-Futures",
+      "is_region_exclusive": false,
+      "description": "TTWOUSDT 标的为 Texas Instruments Incorporated，TXNUSDT 标的为 Take-Two Interactive Software, Inc. 的美股 USDT-M 永续合约。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": false
+    },
+    {
+      "uid": "dac353370e0d2673c70ed1075efd883a08dff19cd3bac3ccf7e3f98d3cf04787",
+      "source": "Bitunix",
+      "locale": "FR",
+      "category": "listing",
+      "title": "Bitunix va Lancer TTWOUSDT, TXNUSDT dans les Futures Perpétuels",
+      "post_time": "2026-07-03T01:54:50Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/fr/articles/59625299353241-Bitunix-va-Lancer-TTWOUSDT-TXNUSDT-dans-les-Futures-Perp%C3%A9tuels",
+      "is_region_exclusive": false,
+      "description": "TTWOUSDT 标的为 Texas Instruments Incorporated，TXNUSDT 标的为 Take-Two Interactive Software, Inc. 的美股 USDT-M 永续合约。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "f207b3236d1fbf3ba851a55c9a1363000e9d21184fa7fa81f9f2368718785d8b",
+      "source": "Bitunix",
+      "locale": "ID",
+      "category": "listing",
+      "title": "TTWOUSDT, TXNUSDT Terdaftar di Bitunix!",
+      "post_time": "2026-07-03T01:54:50Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/id/articles/59625299353241-TTWOUSDT-TXNUSDT-Terdaftar-di-Bitunix",
+      "is_region_exclusive": false,
+      "description": "TTWOUSDT 标的为 Texas Instruments Incorporated，TXNUSDT 标的为 Take-Two Interactive Software, Inc. 的美股 USDT-M 永续合约。",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": false
+    },
+    {
+      "uid": "9853a15fc97cbdc1be5fb55c3e5e700ae4a513b84d02c627a1ba94f1b9f2dbc7",
       "source": "Lbank",
-      "locales": [
-        "EN",
-        "ID",
-        "VN"
-      ],
-      "exclusive": false
+      "locale": "EN",
+      "category": "delisting",
+      "title": "LBank Will Delist Certain Trading Pairs (2026.07.15)",
+      "post_time": "2026-07-15T07:02:49Z",
+      "status": "new",
+      "url": "https://www.lbank.com/support/articles/2077287515089272832",
+      "is_region_exclusive": false,
+      "description": "流动性不足",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
     },
     {
-      "title": "DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock)) Will Be Listed ",
+      "uid": "6f1a441975e07ab9e73726ba8ba308361cac6427e0d0df8a1392499e975102a2",
       "source": "Lbank",
-      "locales": [
-        "EN",
-        "ID",
-        "VN"
-      ],
-      "exclusive": false
+      "locale": "VN",
+      "category": "delisting",
+      "title": "LBank Sẽ Huỷ Niêm Yết Một Số Cặp Giao Dịch (2026.07.15)",
+      "post_time": "2026-07-15T07:02:49Z",
+      "status": "new",
+      "url": "https://www.lbank.com/vi-VN/support/articles/2077287515089272832",
+      "is_region_exclusive": false,
+      "description": "流动性不足",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": true
     },
     {
-      "title": "SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock)) Will Be Listed o",
+      "uid": "d37a3054b7a2c18dca6228c4b15d8c5e5fb3e005d203caa3016f614ff4cdebe3",
       "source": "Lbank",
-      "locales": [
-        "EN",
-        "ID",
-        "VN"
-      ],
-      "exclusive": false
+      "locale": "ID",
+      "category": "delisting",
+      "title": "LBank Akan Men-Delisting Beberapa Pasangan Trading (2026.07.15)",
+      "post_time": "2026-07-15T07:02:49Z",
+      "status": "new",
+      "url": "https://www.lbank.com/id/support/articles/2077287515089272832",
+      "is_region_exclusive": false,
+      "description": "流动性不足",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": true
     },
     {
-      "title": "LBank has suspended Deposit and Withdrawal of FLR",
-      "source": "Lbank",
-      "locales": [
-        "EN",
-        "ID",
-        "VN"
-      ],
-      "exclusive": false
+      "uid": "de06f7a1d69c542180406ead18a35bb851b871196538aba5c89176847d380271",
+      "source": "Phemex",
+      "locale": "EN",
+      "category": "delisting",
+      "title": "Phemex Will Delist the A / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:35:10Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100754",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
     },
     {
-      "title": "LBank has suspended the Withdrawal of NFP-BSC",
-      "source": "Lbank",
-      "locales": [
-        "EN",
-        "ID",
-        "VN"
-      ],
-      "exclusive": false
+      "uid": "48fcc145790ce6200eb5363d70817edf378d736140403c943a308d550011f054",
+      "source": "Phemex",
+      "locale": "FR",
+      "category": "delisting",
+      "title": "Phemex Will Delist the A / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:35:10Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100754",
+      "is_region_exclusive": true,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
     },
     {
-      "title": "LBank has suspended the Withdrawal of TLM-ERC20",
-      "source": "Lbank",
-      "locales": [
-        "EN",
-        "ID",
-        "VN"
-      ],
-      "exclusive": false
+      "uid": "a2f5d7649df7a8c637951ccc6f4777c465cb38fec6837d38dfd4a17355c7ea71",
+      "source": "Phemex",
+      "locale": "FR",
+      "category": "delisting",
+      "title": "Phemex Will Delist the 0G / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:30:35Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100897",
+      "is_region_exclusive": true,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
     },
     {
-      "title": "LBank has suspended Trading, Deposit and Withdrawal of CNT (Centel)",
-      "source": "Lbank",
-      "locales": [
-        "EN",
-        "ID",
-        "VN"
-      ],
-      "exclusive": false
+      "uid": "61cbf4c014122b926a56ca765dc0a6a4a46a5e374808c0f52c7aa03e68b7f12d",
+      "source": "Phemex",
+      "locale": "EN",
+      "category": "delisting",
+      "title": "Phemex Will Delist the 0G / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:30:34Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100897",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
     },
     {
+      "uid": "911544ea6cd28fb5ed207f2c8b577f0fe6db3c0c7b8de5895bd0a5285b2d887e",
+      "source": "Phemex",
+      "locale": "EN",
+      "category": "delisting",
+      "title": "Phemex Will Delist the INIT / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:30:29Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100723",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "30f273392753f930e0f061dd4e5d868befe9d8f426432bc755df02ca15fba46b",
+      "source": "Phemex",
+      "locale": "FR",
+      "category": "delisting",
+      "title": "Phemex Will Delist the INIT / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:30:29Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100723",
+      "is_region_exclusive": true,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "c679473283ca33cfdfcceea10797fe29a51c853baf7d4c6c3807395943ee1847",
+      "source": "Phemex",
+      "locale": "FR",
+      "category": "delisting",
+      "title": "Phemex Will Delist the GUN / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:30:24Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100705",
+      "is_region_exclusive": true,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "fac89a3037b688312e730e169f06351fefd8694f3ce62de0fef0b2d09f755638",
+      "source": "Phemex",
+      "locale": "EN",
+      "category": "delisting",
+      "title": "Phemex Will Delist the GUN / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:30:23Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100705",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "2e5bc0adcdb48ebcf78f76847abb313d027b2724552d4091aacf21cd27f42cf1",
+      "source": "Phemex",
+      "locale": "EN",
+      "category": "delisting",
+      "title": "Phemex Will Delist the STRK / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:30:18Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100429",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "5a9d1b5631c88ff06da6ea817d0c1e756cda0141f3450080dc1c267a624c2a9e",
+      "source": "Phemex",
+      "locale": "FR",
+      "category": "delisting",
+      "title": "Phemex Will Delist the STRK / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:30:18Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100429",
+      "is_region_exclusive": true,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "6b8e803786d95cc1b19b45f3949d08729456bb9c66a9687ad7c8c1e4969d473f",
+      "source": "Phemex",
+      "locale": "FR",
+      "category": "delisting",
+      "title": "Phemex Will Delist the CKB / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:30:13Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100500",
+      "is_region_exclusive": true,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "b09a19b49e3fde6c5954f31faeacfe006a1d0b99e68c8408239ea51a85afb0a8",
+      "source": "Phemex",
+      "locale": "EN",
+      "category": "delisting",
+      "title": "Phemex Will Delist the CKB / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:30:12Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100500",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "6f258e84f7965bcd53b7db3bf6407870c193c877c351171322c1c7f131393784",
+      "source": "Phemex",
+      "locale": "EN",
+      "category": "delisting",
+      "title": "Phemex Will Delist the MOVR / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:30:07Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100412",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "6bf4941098d59b1330c0f41c486a376ef3123bcade2a153484149a72965833f6",
+      "source": "Phemex",
+      "locale": "FR",
+      "category": "delisting",
+      "title": "Phemex Will Delist the MOVR / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:30:07Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100412",
+      "is_region_exclusive": true,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "45f752e15e3347ef485007ef069f166c976cc628ad440ce98386ea123b278205",
+      "source": "Phemex",
+      "locale": "EN",
+      "category": "delisting",
+      "title": "Phemex Will Delist the POLYX / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:30:01Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100469",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "961bffd3c24c308b106775581f9c73ffa7566b0505efaa85897e25ee0d214e40",
+      "source": "Phemex",
+      "locale": "FR",
+      "category": "delisting",
+      "title": "Phemex Will Delist the POLYX / USDT Spot Trading Pair on July 16, 2026",
+      "post_time": "2026-07-15T03:30:01Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100469",
+      "is_region_exclusive": true,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "e9a82278b4f9a67ea8b995487855501c6fc712c5937538f57f97f373ce1462bf",
+      "source": "BingX",
+      "locale": "EN",
+      "category": "delisting",
+      "title": "BingX Delists KINUSDT, TEAUSDT, MEZOUSDT, ASTEROIDETHUSDT and REALUSDT for Perpetual Futures",
+      "post_time": "2026-07-15T02:55:19Z",
+      "status": "new",
+      "url": "https://bingx.com/en/support/articles/16844339718927",
+      "is_region_exclusive": false,
+      "description": "交易对不再满足上币标准或市场发生重大变化",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "c1c75cdb559f8339446a4e9569d1ce69d0375e5f648593ac7f92aedb4a288b52",
+      "source": "BingX",
+      "locale": "VN",
+      "category": "delisting",
+      "title": "BingX thông báo hủy niêm yết KINUSDT, TEAUSDT, MEZOUSDT, ASTEROIDETHUSDT và REALUSDT cho Hợp đồng vĩnh viễn",
+      "post_time": "2026-07-15T02:55:19Z",
+      "status": "new",
+      "url": "https://bingx.com/vi/support/articles/16844339718927",
+      "is_region_exclusive": false,
+      "description": "交易对不再满足上币标准或市场发生重大变化",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": true
+    },
+    {
+      "uid": "5b9fd7ff6c415a2609106b272e0da0e3544681168455488bbb730877f16d4123",
+      "source": "Bitunix",
+      "locale": "EN",
+      "category": "delisting",
       "title": "Bitunix to Delist Eclipse (ES), PoP Planet (P) From the Spot Market",
+      "post_time": "2026-07-15T02:36:39Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/en-us/articles/60059774088217-Bitunix-to-Delist-Eclipse-ES-PoP-Planet-P-From-the-Spot-Market",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "7cae6703df11d14e21310335777c642eb69449ff610e8302268c65cc1ecb7c10",
       "source": "Bitunix",
-      "locales": [
-        "EN",
-        "FR",
-        "ID"
-      ],
-      "exclusive": false
+      "locale": "FR",
+      "category": "delisting",
+      "title": "Bitunix Retirera Eclipse (ES), PoP Planet (P) du Marché Spot",
+      "post_time": "2026-07-15T02:36:39Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/fr/articles/60059774088217-Bitunix-Retirera-Eclipse-ES-PoP-Planet-P-du-March%C3%A9-Spot",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": true
+    },
+    {
+      "uid": "78c127f53ec576ce387f73630ba42c2d2c72ce77479421e3d475ca272e5eb90e",
+      "source": "Bitunix",
+      "locale": "ID",
+      "category": "delisting",
+      "title": "Bitunix Akan Menghapus Eclipse (ES), PoP Planet (P) dari Pasar Spot",
+      "post_time": "2026-07-15T02:36:39Z",
+      "status": "new",
+      "url": "https://support.bitunix.com/hc/id/articles/60059774088217-Bitunix-Akan-Menghapus-Eclipse-ES-PoP-Planet-P-dari-Pasar-Spot",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": true
+    },
+    {
+      "uid": "b572a0abb2c5a719e6813c1012e48073fda34e1b2a371345402c49437d78776b",
+      "source": "Phemex",
+      "locale": "EN",
+      "category": "delisting",
+      "title": "Phemex Will Delist the KORUUSDT Futures on July 15, 2026",
+      "post_time": "2026-07-15T01:55:01Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-koruusdt914",
+      "is_region_exclusive": false,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "282d2ce0f122fa38c0b6c0c9e40c132d8151621d37931c34ee16b09949a809f8",
+      "source": "Phemex",
+      "locale": "FR",
+      "category": "delisting",
+      "title": "Phemex Will Delist the KORUUSDT Futures on July 15, 2026",
+      "post_time": "2026-07-15T01:55:01Z",
+      "status": "new",
+      "url": "https://phemex.com/announcements/phemex-will-delist-koruusdt914",
+      "is_region_exclusive": true,
+      "description": null,
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "c096db16a7231bf9f7724ea6efea4831da09c3d8b4536ee8b2debcd8210321af",
+      "source": "BingX",
+      "locale": "EN",
+      "category": "delisting",
+      "title": "BingX Will Delist GFI, MANYU, PAAL, NUM, KGEN & Other Assets From Spot Trading & Other Services",
+      "post_time": "2026-07-14T09:03:08Z",
+      "status": "new",
+      "url": "https://bingx.com/en/support/articles/16835501341583",
+      "is_region_exclusive": false,
+      "description": "违反代币管理规则或存在高风险；为保障用户交易体验并改善现货市场流动性",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": false,
+      "push_candidate": true
+    },
+    {
+      "uid": "971b1fc2cdd2d574c8f112b9dc27a450f3ebc07cc1c918ce24bfa2b36118a47c",
+      "source": "BingX",
+      "locale": "VN",
+      "category": "delisting",
+      "title": "BingX Sẽ Hủy Niêm Yết GFI, MANYU, PAAL, NUM, KGEN & Các Tài Sản Khác Khỏi Giao Dịch Spot & Các Dịch Vụ Liên Quan",
+      "post_time": "2026-07-14T09:03:08Z",
+      "status": "new",
+      "url": "https://bingx.com/vi/support/articles/16835501341583",
+      "is_region_exclusive": false,
+      "description": "违反代币管理规则或存在高风险；为保障用户交易体验并改善现货市场流动性",
+      "diff_type": null,
+      "diff_tag": "na",
+      "priority": null,
+      "follow_up": null,
+      "change_kind": null,
+      "listing_kind": null,
+      "is_mock": false,
+      "is_locale_derived": true,
+      "push_candidate": true
     }
   ],
-  "zoomex_by_locale": {
-    "EN": {
-      "total": 693,
-      "categories": {
-        "campaign": 117,
-        "delisting": 160,
-        "listing": 231,
-        "other": 91,
-        "product": 94
+  "markets": {
+    "regions": [
+      {
+        "group_id": "bitunix_53704348774809",
+        "title": "Bitunix Launches Full Transaction History Export Function for a Tax Re",
+        "source": "Bitunix",
+        "locales": [
+          "EN",
+          "FR",
+          "ID"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bitunix_59625299353241",
+        "title": "Bitunix to Launch TTWOUSDT, TXNUSDT in Perpetual Futures",
+        "source": "Bitunix",
+        "locales": [
+          "EN",
+          "FR",
+          "ID"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bitunix_59807680377497",
+        "title": "Bitunix to Cease Support for Vanar Chain (VANRY) on Polygon",
+        "source": "Bitunix",
+        "locales": [
+          "EN",
+          "FR",
+          "ID"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bitunix_59890811504025",
+        "title": "Bitunix to Launch BOTUSDT, FWDIUSDT in Perpetual Futures",
+        "source": "Bitunix",
+        "locales": [
+          "EN",
+          "FR",
+          "ID"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bitunix_59907915093657",
+        "title": "Bitunix to Launch GEVUSDT, VRTUSDT in Perpetual Futures",
+        "source": "Bitunix",
+        "locales": [
+          "EN",
+          "FR",
+          "ID"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bitunix_59923371883417",
+        "title": "Bitunix to Launch SKHYUSDT in Perpetual Futures",
+        "source": "Bitunix",
+        "locales": [
+          "EN",
+          "FR",
+          "ID"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "lbank_17018",
+        "title": "Announcement Regarding Wallet Maintenance on the ERC20 Chain (ETH Netw",
+        "source": "Lbank",
+        "locales": [
+          "EN",
+          "ID",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "lbank_17019",
+        "title": "DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock)) Will Be Listed ",
+        "source": "Lbank",
+        "locales": [
+          "EN",
+          "ID",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "lbank_17020",
+        "title": "SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock)) Will Be Listed o",
+        "source": "Lbank",
+        "locales": [
+          "EN",
+          "ID",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "lbank_17021",
+        "title": "LBank has suspended Deposit and Withdrawal of FLR",
+        "source": "Lbank",
+        "locales": [
+          "EN",
+          "ID",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "lbank_17022",
+        "title": "LBank has suspended the Withdrawal of NFP-BSC",
+        "source": "Lbank",
+        "locales": [
+          "EN",
+          "ID",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "lbank_17023",
+        "title": "LBank has suspended the Withdrawal of TLM-ERC20",
+        "source": "Lbank",
+        "locales": [
+          "EN",
+          "ID",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "lbank_17024",
+        "title": "LBank has suspended Trading, Deposit and Withdrawal of CNT (Centel)",
+        "source": "Lbank",
+        "locales": [
+          "EN",
+          "ID",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bitunix_60059774088217",
+        "title": "Bitunix to Delist Eclipse (ES), PoP Planet (P) From the Spot Market",
+        "source": "Bitunix",
+        "locales": [
+          "EN",
+          "FR",
+          "ID"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "lbank_17025",
+        "title": "INDEX (The Index) Will Be Listed on LBank",
+        "source": "Lbank",
+        "locales": [
+          "EN",
+          "ID",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "lbank_17029",
+        "title": "WALLET (Robinhood Wallet) Will Be Listed on LBank",
+        "source": "Lbank",
+        "locales": [
+          "EN",
+          "ID",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "lbank_17031",
+        "title": "WEN (Wen Lambo) Will Be Listed on LBank",
+        "source": "Lbank",
+        "locales": [
+          "EN",
+          "ID",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "lbank_17032",
+        "title": "PONS (Pons) Will Be Listed on LBank",
+        "source": "Lbank",
+        "locales": [
+          "EN",
+          "ID",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "lbank_17033",
+        "title": "LBank Will Delist Certain Trading Pairs (2026.07.15)",
+        "source": "Lbank",
+        "locales": [
+          "EN",
+          "ID",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "lbank_17036",
+        "title": "World Premiere | LBank Futures Will Launch PONS (Pons) USDT-Margined P",
+        "source": "Lbank",
+        "locales": [
+          "EN",
+          "ID",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bitunix_53799031310361",
+        "title": "Bitunix Chart Trading Upgrade: Faster Orders and TP/SL",
+        "source": "Bitunix",
+        "locales": [
+          "EN",
+          "ID"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bitunix_59392955004313",
+        "title": "Introducing Super Alerts: Smarter Market Monitoring on Bitunix Charts",
+        "source": "Bitunix",
+        "locales": [
+          "EN",
+          "ID"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bingx_16835501341583",
+        "title": "BingX Will Delist GFI, MANYU, PAAL, NUM, KGEN & Other Assets From Spot",
+        "source": "BingX",
+        "locales": [
+          "EN",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bingx_16835949205007",
+        "title": "BingX Adds XAUCAD, XAUCHF and More for Perpetual Futures",
+        "source": "BingX",
+        "locales": [
+          "EN",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bingx_16837899832207",
+        "title": "BingX Adds CUS, WFC and More for Perpetual Futures",
+        "source": "BingX",
+        "locales": [
+          "EN",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bingx_16837887309199",
+        "title": "BingX Adds XLP, LQD and More for Perpetual Futures",
+        "source": "BingX",
+        "locales": [
+          "EN",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bingx_16838450196623",
+        "title": "Announcement: Launch of BingX EventX Events Including \"World Cup: Gold",
+        "source": "BingX",
+        "locales": [
+          "EN",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bingx_16844339718927",
+        "title": "BingX Delists KINUSDT, TEAUSDT, MEZOUSDT, ASTEROIDETHUSDT and REALUSDT",
+        "source": "BingX",
+        "locales": [
+          "EN",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bingx_16848332373519",
+        "title": "BingX to Update the Maintenance Margin Rate Rules for ANTHROPIC(Pre-IP",
+        "source": "BingX",
+        "locales": [
+          "EN",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bingx_16848821709327",
+        "title": "BingX Adds DRVUSDT  for Perpetual Futures",
+        "source": "BingX",
+        "locales": [
+          "EN",
+          "VN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "bitunix_59530367696281",
+        "title": "Bitunix Ultra Trading Conference (UTC)  Brings Traders and KOLs to Str",
+        "source": "Bitunix",
+        "locales": [
+          "EN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "phemex_135479",
+        "title": "Phemex Will Delist the KORUUSDT Futures on July 15, 2026",
+        "source": "Phemex",
+        "locales": [
+          "EN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "phemex_135481",
+        "title": "Phemex Will Delist the KORUUSDT Futures on July 15, 2026",
+        "source": "Phemex",
+        "locales": [
+          "FR"
+        ],
+        "exclusive": true
+      },
+      {
+        "group_id": "phemex_135489",
+        "title": "Phemex Will Delist the POLYX / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "EN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "phemex_135491",
+        "title": "Phemex Will Delist the POLYX / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "FR"
+        ],
+        "exclusive": true
+      },
+      {
+        "group_id": "phemex_135499",
+        "title": "Phemex Will Delist the MOVR / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "EN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "phemex_135501",
+        "title": "Phemex Will Delist the MOVR / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "FR"
+        ],
+        "exclusive": true
+      },
+      {
+        "group_id": "phemex_135509",
+        "title": "Phemex Will Delist the CKB / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "EN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "phemex_135511",
+        "title": "Phemex Will Delist the CKB / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "FR"
+        ],
+        "exclusive": true
+      },
+      {
+        "group_id": "phemex_135519",
+        "title": "Phemex Will Delist the STRK / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "EN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "phemex_135521",
+        "title": "Phemex Will Delist the STRK / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "FR"
+        ],
+        "exclusive": true
+      },
+      {
+        "group_id": "phemex_135529",
+        "title": "Phemex Will Delist the GUN / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "EN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "phemex_135531",
+        "title": "Phemex Will Delist the GUN / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "FR"
+        ],
+        "exclusive": true
+      },
+      {
+        "group_id": "phemex_135539",
+        "title": "Phemex Will Delist the INIT / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "EN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "phemex_135541",
+        "title": "Phemex Will Delist the INIT / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "FR"
+        ],
+        "exclusive": true
+      },
+      {
+        "group_id": "phemex_135549",
+        "title": "Phemex Will Delist the 0G / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "EN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "phemex_135551",
+        "title": "Phemex Will Delist the 0G / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "FR"
+        ],
+        "exclusive": true
+      },
+      {
+        "group_id": "phemex_135559",
+        "title": "Phemex Will Delist the A / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "EN"
+        ],
+        "exclusive": false
+      },
+      {
+        "group_id": "phemex_135561",
+        "title": "Phemex Will Delist the A / USDT Spot Trading Pair on July 16, 2026",
+        "source": "Phemex",
+        "locales": [
+          "FR"
+        ],
+        "exclusive": true
       }
-    },
-    "FR": {
-      "total": 357,
-      "categories": {
-        "campaign": 88,
-        "other": 253,
-        "product": 16
-      }
-    },
-    "EN-Asia": {
-      "total": 316,
-      "categories": {
-        "campaign": 194,
-        "delisting": 57,
-        "listing": 40,
-        "other": 12,
-        "product": 13
-      }
-    },
-    "VN": {
-      "total": 536,
-      "categories": {
-        "campaign": 71,
-        "delisting": 1,
-        "listing": 2,
-        "other": 427,
-        "product": 35
-      }
-    },
-    "ID": {
-      "total": 116,
-      "categories": {
-        "campaign": 56,
-        "delisting": 2,
-        "listing": 15,
-        "other": 33,
-        "product": 10
+    ],
+    "baseline_by_locale": {
+      "EN": {
+        "total": 693,
+        "categories": {
+          "campaign": 117,
+          "delisting": 160,
+          "listing": 231,
+          "other": 91,
+          "product": 94
+        }
+      },
+      "FR": {
+        "total": 357,
+        "categories": {
+          "campaign": 88,
+          "other": 253,
+          "product": 16
+        }
+      },
+      "EN-Asia": {
+        "total": 316,
+        "categories": {
+          "campaign": 194,
+          "delisting": 57,
+          "listing": 40,
+          "other": 12,
+          "product": 13
+        }
+      },
+      "VN": {
+        "total": 536,
+        "categories": {
+          "campaign": 71,
+          "delisting": 1,
+          "listing": 2,
+          "other": 427,
+          "product": 35
+        }
+      },
+      "ID": {
+        "total": 116,
+        "categories": {
+          "campaign": 56,
+          "delisting": 2,
+          "listing": 15,
+          "other": 33,
+          "product": 10
+        }
       }
     }
   },
-  "archive": {
+  "search_index": {
     "rows": [
       {
+        "uid": "257e1115847d119f89ab7b3b4aa87355cb251d805b649c1d213e91f6006d2219",
         "source": "Lbank",
         "locale": "EN",
         "category": "listing",
         "title": "World Premiere | LBank Futures Will Launch PONS (Pons) USDT-Margined Perpetual Contract",
-        "date": "2026-07-15",
-        "time": "08:46",
+        "post_time": "2026-07-15T08:46:12Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/support/articles/2077313556386152448"
       },
       {
+        "uid": "cfc3b6e9a26bc958f61094096aedfbbccb1ec3dfd9793789199f810ad66d0b1d",
         "source": "Lbank",
         "locale": "VN",
         "category": "listing",
         "title": "World Premiere | LBank Futures sẽ niêm yết hợp đồng PONS (Pons) USDT-Margined Vĩnh viễn",
-        "date": "2026-07-15",
-        "time": "08:46",
+        "post_time": "2026-07-15T08:46:12Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/vi-VN/support/articles/2077313556386152448"
       },
       {
+        "uid": "1f899aee9f6c696293477f3a056eb4cf936843adbcb93ddd1245f514b707bdbb",
         "source": "Lbank",
         "locale": "ID",
         "category": "listing",
         "title": "Perdana di Dunia | LBank Futures Akan Meluncurkan Kontrak Perpetual Margin USDT untuk PONS (Pons)",
-        "date": "2026-07-15",
-        "time": "08:46",
+        "post_time": "2026-07-15T08:46:12Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/id/support/articles/2077313556386152448"
       },
       {
+        "uid": "bd72ed61f9b0d58b0e203c164b2efb3f8f87db5c2ae64f6e5726af6e43336f9b",
         "source": "BingX",
         "locale": "EN",
         "category": "listing",
         "title": "BingX Adds DRVUSDT  for Perpetual Futures",
-        "date": "2026-07-15",
-        "time": "08:32",
+        "post_time": "2026-07-15T08:32:54Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/en/support/articles/16848821709327"
       },
       {
+        "uid": "a54f13be448210fadce382c5921a6db80215f179856c983b98b4d47878ebe3db",
         "source": "BingX",
         "locale": "VN",
         "category": "listing",
         "title": "BingX bổ sung DRVUSDT  cho Hợp đồng vĩnh viễn",
-        "date": "2026-07-15",
-        "time": "08:32",
+        "post_time": "2026-07-15T08:32:54Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/vi/support/articles/16848821709327"
       },
       {
+        "uid": "0d2e7d61691b13df0a1d258c929fccd6c91c310f04f2c797742160388df3776d",
         "source": "BingX",
         "locale": "EN",
         "category": "other",
         "title": "BingX to Update the Maintenance Margin Rate Rules for ANTHROPIC(Pre-IPO) in Perpetual Futures (2026-07-15)",
-        "date": "2026-07-15",
-        "time": "07:55",
+        "post_time": "2026-07-15T07:55:05Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/en/support/articles/16848332373519"
       },
       {
+        "uid": "6c90305033eb1ad50dfecc6dbea2e7ca04877b56b8841efe1c7e37d98590c940",
         "source": "BingX",
         "locale": "VN",
         "category": "other",
         "title": "BingX thông báo cập nhật quy định về tỷ lệ ký quỹ duy trì cho các cặp Hợp đồng Vĩnh viễn ANTHROPIC(Pre-IPO) (2026-07-15)",
-        "date": "2026-07-15",
-        "time": "07:55",
+        "post_time": "2026-07-15T07:55:05Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/vi/support/articles/16848332373519"
       },
       {
+        "uid": "9853a15fc97cbdc1be5fb55c3e5e700ae4a513b84d02c627a1ba94f1b9f2dbc7",
         "source": "Lbank",
         "locale": "EN",
         "category": "delisting",
         "title": "LBank Will Delist Certain Trading Pairs (2026.07.15)",
-        "date": "2026-07-15",
-        "time": "07:02",
+        "post_time": "2026-07-15T07:02:49Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/support/articles/2077287515089272832"
       },
       {
+        "uid": "6f1a441975e07ab9e73726ba8ba308361cac6427e0d0df8a1392499e975102a2",
         "source": "Lbank",
         "locale": "VN",
         "category": "delisting",
         "title": "LBank Sẽ Huỷ Niêm Yết Một Số Cặp Giao Dịch (2026.07.15)",
-        "date": "2026-07-15",
-        "time": "07:02",
+        "post_time": "2026-07-15T07:02:49Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/vi-VN/support/articles/2077287515089272832"
       },
       {
+        "uid": "d37a3054b7a2c18dca6228c4b15d8c5e5fb3e005d203caa3016f614ff4cdebe3",
         "source": "Lbank",
         "locale": "ID",
         "category": "delisting",
         "title": "LBank Akan Men-Delisting Beberapa Pasangan Trading (2026.07.15)",
-        "date": "2026-07-15",
-        "time": "07:02",
+        "post_time": "2026-07-15T07:02:49Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/id/support/articles/2077287515089272832"
       },
       {
+        "uid": "e048302db12ea8984311a26e2184b47bf8832e4aec6372cd6ce143c00680cb0a",
         "source": "Lbank",
         "locale": "EN",
         "category": "listing",
         "title": "PONS (Pons) Will Be Listed on LBank",
-        "date": "2026-07-15",
-        "time": "06:50",
+        "post_time": "2026-07-15T06:50:49Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/support/articles/2077284834639609856"
       },
       {
+        "uid": "0eb44cf2f5cf87b517dce471b6e9c977389cb1769e972cf0af99e1f5d3738292",
         "source": "Lbank",
         "locale": "VN",
         "category": "listing",
         "title": "PONS (Pons) Sẽ được niêm yết trên LBank",
-        "date": "2026-07-15",
-        "time": "06:50",
+        "post_time": "2026-07-15T06:50:49Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/vi-VN/support/articles/2077284834639609856"
       },
       {
+        "uid": "ee0cacc3b9511130a733f5d7007936ec2548d4fcd561980dbb99e9decbc8382e",
         "source": "Lbank",
         "locale": "ID",
         "category": "listing",
         "title": "PONS (Pons) Akan didaftarkan di LBank",
-        "date": "2026-07-15",
-        "time": "06:50",
+        "post_time": "2026-07-15T06:50:49Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/id/support/articles/2077284834639609856"
       },
       {
+        "uid": "b782c729c74e807ac428654a485b5f3c14fe55b5caf73d634c32a4d62583493c",
         "source": "Lbank",
         "locale": "EN",
         "category": "listing",
         "title": "WEN (Wen Lambo) Will Be Listed on LBank",
-        "date": "2026-07-15",
-        "time": "05:39",
+        "post_time": "2026-07-15T05:39:14Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/support/articles/2077266984193490944"
       },
       {
+        "uid": "832bb63c226434a99f445b9151edcb7fc343bd4786cfb6dd11a4e0793efa4da3",
         "source": "Lbank",
         "locale": "VN",
         "category": "listing",
         "title": "WEN (Wen Lambo) Sẽ được niêm yết trên LBank",
-        "date": "2026-07-15",
-        "time": "05:39",
+        "post_time": "2026-07-15T05:39:14Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/vi-VN/support/articles/2077266984193490944"
       },
       {
+        "uid": "28e316e7fe6f51fdbe802e1eafe61b5202e418fd8ad20fbb4f15ad353a4153ca",
         "source": "Lbank",
         "locale": "ID",
         "category": "listing",
         "title": "WEN (Wen Lambo) Akan didaftarkan di LBank",
-        "date": "2026-07-15",
-        "time": "05:39",
+        "post_time": "2026-07-15T05:39:14Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/id/support/articles/2077266984193490944"
       },
       {
+        "uid": "d97825dcb3086e685a9e75a7cd53fd3df44531edf0546aacfea7bb33cf366a35",
         "source": "Lbank",
         "locale": "EN",
         "category": "listing",
         "title": "WALLET (Robinhood Wallet) Will Be Listed on LBank",
-        "date": "2026-07-15",
-        "time": "05:34",
+        "post_time": "2026-07-15T05:34:41Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/support/articles/2077265590921199616"
       },
       {
+        "uid": "c0f47b2c6535f9f0f265ebd92fc9d8d4365dcf0f3ebad3d03c716781f9ad7426",
         "source": "Lbank",
         "locale": "VN",
         "category": "listing",
         "title": "WALLET (Robinhood Wallet) Sẽ được niêm yết trên LBank",
-        "date": "2026-07-15",
-        "time": "05:34",
+        "post_time": "2026-07-15T05:34:41Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/vi-VN/support/articles/2077265590921199616"
       },
       {
+        "uid": "3e076e431b3e8d675137240e8ff5e0ced12e3bc5f9c4868f1a59c7dbbbb961f7",
         "source": "Lbank",
         "locale": "ID",
         "category": "listing",
         "title": "WALLET (Robinhood Wallet) Akan didaftarkan di LBank",
-        "date": "2026-07-15",
-        "time": "05:34",
+        "post_time": "2026-07-15T05:34:41Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/id/support/articles/2077265590921199616"
       },
       {
+        "uid": "de06f7a1d69c542180406ead18a35bb851b871196538aba5c89176847d380271",
         "source": "Phemex",
         "locale": "EN",
         "category": "delisting",
         "title": "Phemex Will Delist the A / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:35",
+        "post_time": "2026-07-15T03:35:10Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100754"
       },
       {
+        "uid": "48fcc145790ce6200eb5363d70817edf378d736140403c943a308d550011f054",
         "source": "Phemex",
         "locale": "FR",
         "category": "delisting",
         "title": "Phemex Will Delist the A / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:35",
+        "post_time": "2026-07-15T03:35:10Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100754"
       },
       {
+        "uid": "a2f5d7649df7a8c637951ccc6f4777c465cb38fec6837d38dfd4a17355c7ea71",
         "source": "Phemex",
         "locale": "FR",
         "category": "delisting",
         "title": "Phemex Will Delist the 0G / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:30",
+        "post_time": "2026-07-15T03:30:35Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100897"
       },
       {
+        "uid": "61cbf4c014122b926a56ca765dc0a6a4a46a5e374808c0f52c7aa03e68b7f12d",
         "source": "Phemex",
         "locale": "EN",
         "category": "delisting",
         "title": "Phemex Will Delist the 0G / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:30",
+        "post_time": "2026-07-15T03:30:34Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100897"
       },
       {
+        "uid": "911544ea6cd28fb5ed207f2c8b577f0fe6db3c0c7b8de5895bd0a5285b2d887e",
         "source": "Phemex",
         "locale": "EN",
         "category": "delisting",
         "title": "Phemex Will Delist the INIT / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:30",
+        "post_time": "2026-07-15T03:30:29Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100723"
       },
       {
+        "uid": "30f273392753f930e0f061dd4e5d868befe9d8f426432bc755df02ca15fba46b",
         "source": "Phemex",
         "locale": "FR",
         "category": "delisting",
         "title": "Phemex Will Delist the INIT / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:30",
+        "post_time": "2026-07-15T03:30:29Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100723"
       },
       {
+        "uid": "c679473283ca33cfdfcceea10797fe29a51c853baf7d4c6c3807395943ee1847",
         "source": "Phemex",
         "locale": "FR",
         "category": "delisting",
         "title": "Phemex Will Delist the GUN / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:30",
+        "post_time": "2026-07-15T03:30:24Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100705"
       },
       {
+        "uid": "fac89a3037b688312e730e169f06351fefd8694f3ce62de0fef0b2d09f755638",
         "source": "Phemex",
         "locale": "EN",
         "category": "delisting",
         "title": "Phemex Will Delist the GUN / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:30",
+        "post_time": "2026-07-15T03:30:23Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100705"
       },
       {
+        "uid": "2e5bc0adcdb48ebcf78f76847abb313d027b2724552d4091aacf21cd27f42cf1",
         "source": "Phemex",
         "locale": "EN",
         "category": "delisting",
         "title": "Phemex Will Delist the STRK / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:30",
+        "post_time": "2026-07-15T03:30:18Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100429"
       },
       {
+        "uid": "5a9d1b5631c88ff06da6ea817d0c1e756cda0141f3450080dc1c267a624c2a9e",
         "source": "Phemex",
         "locale": "FR",
         "category": "delisting",
         "title": "Phemex Will Delist the STRK / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:30",
+        "post_time": "2026-07-15T03:30:18Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100429"
       },
       {
+        "uid": "6b8e803786d95cc1b19b45f3949d08729456bb9c66a9687ad7c8c1e4969d473f",
         "source": "Phemex",
         "locale": "FR",
         "category": "delisting",
         "title": "Phemex Will Delist the CKB / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:30",
+        "post_time": "2026-07-15T03:30:13Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100500"
       },
       {
+        "uid": "b09a19b49e3fde6c5954f31faeacfe006a1d0b99e68c8408239ea51a85afb0a8",
         "source": "Phemex",
         "locale": "EN",
         "category": "delisting",
         "title": "Phemex Will Delist the CKB / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:30",
+        "post_time": "2026-07-15T03:30:12Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100500"
       },
       {
+        "uid": "6f258e84f7965bcd53b7db3bf6407870c193c877c351171322c1c7f131393784",
         "source": "Phemex",
         "locale": "EN",
         "category": "delisting",
         "title": "Phemex Will Delist the MOVR / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:30",
+        "post_time": "2026-07-15T03:30:07Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100412"
       },
       {
+        "uid": "6bf4941098d59b1330c0f41c486a376ef3123bcade2a153484149a72965833f6",
         "source": "Phemex",
         "locale": "FR",
         "category": "delisting",
         "title": "Phemex Will Delist the MOVR / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:30",
+        "post_time": "2026-07-15T03:30:07Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100412"
       },
       {
+        "uid": "45f752e15e3347ef485007ef069f166c976cc628ad440ce98386ea123b278205",
         "source": "Phemex",
         "locale": "EN",
         "category": "delisting",
         "title": "Phemex Will Delist the POLYX / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:30",
+        "post_time": "2026-07-15T03:30:01Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100469"
       },
       {
+        "uid": "961bffd3c24c308b106775581f9c73ffa7566b0505efaa85897e25ee0d214e40",
         "source": "Phemex",
         "locale": "FR",
         "category": "delisting",
         "title": "Phemex Will Delist the POLYX / USDT Spot Trading Pair on July 16, 2026",
-        "date": "2026-07-15",
-        "time": "03:30",
+        "post_time": "2026-07-15T03:30:01Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-the-perp-usdt-spot-pair-100469"
       },
       {
+        "uid": "9143b5a342bc6cc4d5a501df072edcdcebac39fd74b41d09ad6d64dbf1a8dd94",
         "source": "Lbank",
         "locale": "EN",
         "category": "listing",
         "title": "INDEX (The Index) Will Be Listed on LBank",
-        "date": "2026-07-15",
-        "time": "02:59",
+        "post_time": "2026-07-15T02:59:59Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/support/articles/2077226403744448512"
       },
       {
+        "uid": "402c628b0064346628220f27118750b53574f7e7e2e214a39429a620c6f2d12e",
         "source": "Lbank",
         "locale": "VN",
         "category": "listing",
         "title": "INDEX (The Index) Sẽ được niêm yết trên LBank",
-        "date": "2026-07-15",
-        "time": "02:59",
+        "post_time": "2026-07-15T02:59:59Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/vi-VN/support/articles/2077226403744448512"
       },
       {
+        "uid": "77186c944a2e7a2ef9836e955182280cbf44d7a3461edfe796d5306cb62eba85",
         "source": "Lbank",
         "locale": "ID",
         "category": "listing",
         "title": "INDEX (The Index) Akan didaftarkan di LBank",
-        "date": "2026-07-15",
-        "time": "02:59",
+        "post_time": "2026-07-15T02:59:59Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/id/support/articles/2077226403744448512"
       },
       {
+        "uid": "e9a82278b4f9a67ea8b995487855501c6fc712c5937538f57f97f373ce1462bf",
         "source": "BingX",
         "locale": "EN",
         "category": "delisting",
         "title": "BingX Delists KINUSDT, TEAUSDT, MEZOUSDT, ASTEROIDETHUSDT and REALUSDT for Perpetual Futures",
-        "date": "2026-07-15",
-        "time": "02:55",
+        "post_time": "2026-07-15T02:55:19Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/en/support/articles/16844339718927"
       },
       {
+        "uid": "c1c75cdb559f8339446a4e9569d1ce69d0375e5f648593ac7f92aedb4a288b52",
         "source": "BingX",
         "locale": "VN",
         "category": "delisting",
         "title": "BingX thông báo hủy niêm yết KINUSDT, TEAUSDT, MEZOUSDT, ASTEROIDETHUSDT và REALUSDT cho Hợp đồng vĩnh viễn",
-        "date": "2026-07-15",
-        "time": "02:55",
+        "post_time": "2026-07-15T02:55:19Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/vi/support/articles/16844339718927"
       },
       {
+        "uid": "5b9fd7ff6c415a2609106b272e0da0e3544681168455488bbb730877f16d4123",
         "source": "Bitunix",
         "locale": "EN",
         "category": "delisting",
         "title": "Bitunix to Delist Eclipse (ES), PoP Planet (P) From the Spot Market",
-        "date": "2026-07-15",
-        "time": "02:36",
+        "post_time": "2026-07-15T02:36:39Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/en-us/articles/60059774088217-Bitunix-to-Delist-Eclipse-ES-PoP-Planet-P-From-the-Spot-Market"
       },
       {
+        "uid": "7cae6703df11d14e21310335777c642eb69449ff610e8302268c65cc1ecb7c10",
         "source": "Bitunix",
         "locale": "FR",
         "category": "delisting",
         "title": "Bitunix Retirera Eclipse (ES), PoP Planet (P) du Marché Spot",
-        "date": "2026-07-15",
-        "time": "02:36",
+        "post_time": "2026-07-15T02:36:39Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/fr/articles/60059774088217-Bitunix-Retirera-Eclipse-ES-PoP-Planet-P-du-March%C3%A9-Spot"
       },
       {
+        "uid": "78c127f53ec576ce387f73630ba42c2d2c72ce77479421e3d475ca272e5eb90e",
         "source": "Bitunix",
         "locale": "ID",
         "category": "delisting",
         "title": "Bitunix Akan Menghapus Eclipse (ES), PoP Planet (P) dari Pasar Spot",
-        "date": "2026-07-15",
-        "time": "02:36",
+        "post_time": "2026-07-15T02:36:39Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/id/articles/60059774088217-Bitunix-Akan-Menghapus-Eclipse-ES-PoP-Planet-P-dari-Pasar-Spot"
       },
       {
+        "uid": "3e7c18cae0ad3e59e4e059711c749c3a9f2130aa8675a62bba5c1facce76663d",
         "source": "Lbank",
         "locale": "EN",
         "category": "other",
         "title": "LBank has suspended Trading, Deposit and Withdrawal of CNT (Centel)",
-        "date": "2026-07-15",
-        "time": "02:26",
+        "post_time": "2026-07-15T02:26:17Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/support/articles/2077217923314745344"
       },
       {
+        "uid": "17a9f2b3193bcdbf44c0dc624b7e5ec4109cefa309ee4a0c6f586ed38ffdb731",
         "source": "Lbank",
         "locale": "VN",
         "category": "other",
         "title": "LBank đã Tạm Việc Ngưng Giao Dịch, Nạp và Rút CNT (Centel)",
-        "date": "2026-07-15",
-        "time": "02:26",
+        "post_time": "2026-07-15T02:26:17Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/vi-VN/support/articles/2077217923314745344"
       },
       {
+        "uid": "d41862f1e5ba02c2cc62ab489ed1d63cbb1f28ccb8d9edc608b560e9856bc7d8",
         "source": "Lbank",
         "locale": "ID",
         "category": "other",
         "title": "LBank telah Menangguhkan Trading, Deposit, dan Penarikan CNT (Centel)",
-        "date": "2026-07-15",
-        "time": "02:26",
+        "post_time": "2026-07-15T02:26:17Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/id/support/articles/2077217923314745344"
       },
       {
+        "uid": "73b1ee5a98122b81220e0a99bced6a3f2665959dd45a984ae2afe00b71799052",
         "source": "Lbank",
         "locale": "EN",
         "category": "other",
         "title": "LBank has suspended the Withdrawal of NFP-BSC",
-        "date": "2026-07-15",
-        "time": "02:07",
+        "post_time": "2026-07-15T02:07:12Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/support/articles/2077213122581495808"
       },
       {
+        "uid": "be95abe9da12d8b1eb0bbfb3a06c793b19c45465d3ecc4b4e60456831c39873b",
         "source": "Lbank",
         "locale": "EN",
         "category": "other",
         "title": "LBank has suspended the Withdrawal of TLM-ERC20",
-        "date": "2026-07-15",
-        "time": "02:07",
+        "post_time": "2026-07-15T02:07:12Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/support/articles/2077213421484376064"
       },
       {
+        "uid": "69b6788d18722f3fe321dfddc982abcf79a1164fe40bda68e1dadf9244229427",
         "source": "Lbank",
         "locale": "VN",
         "category": "other",
         "title": "LBank đã tạm ngưng việc rút NFP-BSC",
-        "date": "2026-07-15",
-        "time": "02:07",
+        "post_time": "2026-07-15T02:07:12Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/vi-VN/support/articles/2077213122581495808"
       },
       {
+        "uid": "130d0ccd1fb4726ffc005ff9df84f3f8a75827994a4e532c132ec1bfaf69cb8d",
         "source": "Lbank",
         "locale": "VN",
         "category": "other",
         "title": "LBank đã tạm ngưng việc rút TLM-ERC20",
-        "date": "2026-07-15",
-        "time": "02:07",
+        "post_time": "2026-07-15T02:07:12Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/vi-VN/support/articles/2077213421484376064"
       },
       {
+        "uid": "a48eafcf74d783774fea27921dea1d263828f4a3eec7679a8d42d6f5a6fbe488",
         "source": "Lbank",
         "locale": "ID",
         "category": "other",
         "title": "LBank telah menangguhkan penarikan TLM-ERC20",
-        "date": "2026-07-15",
-        "time": "02:07",
+        "post_time": "2026-07-15T02:07:12Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/id/support/articles/2077213421484376064"
       },
       {
+        "uid": "a14a0e729b5163de965e9041079e4f556db7546a79549d794798365fff17a714",
         "source": "Lbank",
         "locale": "ID",
         "category": "other",
         "title": "LBank telah menangguhkan penarikan NFP-BSC",
-        "date": "2026-07-15",
-        "time": "02:07",
+        "post_time": "2026-07-15T02:07:12Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/id/support/articles/2077213122581495808"
       },
       {
+        "uid": "b572a0abb2c5a719e6813c1012e48073fda34e1b2a371345402c49437d78776b",
         "source": "Phemex",
         "locale": "EN",
         "category": "delisting",
         "title": "Phemex Will Delist the KORUUSDT Futures on July 15, 2026",
-        "date": "2026-07-15",
-        "time": "01:55",
+        "post_time": "2026-07-15T01:55:01Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-koruusdt914"
       },
       {
+        "uid": "282d2ce0f122fa38c0b6c0c9e40c132d8151621d37931c34ee16b09949a809f8",
         "source": "Phemex",
         "locale": "FR",
         "category": "delisting",
         "title": "Phemex Will Delist the KORUUSDT Futures on July 15, 2026",
-        "date": "2026-07-15",
-        "time": "01:55",
+        "post_time": "2026-07-15T01:55:01Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://phemex.com/announcements/phemex-will-delist-koruusdt914"
       },
       {
+        "uid": "74471c48b729a469ea9012ba9fb83512e2f8b981b2452a812d13b77229345556",
         "source": "BingX",
         "locale": "EN",
         "category": "listing",
         "title": "Announcement: Launch of BingX EventX Events Including \"World Cup: Golden Ball Winner\"",
-        "date": "2026-07-14",
-        "time": "15:10",
+        "post_time": "2026-07-14T15:10:40Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/en/support/articles/16838450196623"
       },
       {
+        "uid": "85c8650b3581c5827dfb95ab49ec744eef40f3671ddaffefbbadfedac0c8715a",
         "source": "BingX",
         "locale": "VN",
         "category": "listing",
         "title": "Thông báo: Ra mắt các sự kiện EventX trên BingX, bao gồm \"World Cup: Người giành Quả bóng Vàng\"",
-        "date": "2026-07-14",
-        "time": "15:10",
+        "post_time": "2026-07-14T15:10:40Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/vi/support/articles/16838450196623"
       },
       {
+        "uid": "b608a4c8f9141b26b6349aa7ae0c58fb9805616cbe27e7db249e80b7f42d1cbf",
         "source": "Lbank",
         "locale": "EN",
         "category": "other",
         "title": "LBank has suspended Deposit and Withdrawal of FLR",
-        "date": "2026-07-14",
-        "time": "14:13",
+        "post_time": "2026-07-14T14:13:57Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/support/articles/2077033659889614848"
       },
       {
+        "uid": "ec311650b1eee67a211e1c3be1a9384e18915ab78e0b4a7b5d09c5100d5ca5b2",
         "source": "Lbank",
         "locale": "VN",
         "category": "other",
         "title": "LBank đã Tạm Việc Ngưng Nạp và Rút FLR",
-        "date": "2026-07-14",
-        "time": "14:13",
+        "post_time": "2026-07-14T14:13:57Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/vi-VN/support/articles/2077033659889614848"
       },
       {
+        "uid": "fb41503abfa25e21bc6571d7f60d21f1bffee85320b9f14727072750152c19e6",
         "source": "Lbank",
         "locale": "ID",
         "category": "other",
         "title": "LBank telah Menangguhkan Deposit, dan Penarikan FLR",
-        "date": "2026-07-14",
-        "time": "14:13",
+        "post_time": "2026-07-14T14:13:57Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/id/support/articles/2077033659889614848"
       },
       {
+        "uid": "e62de2dca45c9dba435453aca4b1c043c88463f5fd334ec5caab4638876cac44",
         "source": "BingX",
         "locale": "EN",
         "category": "listing",
         "title": "BingX Adds XLP, LQD and More for Perpetual Futures",
-        "date": "2026-07-14",
-        "time": "13:56",
+        "post_time": "2026-07-14T13:56:55Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/en/support/articles/16837887309199"
       },
       {
+        "uid": "4b76f1832afada52acbfbed36b20bb59072f1b14a8a753379a4d9d2006d6518f",
         "source": "BingX",
         "locale": "VN",
         "category": "listing",
         "title": "BingX bổ sung XLP, LQD và nhiều hơn nữa cho Hợp đồng vĩnh viễn",
-        "date": "2026-07-14",
-        "time": "13:56",
+        "post_time": "2026-07-14T13:56:55Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/vi/support/articles/16837887309199"
       },
       {
+        "uid": "ca9ce90357a41a0935e13263f3383314148a0884355b5e7a3e2d6fb22700829c",
         "source": "BingX",
         "locale": "EN",
         "category": "listing",
         "title": "BingX Adds CUS, WFC and More for Perpetual Futures",
-        "date": "2026-07-14",
-        "time": "13:53",
+        "post_time": "2026-07-14T13:53:38Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/en/support/articles/16837899832207"
       },
       {
+        "uid": "88d98f7411b858ea1d482343758bb74d31e574a6c6e0d9d6da79e2fecd6e5c35",
         "source": "BingX",
         "locale": "VN",
         "category": "listing",
         "title": "BingX bổ sung CUS, WFC và nhiều hơn nữa cho Hợp đồng vĩnh viễn",
-        "date": "2026-07-14",
-        "time": "13:53",
+        "post_time": "2026-07-14T13:53:38Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/vi/support/articles/16837899832207"
       },
       {
+        "uid": "187165e20d2eae5ace6d5d4a78fea5088eb22a762bcd20068475437a20ff0c7f",
         "source": "Lbank",
         "locale": "EN",
         "category": "listing",
         "title": "SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock)) Will Be Listed on LBank",
-        "date": "2026-07-14",
-        "time": "13:45",
+        "post_time": "2026-07-14T13:45:49Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/support/articles/2077027077202116608"
       },
       {
+        "uid": "4ccb154fdebd8ebb4b70fa35a88d0424c5310ace4134da64672bf036f721793b",
         "source": "Lbank",
         "locale": "VN",
         "category": "listing",
         "title": "SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock)) Sẽ được niêm yết trên LBank",
-        "date": "2026-07-14",
-        "time": "13:45",
+        "post_time": "2026-07-14T13:45:49Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/vi-VN/support/articles/2077027077202116608"
       },
       {
+        "uid": "e32d2ab2e2010efe4cd6c2fd897b641f09021c19d54ac4cd20e15ffe65d28a0e",
         "source": "Lbank",
         "locale": "ID",
         "category": "listing",
         "title": "SOXLB (Semicon Bull 3X ETF (bStocks Tokenized Stock)) Akan didaftarkan di LBank",
-        "date": "2026-07-14",
-        "time": "13:45",
+        "post_time": "2026-07-14T13:45:49Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/id/support/articles/2077027077202116608"
       },
       {
+        "uid": "6f3e82614d6e0b4253f35b428f36815800f467d198058bdabcec5e7f3ac8e8d6",
         "source": "Lbank",
         "locale": "EN",
         "category": "listing",
         "title": "DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock)) Will Be Listed on LBank",
-        "date": "2026-07-14",
-        "time": "12:54",
+        "post_time": "2026-07-14T12:54:24Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/support/articles/2076996364255887360"
       },
       {
+        "uid": "25116ef2c976461ec2058eed48434bf7c9ff1e116f326be17f58e162e2b64833",
         "source": "Lbank",
         "locale": "VN",
         "category": "listing",
         "title": "DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock)) Sẽ được niêm yết trên LBank",
-        "date": "2026-07-14",
-        "time": "12:54",
+        "post_time": "2026-07-14T12:54:24Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/vi-VN/support/articles/2076996364255887360"
       },
       {
+        "uid": "cc919398c92057a4cc625bf93c5145e0477a3fefcee2ed5bb40363c722589877",
         "source": "Lbank",
         "locale": "ID",
         "category": "listing",
         "title": "DRAMB (Roundhill Memory ETF (bStocks Tokenized Stock)) Akan didaftarkan di LBank",
-        "date": "2026-07-14",
-        "time": "12:54",
+        "post_time": "2026-07-14T12:54:24Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/id/support/articles/2076996364255887360"
       },
       {
+        "uid": "cdb88d333b7b03ba1d22644e730fdb1e542466f5fcc0ca2033db9206cff31285",
         "source": "BingX",
         "locale": "EN",
         "category": "listing",
         "title": "BingX Adds XAUCAD, XAUCHF and More for Perpetual Futures",
-        "date": "2026-07-14",
-        "time": "09:48",
+        "post_time": "2026-07-14T09:48:29Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/en/support/articles/16835949205007"
       },
       {
+        "uid": "af55274c7e13807531331fd4b31c3ba086a1450738ea3cbe5f0985d1500ff0af",
         "source": "BingX",
         "locale": "VN",
         "category": "listing",
         "title": "BingX bổ sung XAUCAD, XAUCHF và nhiều hơn nữa cho Hợp đồng vĩnh viễn",
-        "date": "2026-07-14",
-        "time": "09:48",
+        "post_time": "2026-07-14T09:48:29Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/vi/support/articles/16835949205007"
       },
       {
+        "uid": "c096db16a7231bf9f7724ea6efea4831da09c3d8b4536ee8b2debcd8210321af",
         "source": "BingX",
         "locale": "EN",
         "category": "delisting",
         "title": "BingX Will Delist GFI, MANYU, PAAL, NUM, KGEN & Other Assets From Spot Trading & Other Services",
-        "date": "2026-07-14",
-        "time": "09:03",
+        "post_time": "2026-07-14T09:03:08Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/en/support/articles/16835501341583"
       },
       {
+        "uid": "971b1fc2cdd2d574c8f112b9dc27a450f3ebc07cc1c918ce24bfa2b36118a47c",
         "source": "BingX",
         "locale": "VN",
         "category": "delisting",
         "title": "BingX Sẽ Hủy Niêm Yết GFI, MANYU, PAAL, NUM, KGEN & Các Tài Sản Khác Khỏi Giao Dịch Spot & Các Dịch Vụ Liên Quan",
-        "date": "2026-07-14",
-        "time": "09:03",
+        "post_time": "2026-07-14T09:03:08Z",
         "status": "new",
-        "diff_tag": "na",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://bingx.com/vi/support/articles/16835501341583"
       },
       {
+        "uid": "335261dc1171cef227c283f54a5e2fc06c581298c443fc6ff6c07ec0717ba201",
         "source": "Lbank",
         "locale": "EN",
         "category": "other",
         "title": "Announcement Regarding Wallet Maintenance on the ERC20 Chain (ETH Network)",
-        "date": "2026-07-14",
-        "time": "08:56",
+        "post_time": "2026-07-14T08:56:22Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/support/articles/2076953708792381440"
       },
       {
+        "uid": "9506f9842ede2f3c932939c95b381294d3b6ba8634f354043ce37be72fadcd72",
         "source": "Lbank",
         "locale": "VN",
         "category": "other",
         "title": "Thông báo về việc bảo trì ví trên chuỗi ERC20 (Mạng ETH)",
-        "date": "2026-07-14",
-        "time": "08:56",
+        "post_time": "2026-07-14T08:56:22Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/vi-VN/support/articles/2076953708792381440"
       },
       {
+        "uid": "e2534d106fc5d0f6593a8e2a69012bc47e23ad3aeea2c900f2bb3bb6c0e9aa11",
         "source": "Lbank",
         "locale": "ID",
         "category": "other",
         "title": "Pengumuman Mengenai Pemeliharaan Dompet Jaringan ERC20 (Jaringan ETH)",
-        "date": "2026-07-14",
-        "time": "08:56",
+        "post_time": "2026-07-14T08:56:22Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://www.lbank.com/id/support/articles/2076953708792381440"
       },
       {
+        "uid": "2b4d43fbcca94c04743f4b2a0cf603c7218617b1caf7587abd327b971979be0f",
         "source": "Bitunix",
         "locale": "EN",
         "category": "listing",
         "title": "Bitunix to Launch SKHYUSDT in Perpetual Futures",
-        "date": "2026-07-11",
-        "time": "00:45",
+        "post_time": "2026-07-11T00:45:26Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/en-us/articles/59923371883417-Bitunix-to-Launch-SKHYUSDT-in-Perpetual-Futures"
       },
       {
+        "uid": "ce06b638d3d4fc0b8d81fdbc823cff0602a10746f81d21c0b92680029041a546",
         "source": "Bitunix",
         "locale": "FR",
         "category": "listing",
         "title": "Bitunix va Lancer SKHYUSDT dans les Futures Perpétuels",
-        "date": "2026-07-11",
-        "time": "00:45",
+        "post_time": "2026-07-11T00:45:26Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/fr/articles/59923371883417-Bitunix-va-Lancer-SKHYUSDT-dans-les-Futures-Perp%C3%A9tuels"
       },
       {
+        "uid": "aedf72c2bfa8b187e65cce3603fccddb37f5dd0167d53d9b4ba6e1b159699e54",
         "source": "Bitunix",
         "locale": "ID",
         "category": "listing",
         "title": "SKHYUSDT Terdaftar di Bitunix!",
-        "date": "2026-07-11",
-        "time": "00:45",
+        "post_time": "2026-07-11T00:45:26Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/id/articles/59923371883417-SKHYUSDT-Terdaftar-di-Bitunix"
       },
       {
+        "uid": "4148f72fd7fca9998325f7026b725b6e0aefdd69feba6e3c3303f23c7663e530",
         "source": "Bitunix",
         "locale": "EN",
         "category": "listing",
         "title": "Bitunix to Launch GEVUSDT, VRTUSDT in Perpetual Futures",
-        "date": "2026-07-10",
-        "time": "09:56",
+        "post_time": "2026-07-10T09:56:03Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/en-us/articles/59907915093657-Bitunix-to-Launch-GEVUSDT-VRTUSDT-in-Perpetual-Futures"
       },
       {
+        "uid": "ecf5af122612eada3463b415d8fb0357dcdcfeb8443ffcf4c345643f915d6c6d",
         "source": "Bitunix",
         "locale": "FR",
         "category": "listing",
         "title": "Bitunix va Lancer GEVUSDT, VRTUSDT dans les Futures Perpétuels",
-        "date": "2026-07-10",
-        "time": "09:56",
+        "post_time": "2026-07-10T09:56:03Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/fr/articles/59907915093657-Bitunix-va-Lancer-GEVUSDT-VRTUSDT-dans-les-Futures-Perp%C3%A9tuels"
       },
       {
+        "uid": "9b902eaa63863b7f40b21261261e6dfcab164c93c4a07d1294d2497a8a5f9d6d",
         "source": "Bitunix",
         "locale": "ID",
         "category": "listing",
         "title": "GEVUSDT, VRTUSDT Terdaftar di Bitunix!",
-        "date": "2026-07-10",
-        "time": "09:56",
+        "post_time": "2026-07-10T09:56:03Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/id/articles/59907915093657-GEVUSDT-VRTUSDT-Terdaftar-di-Bitunix"
       },
       {
+        "uid": "2de40e94225813ba1b044500d798638cb5a71f0da2e267fc964731380ed9f421",
         "source": "Bitunix",
         "locale": "EN",
         "category": "listing",
         "title": "Bitunix to Launch BOTUSDT, FWDIUSDT in Perpetual Futures",
-        "date": "2026-07-10",
-        "time": "02:24",
+        "post_time": "2026-07-10T02:24:39Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/en-us/articles/59890811504025-Bitunix-to-Launch-BOTUSDT-FWDIUSDT-in-Perpetual-Futures"
       },
       {
+        "uid": "f4c6e33a65b6b18c5bc9919232f3296ad94cb8287905ec2c279e94630228adfd",
         "source": "Bitunix",
         "locale": "FR",
         "category": "listing",
         "title": "Bitunix va Lancer BOTUSDT, FWDIUSDT dans les Futures Perpétuels",
-        "date": "2026-07-10",
-        "time": "02:24",
+        "post_time": "2026-07-10T02:24:39Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/fr/articles/59890811504025-Bitunix-va-Lancer-BOTUSDT-FWDIUSDT-dans-les-Futures-Perp%C3%A9tuels"
       },
       {
+        "uid": "d170cecfa6c8a7c87b8acd1af978a18f4c0a45d6fde05f6fe38e5517229c08e6",
         "source": "Bitunix",
         "locale": "ID",
         "category": "listing",
         "title": "BOTUSDT, FWDIUSDT Terdaftar di Bitunix!",
-        "date": "2026-07-10",
-        "time": "02:24",
+        "post_time": "2026-07-10T02:24:39Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/id/articles/59890811504025-BOTUSDT-FWDIUSDT-Terdaftar-di-Bitunix"
       },
       {
+        "uid": "67918cb9899a36d5b384f998167c24babdea9ee9a27f4070a06de233fcebda63",
         "source": "Bitunix",
         "locale": "EN",
         "category": "other",
         "title": "Bitunix to Cease Support for Vanar Chain (VANRY) on Polygon",
-        "date": "2026-07-08",
-        "time": "01:59",
+        "post_time": "2026-07-08T01:59:36Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/en-us/articles/59807680377497-Bitunix-to-Cease-Support-for-Vanar-Chain-VANRY-on-Polygon"
       },
       {
+        "uid": "746b13c1a4124ce488cb171e13c84b162f918d0e7c877c9e6e35106d5d55db0c",
         "source": "Bitunix",
         "locale": "FR",
         "category": "other",
         "title": "Bitunix cessera de prendre en charge Vanar Chain (VANRY) sur Polygon",
-        "date": "2026-07-08",
-        "time": "01:59",
+        "post_time": "2026-07-08T01:59:36Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/fr/articles/59807680377497-Bitunix-cessera-de-prendre-en-charge-Vanar-Chain-VANRY-sur-Polygon"
       },
       {
+        "uid": "0ceb38e402c4c716e83935f571e915f62a7e0117f420a9bdf6b0ff36a7377167",
         "source": "Bitunix",
         "locale": "ID",
         "category": "other",
         "title": "Bitunix akan Menghentikan Dukungan Vanar Chain (VANRY) di Polygon",
-        "date": "2026-07-08",
-        "time": "01:59",
+        "post_time": "2026-07-08T01:59:36Z",
         "status": "new",
-        "diff_tag": "pending",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/id/articles/59807680377497-Bitunix-akan-Menghentikan-Dukungan-Vanar-Chain-VANRY-di-Polygon"
       },
       {
+        "uid": "92e31681114f46b80da3514165f3c5ecccdb29d6586f9c6cb9a42f94c1b96094",
         "source": "Bitunix",
         "locale": "EN",
         "category": "listing",
         "title": "Bitunix to Launch TTWOUSDT, TXNUSDT in Perpetual Futures",
-        "date": "2026-07-03",
-        "time": "01:54",
+        "post_time": "2026-07-03T01:54:50Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/en-us/articles/59625299353241-Bitunix-to-Launch-TTWOUSDT-TXNUSDT-in-Perpetual-Futures"
       },
       {
+        "uid": "dac353370e0d2673c70ed1075efd883a08dff19cd3bac3ccf7e3f98d3cf04787",
         "source": "Bitunix",
         "locale": "FR",
         "category": "listing",
         "title": "Bitunix va Lancer TTWOUSDT, TXNUSDT dans les Futures Perpétuels",
-        "date": "2026-07-03",
-        "time": "01:54",
+        "post_time": "2026-07-03T01:54:50Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/fr/articles/59625299353241-Bitunix-va-Lancer-TTWOUSDT-TXNUSDT-dans-les-Futures-Perp%C3%A9tuels"
       },
       {
+        "uid": "f207b3236d1fbf3ba851a55c9a1363000e9d21184fa7fa81f9f2368718785d8b",
         "source": "Bitunix",
         "locale": "ID",
         "category": "listing",
         "title": "TTWOUSDT, TXNUSDT Terdaftar di Bitunix!",
-        "date": "2026-07-03",
-        "time": "01:54",
+        "post_time": "2026-07-03T01:54:50Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/id/articles/59625299353241-TTWOUSDT-TXNUSDT-Terdaftar-di-Bitunix"
       },
       {
+        "uid": "d588e3a2b0a4aecc52af6d3caeab051a3e57239541e1ff571091dd3eff42643c",
         "source": "Bitunix",
         "locale": "EN",
         "category": "campaign",
         "title": "Bitunix Ultra Trading Conference (UTC)  Brings Traders and KOLs to Strengthen the LATAM Trading Community",
-        "date": "2026-06-30",
-        "time": "09:38",
+        "post_time": "2026-06-30T09:38:36Z",
         "status": "new",
-        "diff_tag": "missing",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/en-us/articles/59530367696281-Bitunix-Ultra-Trading-Conference-UTC-Brings-Traders-and-KOLs-to-Strengthen-the-LATAM-Trading-Community"
       },
       {
+        "uid": "736fbdfa244e116317251d376b19ad8a79b6afe6f77d0538ebb9d8b0a9f3b02f",
         "source": "Bitunix",
         "locale": "EN",
         "category": "product",
         "title": "Introducing Super Alerts: Smarter Market Monitoring on Bitunix Charts",
-        "date": "2026-06-26",
-        "time": "03:58",
+        "post_time": "2026-06-26T03:58:23Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/en-us/articles/59392955004313-Introducing-Super-Alerts-Smarter-Market-Monitoring-on-Bitunix-Charts"
       },
       {
+        "uid": "e6ce9b8666987a757523514c9974c434a7e5f7c3684193b955b208d63222fecb",
         "source": "Bitunix",
         "locale": "ID",
         "category": "product",
         "title": "Memperkenalkan Super Alerts di Bitunix Charts | Peningkatan dalam Perdagangan Kripto",
-        "date": "2026-06-26",
-        "time": "03:58",
+        "post_time": "2026-06-26T03:58:23Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/id/articles/59392955004313-Memperkenalkan-Super-Alerts-di-Bitunix-Charts-Peningkatan-dalam-Perdagangan-Kripto"
       },
       {
+        "uid": "3262bcc1c1ec62b180ea9d05d32396edd7c5fa22615d00499774f71a46a7a9af",
         "source": "Bitunix",
         "locale": "EN",
         "category": "product",
         "title": "Bitunix Chart Trading Upgrade: Faster Orders and TP/SL",
-        "date": "2025-12-30",
-        "time": "08:31",
+        "post_time": "2025-12-30T08:31:20Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/en-us/articles/53799031310361-Bitunix-Chart-Trading-Upgrade-Faster-Orders-and-TP-SL"
       },
       {
+        "uid": "09ed925ed8bfabb26e4c5152a513502f19da4912af2016dd30f27cc511a76718",
         "source": "Bitunix",
         "locale": "ID",
         "category": "product",
         "title": "Peningkatan Bitunix Chart Trading: Order dan TP/SL Lebih Cepat",
-        "date": "2025-12-30",
-        "time": "08:31",
+        "post_time": "2025-12-30T08:31:20Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/id/articles/53799031310361-Peningkatan-Bitunix-Chart-Trading-Order-dan-TP-SL-Lebih-Cepat"
       },
       {
+        "uid": "39413aa9ee62cf6084a924d7bc195f1157ea3e5d6ca078954bf2751f6e452596",
         "source": "Bitunix",
         "locale": "EN",
         "category": "product",
         "title": "Bitunix Launches Full Transaction History Export Function for a Tax Report",
-        "date": "2025-12-26",
-        "time": "15:40",
+        "post_time": "2025-12-26T15:40:00Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/en-us/articles/53704348774809-Bitunix-Launches-Full-Transaction-History-Export-Function-for-a-Tax-Report"
       },
       {
+        "uid": "6d0f1f7b94d1a8c7332675bef8b41cb6c3a4f1849161c4c5258061c092987c18",
         "source": "Bitunix",
         "locale": "FR",
         "category": "product",
         "title": "Comment exporter votre historique de transactions pour un rapport fiscal",
-        "date": "2025-12-26",
-        "time": "15:40",
+        "post_time": "2025-12-26T15:40:00Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/fr/articles/53704348774809-Comment-exporter-votre-historique-de-transactions-pour-un-rapport-fiscal"
       },
       {
+        "uid": "f00971f8ea768dfe09479ced1f1a1b70261dc7266d5cb3ccd4abdab2ae79eedd",
         "source": "Bitunix",
         "locale": "ID",
         "category": "product",
         "title": "Cara Mengekspor Riwayat Transaksi Anda untuk Laporan Pajak",
-        "date": "2025-12-26",
-        "time": "15:40",
+        "post_time": "2025-12-26T15:40:00Z",
         "status": "new",
-        "diff_tag": "mixed",
-        "is_mock": false
+        "diff_type": null,
+        "priority": null,
+        "url": "https://support.bitunix.com/hc/id/articles/53704348774809-Cara-Mengekspor-Riwayat-Transaksi-Anda-untuk-Laporan-Pajak"
       }
     ],
     "total": 99,

@@ -1,6 +1,9 @@
 """src/analysis/llm.py 单测：JSON 解析失败处理、evidence_indices 空数组强制改
 「不适用」、uid 不在 related_uids 内时丢弃并记日志、diff_type 非法枚举强制修正、
 cache key 计算的顺序无关性、call_llm 的 HTTP 调用（mock http_fetch，不发真实请求）。
+
+-v2（2026-07-20）新增：articles[] 逐条字段（diff_type/priority/follow_up/
+change_kind/listing_kind）的校验测试，见 test_validate_and_normalize_article_*。
 """
 
 from __future__ import annotations
@@ -122,6 +125,144 @@ def test_validate_and_normalize_ignores_out_of_range_evidence_index():
     })
     result = validate_and_normalize(raw, category="campaign", related_uids=set(), zmx_hits=[])
     assert result.zmx_evidence_uids == []
+
+
+def _article(**overrides):
+    base = {
+        "uid": "u1", "title": "t", "diff_type": "ZMX缺失", "evidence_indices": [1],
+        "priority": "高", "follow_up": "跟进一下",
+    }
+    base.update(overrides)
+    return base
+
+
+def test_validate_and_normalize_article_listing_rejects_zmx_variant_type():
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(diff_type="ZMX玩法不同")],
+        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
+    })
+    result = validate_and_normalize(raw, category="listing", related_uids={"u1"})
+    assert result.articles_analysis[0]["diff_type"] == "不适用"
+    assert any("invalid_diff_type" in i for i in result.issues)
+
+
+def test_validate_and_normalize_article_empty_evidence_forces_not_applicable():
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(diff_type="ZMX缺失", evidence_indices=[])],
+        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
+    })
+    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
+    assert result.articles_analysis[0]["diff_type"] == "不适用"
+    assert any("empty_evidence_indices_forced_not_applicable" in i for i in result.issues)
+
+
+def test_validate_and_normalize_article_delisting_diff_type_always_not_applicable():
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(diff_type="ZMX缺失", evidence_indices=[1])],
+        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
+    })
+    result = validate_and_normalize(raw, category="delisting", related_uids={"u1"})
+    assert result.articles_analysis[0]["diff_type"] == "不适用"
+
+
+def test_validate_and_normalize_article_invalid_priority_becomes_null_not_fabricated():
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(priority="超级高")],
+        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
+    })
+    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
+    assert result.articles_analysis[0]["priority"] is None
+    assert any("invalid_priority" in i for i in result.issues)
+
+
+def test_validate_and_normalize_article_change_kind_kept_only_for_campaign_and_changed_status():
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(diff_type="不适用", evidence_indices=[], change_kind="reward")],
+        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
+    })
+    result = validate_and_normalize(
+        raw, category="campaign", related_uids={"u1"}, article_status={"u1": "changed"}
+    )
+    assert result.articles_analysis[0]["change_kind"] == "reward"
+
+
+def test_validate_and_normalize_article_change_kind_null_when_status_not_changed():
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(diff_type="不适用", evidence_indices=[], change_kind="reward")],
+        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
+    })
+    result = validate_and_normalize(
+        raw, category="campaign", related_uids={"u1"}, article_status={"u1": "new"}
+    )
+    assert result.articles_analysis[0]["change_kind"] is None
+
+
+def test_validate_and_normalize_article_change_kind_null_without_article_status_param():
+    # 不传 article_status（默认 None）等价于"每条状态都不是 changed"，change_kind 恒 null，
+    # 这保证了所有既有调用方/测试（不知道这个新参数）行为不受影响。
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(diff_type="不适用", evidence_indices=[], change_kind="reward")],
+        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
+    })
+    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
+    assert result.articles_analysis[0]["change_kind"] is None
+
+
+def test_validate_and_normalize_article_change_kind_null_for_non_campaign():
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(diff_type="不适用", evidence_indices=[], change_kind="reward")],
+        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
+    })
+    result = validate_and_normalize(
+        raw, category="product", related_uids={"u1"}, article_status={"u1": "changed"}
+    )
+    assert result.articles_analysis[0]["change_kind"] is None
+
+
+def test_validate_and_normalize_article_listing_kind_only_kept_for_listing():
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(diff_type="不适用", evidence_indices=[], listing_kind="spot")],
+        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
+    })
+    listing_result = validate_and_normalize(raw, category="listing", related_uids={"u1"})
+    assert listing_result.articles_analysis[0]["listing_kind"] == "spot"
+
+    campaign_result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
+    assert campaign_result.articles_analysis[0]["listing_kind"] is None
+
+
+def test_validate_and_normalize_article_listing_kind_invalid_value_becomes_null():
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(diff_type="不适用", evidence_indices=[], listing_kind="两者均有")],
+        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
+    })
+    result = validate_and_normalize(raw, category="listing", related_uids={"u1"})
+    assert result.articles_analysis[0]["listing_kind"] is None
+
+
+def test_validate_and_normalize_invalid_article_field_does_not_drop_whole_article():
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(diff_type="某种奇怪的值", priority="乱填", follow_up=123)],
+        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
+    })
+    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
+    assert len(result.articles_analysis) == 1
+    article = result.articles_analysis[0]
+    assert article["uid"] == "u1"
+    assert article["diff_type"] == "不适用"
+    assert article["priority"] is None
+    assert article["follow_up"] is None
 
 
 def test_compute_cache_key_is_order_independent():

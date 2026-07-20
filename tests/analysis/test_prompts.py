@@ -60,6 +60,32 @@ def test_build_prompt_all_categories_produce_nonempty_prompts(conn, category):
     assert "u1" in result.user
 
 
+@pytest.mark.parametrize(
+    "category,expect_present,expect_absent",
+    [
+        ("campaign", ['"change_kind"'], ['"listing_kind"']),
+        ("product", [], ['"change_kind"', '"listing_kind"']),
+        ("listing", ['"listing_kind"'], ['"change_kind"']),
+        # delisting 的 zmx_comparison（批次级，非 articles[] 逐条）本来就硬编码了
+        # "evidence_indices": []，这是既有行为，不在本次变更范围内，所以不在 absent 列表里。
+        ("delisting", [], ['"change_kind"', '"listing_kind"']),
+    ],
+)
+def test_build_prompt_per_article_fields_only_where_relevant(conn, category, expect_present, expect_absent):
+    # 用带引号的 JSON key 形式（如 '"change_kind"'）而不是裸子串，因为不产出某字段的
+    # category 模板里，强制规则文案会提到该字段名本身（"不产出 change_kind 字段"），
+    # 裸子串检测会被这句说明文字误判成"存在"。
+    rows = _rows(conn, [("u1", "Title A", "new", "content A")])
+    result = build_prompt(
+        category, source="Bitunix", locale="EN", batch_date="2026-07-14",
+        rows=rows, old_content_by_uid={}, zmx_hits=[],
+    )
+    for field in expect_present:
+        assert field in result.user, f"{field} should appear in {category} prompt"
+    for field in expect_absent:
+        assert field not in result.user, f"{field} should NOT appear in {category} prompt"
+
+
 def test_build_prompt_includes_old_content_only_for_changed(conn):
     rows = _rows(conn, [
         ("u1", "New article", "new", "new content"),
