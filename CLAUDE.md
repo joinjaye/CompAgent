@@ -3811,6 +3811,68 @@ pytest
 - **`docs/data/dashboard.json` 已用新 schema 重新生成并覆盖本地文件**，但
   **本次 session 没有执行任何 git 操作**，是否 commit/push 由用户决定。
 - **GitHub Pages 仍未启用**（此前 session 遗留问题，本次未涉及）。
-- Markets 的 KR 市场 tab 按原计划保持灰显占位，未接入任何数据（本期不做，
-  跟更早 session 记录的"KR 是否复用 CompAgent_KR 群"悬而未决的问题一致，
-  未在本次擅自决定）。
+- Markets 的 KR 灰显占位已在下述 2026-07-20 优化中删除；EN-Asia 的看板与推送
+  占位也一并删除。底层 Zoomex EN-Asia 采集范围不受影响。
+
+## LLM 成本/质量优化 + Listing/Delisting 退出分析链路（2026-07-20）
+
+用户确认新的正式业务约束：**只有 Campaign/Product 做 LLM 分析和 Zoomex 比较；
+Listing/Delisting 不做任何 LLM 调用或 ZMX 比较，只在看板做确定性汇总和详情展示。**
+同时暂不做 EN-Asia/KR 市场展示，删除已有占位。
+
+### 分析调用边界
+
+- `src/analysis/run.py` 新增 `ANALYZED_CATEGORIES={"campaign","product"}`，批次枚举后
+  立即过滤；当日只有 listing/delisting 时不加载 LLM 凭证、不建 prompt、不查 ZMX
+  基线、不写 insights，真实调用数为 0。
+- `config/analysis.yaml` 删除 listing/delisting 的 max_tokens 和 prompt_version，
+  Campaign/Product 升为 v3，响应预算分别降为 2200/2000。
+- 旧 listing/delisting insights 暂不物理删除（保留历史可追溯性），但 Dashboard
+  导出层明确忽略其中的 diff/priority/follow_up/listing_kind，避免展示过期分析。
+
+### Campaign/Product v3 Prompt
+
+- Prompt 只保留业务可用的短结构：事实描述、变化、ZMX 证据、具体优先级理由、
+  `action_type`、`owner`、可执行 `follow_up`；不再要求模型重复返回 title。
+- 正文不再简单截前 4000 字：程序保留首尾及包含数字、日期、奖励、规则、用户门槛的
+  高价值句，再按 2400 字硬上限截断。
+- changed 公告不再同时注入两份完整正文，改用句子级 `-before/+after` diff。
+- 缓存 key 除 content hash/prompt version 外加入 model 和 Zoomex baseline digest
+  hash；切换模型或基线变化会重新比较，不复用过期结果。
+
+### Dashboard / Markets
+
+- Listing 类型只在标题有明确词证据时以规则识别：`spot` → spot，
+  `perpetual/perp/future/contract` → perp；冲突或无证据时显示未知，不猜测。
+- Listing 表移除“优先级/差异”两列，只保留来源、地区、标题、类型、日期、状态。
+- `build_markets()` 不再导出 `baseline_by_locale`；前端删除 EN-Asia 专属基线卡、
+  EN-Asia push 分支、Asia 矩阵列和 KR 灰显 tab。
+- `config/push_targets.yaml` 删除 EN-Asia 占位群，只保留 EN/FR/VN/ID。
+- Zoomex EN-Asia 的采集与底层基线数据本次没有删除；本次约束仅针对展示/推送占位。
+
+### 验证
+
+```
+.venv/bin/python -m pytest -q
+# 302 passed
+```
+
+新增覆盖：listing/delisting 不加载凭证且零 LLM 调用、v3 句子级 diff、
+Dashboard 忽略旧 listing insight、标题规则识别 perp、EN-Asia placeholder 不导出。
+`docs/data/dashboard.json` 已用主库重新生成。
+
+### v3 后续质量门禁与基线压缩
+
+- `get_baseline_digest()` 仍先取最多 20 条“玩法类型覆盖池”，但 `run.py` 在构建
+  Prompt 前新增 `select_relevant_baseline()`：以当前批次标题/正文和基线的
+  title/mechanism/key_mechanics/reward/target_users 做确定性词项重叠排序，实际只
+  注入最多 8 条（`candidate_entries_per_batch`）。无 embedding、无额外 LLM 调用；
+  零重叠时以原类型覆盖顺序和 diversity bonus 保守退化。
+- v3 逐条输出新增程序质量门禁：`action_type`、`owner` 按 category 枚举校验；
+  高/中优先级缺 `priority_reason` 会记录 issue；“建议关注/建议评估”等无执行内容
+  的泛化 follow-up 会被置空；有 action 但没有可执行 follow-up 会记 issue。
+- 校验器会检测 LLM 漏返回的 UID（`missing_article_uids`）和重复 UID；重复项直接
+  丢弃，漏项会计入本次 `validation_failed` 监控但仍保留同批次其它合法结果，
+  避免“一条漏项导致整批可用分析全部作废”。
+- 新增 `tests/analysis/test_baseline_selection.py` 以及 action/owner/漏项/重复 UID
+  校验用例；全量测试总数更新为 308。

@@ -1,5 +1,5 @@
 """src/analysis/prompts.py 单测：占位符替换只认 ALL_CAPS 变量、不受信任的正文内容
-（可能包含花括号或看起来像占位符的文本）不会破坏模板、四个 category 都能正确构建、
+（可能包含花括号或看起来像占位符的文本）不会破坏模板、只有 campaign/product 构建、
 ZMX_NOTE 的两种状态（有基线/零基线——结构化基线注入后不再有"命中数有限、置信度
 较低"这个中间档位，见 build_zmx_note 的 docstring）。
 """
@@ -47,7 +47,7 @@ def _rows(conn, entries):
     return conn.execute("SELECT * FROM announcements").fetchall()
 
 
-@pytest.mark.parametrize("category", ["campaign", "product", "listing", "delisting"])
+@pytest.mark.parametrize("category", ["campaign", "product"])
 def test_build_prompt_all_categories_produce_nonempty_prompts(conn, category):
     rows = _rows(conn, [("u1", "Title A", "new", "content A")])
     result = build_prompt(
@@ -65,10 +65,6 @@ def test_build_prompt_all_categories_produce_nonempty_prompts(conn, category):
     [
         ("campaign", ['"change_kind"'], ['"listing_kind"']),
         ("product", [], ['"change_kind"', '"listing_kind"']),
-        ("listing", ['"listing_kind"'], ['"change_kind"']),
-        # delisting 的 zmx_comparison（批次级，非 articles[] 逐条）本来就硬编码了
-        # "evidence_indices": []，这是既有行为，不在本次变更范围内，所以不在 absent 列表里。
-        ("delisting", [], ['"change_kind"', '"listing_kind"']),
     ],
 )
 def test_build_prompt_per_article_fields_only_where_relevant(conn, category, expect_present, expect_absent):
@@ -95,10 +91,10 @@ def test_build_prompt_includes_old_content_only_for_changed(conn):
         "campaign", source="Bitunix", locale="EN", batch_date="2026-07-14",
         rows=rows, old_content_by_uid={"u2": "old content v1"}, zmx_hits=[],
     )
-    assert "变更前正文：old content v1" in result.user
-    # 只有一条真正带旧正文的数据行；campaign 模板本身的格式说明文案里也提到了
-    # "变更前正文" 一次，所以总出现次数是数据 1 次 + 说明文案 1 次。
-    assert result.user.count("变更前正文") == 2
+    assert "diff(-before/+after)=" in result.user
+    assert "- old content v1" in result.user
+    assert "+ new content v2" in result.user
+    assert "变更前正文" not in result.user
 
 
 def test_build_prompt_rejects_unknown_category(conn):
@@ -108,13 +104,14 @@ def test_build_prompt_rejects_unknown_category(conn):
                       rows=rows, old_content_by_uid={})
 
 
-def test_build_prompt_delisting_has_no_zmx_block(conn):
+@pytest.mark.parametrize("category", ["listing", "delisting"])
+def test_build_prompt_rejects_categories_that_do_not_use_llm(conn, category):
     rows = _rows(conn, [("u1", "T", "new", "C")])
-    result = build_prompt(
-        "delisting", source="Bitunix", locale="EN", batch_date="2026-07-14",
-        rows=rows, old_content_by_uid={},
-    )
-    assert "Zoomex" not in result.user
+    with pytest.raises(ValueError, match="不使用 LLM"):
+        build_prompt(
+            category, source="Bitunix", locale="EN", batch_date="2026-07-14",
+            rows=rows, old_content_by_uid={},
+        )
 
 
 def test_zmx_note_zero_hits(conn):

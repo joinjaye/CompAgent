@@ -1,6 +1,6 @@
 """src/dashboard/export_data.py 单测：category-first schema 的 8 个顶层 key 都在、
 search_index 字段窄且不含正文、老批次（缺 5 个新字段）优雅降级不报错、delisting 行
-在 listing 段里正确带 category 标签、EN-Asia 只有基线数据时不报错。
+在 listing 段里正确带 category 标签、Listing/Delisting 不暴露旧 LLM 分析。
 
 全部离线：真实 schema.sql 建的临时库 + upsert_announcement/upsert_insight 直接写行，
 不发真实请求、不调用真实 LLM。
@@ -92,6 +92,9 @@ def test_old_shaped_articles_analysis_missing_new_fields_degrades_gracefully(con
     row = campaign_rows[0]
     assert row["diff_type"] is None
     assert row["priority"] is None
+    assert row["priority_reason"] is None
+    assert row["action_type"] is None
+    assert row["owner"] is None
     assert row["follow_up"] is None
     assert row["change_kind"] is None
     assert row["listing_kind"] is None
@@ -128,16 +131,34 @@ def test_delisting_rows_tagged_within_listing_section(conn, db_path):
     assert categories[delisting_uid] == "delisting"
 
 
-def test_en_asia_baseline_only_does_not_error(conn, db_path):
-    # EN-Asia 没有任何竞品配置（COMPETITORS 里没有任何源列出 EN-Asia），只有 Zoomex 基线。
+def test_en_asia_placeholder_is_not_exported(conn, db_path):
     _insert(conn, source="Zoomex", locale="EN-Asia", article_id="z1", category="campaign")
     conn.commit()
-    data = build_dashboard_data(str(db_path))  # 不应抛异常
-    baseline = data["markets"]["baseline_by_locale"]["EN-Asia"]
-    assert baseline["total"] == 1
-    assert baseline["categories"]["campaign"] == 1
-    # 且没有任何 category section 因为 EN-Asia 而报错或包含 Zoomex 自己的行
+    data = build_dashboard_data(str(db_path))
+    assert "baseline_by_locale" not in data["markets"]
     assert all(r["source"] != "Zoomex" for r in data["campaign"])
+
+
+def test_listing_uses_title_rule_and_ignores_legacy_llm_fields(conn, db_path):
+    uid = _insert(
+        conn, source="Bitunix", locale="EN", article_id="1", category="listing",
+        title="ABCUSDT Perpetual Contract Is Now Live",
+    )
+    conn.commit()
+    _insight(
+        conn, source="Bitunix", category="listing", locale="EN", uids=[uid],
+        articles=[{
+            "uid": uid, "listing_kind": "spot", "diff_type": "ZMX缺失",
+            "priority": "高", "follow_up": "legacy",
+        }],
+    )
+    conn.commit()
+
+    row = build_dashboard_data(str(db_path))["listing"][0]
+    assert row["listing_kind"] == "perp"
+    assert row["diff_type"] is None
+    assert row["priority"] is None
+    assert row["follow_up"] is None
 
 
 def test_overview_chip_diff_breakdown_counts_per_article_diff_type(conn, db_path):

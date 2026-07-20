@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import html
 import json
+import re
 import sqlite3
 
 from dataclasses import dataclass
@@ -54,8 +55,6 @@ COMPETITORS: dict[str, list[str]] = {
     "Lbank": ["EN", "VN", "ID"],
 }
 BASELINE_SOURCE = "Zoomex"
-BASELINE_LOCALES = ["EN", "FR", "EN-Asia", "VN", "ID"]
-
 CATEGORIES = ["campaign", "product", "listing", "delisting"]
 
 DIFF_TYPE_TAG = {
@@ -113,6 +112,21 @@ def _priority_sort_key(priority: Optional[str]) -> int:
     return PRIORITY_SORT_ORDER.get(priority or "", 3)
 
 
+_PERP_RE = re.compile(r"\b(perpetual|perp|futures?|contract)\b", re.IGNORECASE)
+_SPOT_RE = re.compile(r"\bspot\b", re.IGNORECASE)
+
+
+def _listing_kind_from_title(title: Optional[str], category: str) -> Optional[str]:
+    """Listing/Delisting 不调用 LLM；仅在标题有明确证据时做确定性归约。"""
+    if category != "listing" or not title:
+        return None
+    has_perp = bool(_PERP_RE.search(title))
+    has_spot = bool(_SPOT_RE.search(title))
+    if has_perp == has_spot:
+        return None
+    return "perp" if has_perp else "spot"
+
+
 def _resolve_as_of_date(conn: sqlite3.Connection) -> str:
     row = conn.execute(
         f"SELECT MAX(date(fetched_at)) FROM announcements WHERE source != '{BASELINE_SOURCE}'"
@@ -168,6 +182,9 @@ def _load_article_index(conn: sqlite3.Connection) -> dict[str, dict]:
             index[uid] = {
                 "diff_type": a.get("diff_type"),
                 "priority": a.get("priority"),
+                "priority_reason": a.get("priority_reason"),
+                "action_type": a.get("action_type"),
+                "owner": a.get("owner"),
                 "follow_up": a.get("follow_up"),
                 "change_kind": a.get("change_kind"),
                 "listing_kind": a.get("listing_kind"),
@@ -224,7 +241,9 @@ def build_category_section(
     )
     out = []
     for r in rows:
-        art = article_index.get(r["uid"], {})
+        # Listing/Delisting 自本版起不做任何 LLM 分析或 ZMX 比较；即使数据库里
+        # 留有旧版本 insight，也不得继续展示过期的 priority/diff/follow_up。
+        art = {} if category in ("listing", "delisting") else article_index.get(r["uid"], {})
         out.append({
             "uid": r["uid"],
             "source": r["source"],
@@ -239,9 +258,16 @@ def build_category_section(
             "diff_type": art.get("diff_type"),
             "diff_tag": DIFF_TYPE_TAG.get(art.get("diff_type") or "", "na"),
             "priority": art.get("priority"),
+            "priority_reason": art.get("priority_reason"),
+            "action_type": art.get("action_type"),
+            "owner": art.get("owner"),
             "follow_up": art.get("follow_up"),
             "change_kind": art.get("change_kind"),
-            "listing_kind": art.get("listing_kind"),
+            "listing_kind": (
+                _listing_kind_from_title(r["title"], category)
+                if category in ("listing", "delisting")
+                else art.get("listing_kind")
+            ),
             "is_mock": art.get("is_mock", False),
             "is_locale_derived": art.get("is_locale_derived", False),
         })
@@ -359,26 +385,7 @@ def build_markets(conn: sqlite3.Connection) -> dict:
         }
         for g in picked
     ]
-    return {"regions": regions, "baseline_by_locale": _build_baseline_by_locale(conn)}
-
-
-def _build_baseline_by_locale(conn: sqlite3.Connection) -> dict[str, dict]:
-    """Zoomex 是基线不是竞品，EN-Asia locale 目前只有 Zoomex 配置（见 CLAUDE.md
-    「竞品与语言范围」表），没有任何竞品数据可看——Markets 的 EN-Asia 切片只能
-    展示基线自身，这里把数据准备好，前端据此渲染"仅基线，无竞品数据"的状态。"""
-    rows = _dict_rows(
-        conn.execute(
-            f"""SELECT locale, category, COUNT(*) as n FROM announcements
-                WHERE source = '{BASELINE_SOURCE}' AND category IS NOT NULL
-                GROUP BY locale, category"""
-        )
-    )
-    out: dict[str, dict] = {loc: {"total": 0, "categories": {}} for loc in BASELINE_LOCALES}
-    for r in rows:
-        if r["locale"] in out:
-            out[r["locale"]]["categories"][r["category"]] = r["n"]
-            out[r["locale"]]["total"] += r["n"]
-    return out
+    return {"regions": regions}
 
 
 def build_search_index(conn: sqlite3.Connection, article_index: dict[str, dict]) -> dict:

@@ -113,9 +113,26 @@ def test_full_run_creates_insight_row(conn, fake_credentials, monkeypatch):
     assert row["article_count"] == 1
     assert json.loads(row["related_uids"]) == [uid]
     assert row["is_locale_derived"] == 0
-    # config/analysis.yaml 的 prompt_versions.campaign 在 2026-07-20 从 v1 升到 v2
-    # （articles[] 逐条新增字段，见 CLAUDE.md），这里跟随真实配置更新，不是巧合。
-    assert row["prompt_version"] == "campaign-v2"
+    assert row["prompt_version"] == "campaign-v3"
+
+
+@pytest.mark.parametrize("category", ["listing", "delisting"])
+def test_listing_categories_never_load_credentials_or_call_llm(conn, monkeypatch, category):
+    _insert(conn, source="Bitunix", locale="EN", article_id="1", group_id="g1", category=category)
+    conn.commit()
+
+    def boom(*a, **k):
+        raise AssertionError("listing/delisting must not touch the LLM path")
+
+    monkeypatch.setattr("src.analysis.run.load_llm_credentials", boom)
+    monkeypatch.setattr("src.analysis.run.call_llm", boom)
+
+    from src.analysis.run import run
+    report = run(conn, batch_date=BATCH_DATE, sources=("Bitunix",), dry_run=False)
+
+    assert report.llm_calls == 0
+    assert report.analyzed == 0
+    assert conn.execute("SELECT COUNT(*) FROM insights").fetchone()[0] == 0
 
 
 def test_rerun_same_day_hits_cache_and_skips_llm_call(conn, fake_credentials, monkeypatch):

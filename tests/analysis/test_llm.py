@@ -265,6 +265,77 @@ def test_validate_and_normalize_invalid_article_field_does_not_drop_whole_articl
     assert article["follow_up"] is None
 
 
+def test_validate_and_normalize_business_action_fields():
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(
+            priority="高", priority_reason="奖池由 10,000 增至 50,000 USDT",
+            action_type="campaign_design", owner="campaign_ops",
+            follow_up="两日内输出 SEA 合约交易赛奖池对比表",
+        )],
+        "zmx_comparison": {
+            "diff_type": "不适用", "analysis": None, "evidence_indices": [],
+            "priority": "低", "priority_reason": None,
+        },
+    })
+    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
+    article = result.articles_analysis[0]
+    assert article["priority_reason"].startswith("奖池")
+    assert article["action_type"] == "campaign_design"
+    assert article["owner"] == "campaign_ops"
+    assert article["follow_up"].startswith("两日内")
+
+
+def test_validate_and_normalize_removes_generic_action_and_invalid_enums():
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(
+            priority="高", priority_reason=None, action_type="do_something",
+            owner="anyone", follow_up="建议关注",
+        )],
+        "zmx_comparison": {
+            "diff_type": "不适用", "analysis": None, "evidence_indices": [],
+            "priority": "低", "priority_reason": None,
+        },
+    })
+    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
+    article = result.articles_analysis[0]
+    assert article["priority_reason"] is None
+    assert article["action_type"] is None
+    assert article["owner"] is None
+    assert article["follow_up"] is None
+    assert any("generic_follow_up_removed" in i for i in result.issues)
+    assert any("missing_priority_reason" in i for i in result.issues)
+
+
+def test_validate_and_normalize_reports_missing_batch_articles():
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(uid="u1")],
+        "zmx_comparison": {
+            "diff_type": "不适用", "analysis": None, "evidence_indices": [],
+            "priority": "低", "priority_reason": None,
+        },
+    })
+    result = validate_and_normalize(raw, category="campaign", related_uids={"u1", "u2"})
+    assert result.valid is True
+    assert any(issue == "missing_article_uids:u2" for issue in result.issues)
+
+
+def test_validate_and_normalize_drops_duplicate_article_uid():
+    raw = json.dumps({
+        "batch_summary": "s",
+        "articles": [_article(uid="u1"), _article(uid="u1")],
+        "zmx_comparison": {
+            "diff_type": "不适用", "analysis": None, "evidence_indices": [],
+            "priority": "低", "priority_reason": None,
+        },
+    })
+    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
+    assert len(result.articles_analysis) == 1
+    assert any(issue == "dropped_duplicate_article_uid:u1" for issue in result.issues)
+
+
 def test_compute_cache_key_is_order_independent():
     k1 = compute_cache_key(["hashA", "hashB"], "campaign-v1")
     k2 = compute_cache_key(["hashB", "hashA"], "campaign-v1")

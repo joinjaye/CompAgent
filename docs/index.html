@@ -34,7 +34,6 @@
   --loc-fr: #9b8ce8;
   --loc-vn: #f0895f;
   --loc-id: #2fd39a;
-  --loc-asia: #ec8fb0;
 
   --on-accent: #071018;
   --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
@@ -212,7 +211,6 @@ a { color: inherit; }
 .locale-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
 .locale-dot.en { background: var(--loc-en); } .locale-dot.fr { background: var(--loc-fr); }
 .locale-dot.vn { background: var(--loc-vn); } .locale-dot.id { background: var(--loc-id); }
-.locale-dot.asia { background: var(--loc-asia); }
 
 /* ---------- Markets ---------- */
 .market-tabs { display: flex; gap: 4px; padding: 0.5rem 1.5rem 0; flex-wrap: wrap; }
@@ -296,8 +294,8 @@ const CATEGORY_LABEL = { campaign: '活动 Campaign', product: '产品 Product',
 const DIFF_LABEL = { missing: 'ZMX缺失', diff: 'ZMX玩法不同', same: 'ZMX已有', mixed: '混合', na: '不适用', pending: '待分析' };
 const STATUS_LABEL = { new: '新增', changed: '变更', unchanged: '未变' };
 const SOURCES = ['Bitunix', 'Weex', 'BingX', 'Phemex', 'Lbank'];
-const LOCALE_LABEL = { EN: 'EN', FR: 'FR', VN: 'VN', ID: 'ID', 'EN-Asia': 'EN-Asia' };
-const LOCALE_DOT_CLASS = { EN: 'en', FR: 'fr', VN: 'vn', ID: 'id', 'EN-Asia': 'asia' };
+const LOCALE_LABEL = { EN: 'EN', FR: 'FR', VN: 'VN', ID: 'ID' };
+const LOCALE_DOT_CLASS = { EN: 'en', FR: 'fr', VN: 'vn', ID: 'id' };
 const PRIORITY_ORDER = { '高': 0, '中': 1, '低': 2 };
 const DIFF_SORT_ORDER = { missing: 0, diff: 1, mixed: 2, same: 3, na: 3 };
 const SEARCH_PAGE_SIZE = 50;
@@ -378,29 +376,6 @@ function pushChipCard(label, rows) {
 
 function renderPushView(locale) {
   const app = document.getElementById('app');
-
-  // EN-Asia 没有任何竞品配置（COMPETITORS 里没有任何源列出 EN-Asia），推送视图
-  // 展示 Zoomex 基线状态，不是一个空的、看起来像出错的高亮列表。
-  if (locale === 'EN-Asia') {
-    const baseline = (DATA.markets && DATA.markets.baseline_by_locale['EN-Asia']) || { total: 0, categories: {} };
-    const cats = Object.entries(baseline.categories).sort((a, b) => b[1] - a[1]);
-    app.innerHTML = `
-      <div class="push-view">
-        <div class="push-header">
-          <span class="push-title">竞品情报日报 · EN-Asia</span>
-          <span class="push-date">${esc(DATA.meta.batch_date)}</span>
-        </div>
-        <div class="baseline-card" style="margin:0.75rem 1.25rem 0">
-          本地区无竞品数据，仅展示 Zoomex 基线：累计 <strong>${baseline.total}</strong> 条。
-          <div class="zoomex-cats">
-            ${cats.length ? cats.map(([c, n]) => `<span class="tag tag-${c}">${esc(CATEGORY_LABEL[c] || c)} · ${n}</span>`).join('') : '<span style="color:var(--text-muted);font-size:12px">无数据</span>'}
-          </div>
-        </div>
-      </div>
-      <div data-push-ready="EN-Asia"></div>
-    `;
-    return;
-  }
 
   const byLocale = arr => (arr || []).filter(r => r.locale === locale);
   const campaignRows = byLocale(DATA.campaign);
@@ -598,8 +573,13 @@ function detailCard(r, expandedByDefault) {
       </div>
       ${r.description ? `<div class="detail-body ${startClamped ? 'clamped' : ''}">${esc(r.description)}</div>` : ''}
       ${isLong ? `<button class="analysis-toggle" data-toggle>${startClamped ? '展开全文 ▾' : '收起 ▴'}</button>` : ''}
+      ${r.priority_reason ? `<div class="detail-body" style="margin-top:7px">依据：${esc(r.priority_reason)}</div>` : ''}
       ${r.follow_up ? `<div class="follow-up">→ ${esc(r.follow_up)}</div>` : ''}
-      <div class="detail-meta"><span>${formatTime(r.post_time)}</span></div>
+      <div class="detail-meta">
+        <span>${formatTime(r.post_time)}</span>
+        ${r.owner ? `<span>Owner: ${esc(r.owner)}</span>` : ''}
+        ${r.action_type ? `<span>Action: ${esc(r.action_type)}</span>` : ''}
+      </div>
     </div>
   `;
 }
@@ -666,7 +646,7 @@ function listingKindLabel(r) {
 
 function renderListingRow(r) {
   return `
-    <tr class="${r.diff_tag === 'missing' ? 'row-accent-missing' : ''}">
+    <tr>
       <td><span class="source-pill">${esc(r.source)}</span></td>
       <td>${localeDot(r.locale)}${esc(LOCALE_LABEL[r.locale] || r.locale)}</td>
       <td class="td-title">
@@ -675,8 +655,6 @@ function renderListingRow(r) {
       </td>
       <td><span class="tag ${r.category === 'delisting' ? 'tag-delisting' : 'tag-listing'}">${esc(listingKindLabel(r))}</span></td>
       <td class="td-time">${formatDate(r.post_time)}</td>
-      <td>${r.priority ? `<span class="tag ${priorityClass(r.priority)}">${esc(r.priority)}</span>` : '—'}</td>
-      <td><span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || r.diff_tag)}</span></td>
       <td><span class="status-chip ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span></td>
     </tr>
   `;
@@ -694,7 +672,7 @@ function renderListingPane() {
     </div>
     <div class="table-wrap">
       <table class="data-table">
-        <thead><tr><th style="width:90px">来源</th><th style="width:64px">地区</th><th>标题</th><th style="width:80px">类型</th><th class="td-time">日期</th><th style="width:70px">优先级</th><th style="width:110px">差异</th><th style="width:76px">状态</th></tr></thead>
+        <thead><tr><th style="width:90px">来源</th><th style="width:64px">地区</th><th>标题</th><th style="width:80px">类型</th><th class="td-time">日期</th><th style="width:76px">状态</th></tr></thead>
         <tbody id="listingBody"></tbody>
       </table>
     </div>
@@ -707,7 +685,7 @@ function renderListingBody() {
   const sorted = sortByPriorityThenDiff(filtered);
   document.getElementById('listingBody').innerHTML = sorted.length
     ? sorted.map(renderListingRow).join('')
-    : `<tr><td colspan="8" class="table-empty">无匹配数据</td></tr>`;
+    : `<tr><td colspan="6" class="table-empty">无匹配数据</td></tr>`;
 }
 
 function wireListingPane() {
@@ -729,7 +707,6 @@ const MARKET_TABS = [
   { key: 'EN', label: 'EN', locales: ['EN'] },
   { key: 'FR', label: 'FR', locales: ['FR'] },
   { key: 'SEA', label: 'SEA (VN+ID)', locales: ['VN', 'ID'] },
-  { key: 'KR', label: 'KR', locales: [], disabled: true },
 ];
 
 function marketSection(category, label, rows) {
@@ -757,12 +734,9 @@ function renderMarketsPane() {
   const productRows = (DATA.product || []).filter(inLocales);
   const listingRows = (DATA.listing || []).filter(inLocales);
   const region = DATA.markets.regions;
-  const baseline = DATA.markets.baseline_by_locale['EN-Asia'] || { total: 0, categories: {} };
-  const baselineCats = Object.entries(baseline.categories).sort((a, b) => b[1] - a[1]);
-
   return `
     <div class="market-tabs" id="marketTabs">
-      ${MARKET_TABS.map(m => `<div class="market-tab ${m.disabled ? 'disabled' : ''}" data-market="${m.key}">${esc(m.label)}${m.disabled ? ' · 暂未支持' : ''}</div>`).join('')}
+      ${MARKET_TABS.map(m => `<div class="market-tab" data-market="${m.key}">${esc(m.label)}</div>`).join('')}
     </div>
 
     <div class="section-label">${esc(tab.label)} · 最新一批明细（复用 Campaign/Product/Listing 卡片组件，按地区过滤）</div>
@@ -775,7 +749,7 @@ function renderMarketsPane() {
     <div class="section-label">跨地区公告对比 · group 粒度（全部历史）</div>
     <div class="table-wrap">
       <table class="region-table">
-        <thead><tr><th>标题</th><th>来源</th><th>EN</th><th>FR</th><th>VN</th><th>ID</th><th>Asia</th><th>独占</th></tr></thead>
+        <thead><tr><th>标题</th><th>来源</th><th>EN</th><th>FR</th><th>VN</th><th>ID</th><th>独占</th></tr></thead>
         <tbody>
           ${region.length ? region.map(g => `
             <tr>
@@ -785,20 +759,11 @@ function renderMarketsPane() {
               <td>${g.locales.includes('FR') ? '<span class="locale-dot fr"></span>' : ''}</td>
               <td>${g.locales.includes('VN') ? '<span class="locale-dot vn"></span>' : ''}</td>
               <td>${g.locales.includes('ID') ? '<span class="locale-dot id"></span>' : ''}</td>
-              <td>${g.locales.includes('EN-Asia') ? '<span class="locale-dot asia"></span>' : ''}</td>
               <td>${g.exclusive ? `<span class="excl-badge">${esc(g.locales[0])} only</span>` : ''}</td>
             </tr>
-          `).join('') : `<tr><td colspan="8" class="table-empty">无数据</td></tr>`}
+          `).join('') : `<tr><td colspan="7" class="table-empty">无数据</td></tr>`}
         </tbody>
       </table>
-    </div>
-
-    <div class="baseline-card">
-      <strong>EN-Asia</strong> 目前仅 Zoomex（我方基线）配置此 locale，没有任何竞品数据（见 CLAUDE.md「竞品与语言范围」表），
-      不作为独立市场 tab、也不进入推送，这里仅展示基线自身分布供参考：基线累计 <strong>${baseline.total}</strong> 条。
-      <div class="zoomex-cats">
-        ${baselineCats.length ? baselineCats.map(([c, n]) => `<span class="tag tag-${c}">${esc(CATEGORY_LABEL[c] || c)} · ${n}</span>`).join('') : ''}
-      </div>
     </div>
   `;
 }
@@ -806,7 +771,7 @@ function renderMarketsPane() {
 function wireMarketsPane() {
   document.getElementById('marketTabs').addEventListener('click', e => {
     const t = e.target.closest('[data-market]');
-    if (!t || t.classList.contains('disabled')) return;
+    if (!t) return;
     marketsState.market = t.dataset.market;
     renderActivePane();
   });

@@ -9,6 +9,7 @@ CLI：
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import sqlite3
@@ -34,13 +35,14 @@ from src.analysis.llm import (
     validate_and_normalize,
 )
 from src.analysis.prompts import build_prompt
-from src.analysis.zmx_baseline import get_baseline_digest
+from src.analysis.zmx_baseline import get_baseline_digest, select_relevant_baseline
 from src.db.connection import DEFAULT_DB_PATH, connect
 from src.db.operations import get_content_history, utcnow_iso
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_SOURCES = ("Bitunix", "Weex")  # 竞品源；Zoomex 是基线，不作为被分析对象
+ANALYZED_CATEGORIES = frozenset({"campaign", "product"})
 
 
 def today_utc_date() -> str:
@@ -189,11 +191,6 @@ def run(
     provider = provider or llm_cfg.get("provider", "openai_http")
     max_calls_per_run = max_calls if max_calls is not None else llm_cfg.get("max_calls_per_run")
 
-    credentials = None
-    if not dry_run:
-        credentials = load_cursor_credentials() if provider == "cursor_agent" else load_llm_credentials()
-        credentials.validate()
-
     zmx_cfg = cfg.get("zmx_baseline", {})
     trunc_cfg = cfg.get("content_truncation", {})
     prompt_versions = cfg.get("prompt_versions", {})
@@ -203,6 +200,14 @@ def run(
     keys = list_batch_keys(conn, sources, batch_date)
     if categories:
         keys = [k for k in keys if k.category in categories]
+    # Listing/Delisting 只做确定性汇总和详情展示，不产出 insight，也不加载 LLM
+    # 凭证。这样仅有上/下币数据的一天可以零 LLM 调用完成全流程。
+    keys = [k for k in keys if k.category in ANALYZED_CATEGORIES]
+
+    credentials = None
+    if keys and not dry_run:
+        credentials = load_cursor_credentials() if provider == "cursor_agent" else load_llm_credentials()
+        credentials.validate()
 
     for key in keys:
         rows = get_batch_rows(conn, key.source, key.category, key.locale, batch_date)
@@ -235,14 +240,17 @@ def run(
 
         old_content_map = _build_old_content_map(conn, rows)
 
-        zmx_hits = []
-        if key.category != "delisting":
-            zmx_hits = get_baseline_digest(
-                conn, category=key.category, locale=key.locale,
-                lookback_days=zmx_cfg.get("lookback_days", 90),
-                max_entries=zmx_cfg.get("max_entries_per_batch", 20),
-                max_examples_per_type=zmx_cfg.get("max_examples_per_type", 2),
-            )
+        zmx_hits = get_baseline_digest(
+            conn, category=key.category, locale=key.locale,
+            lookback_days=zmx_cfg.get("lookback_days", 90),
+            max_entries=zmx_cfg.get("max_entries_per_batch", 20),
+            max_examples_per_type=zmx_cfg.get("max_examples_per_type", 2),
+        )
+        zmx_hits = select_relevant_baseline(
+            rows,
+            zmx_hits,
+            max_entries=zmx_cfg.get("candidate_entries_per_batch", 8),
+        )
 
         prompt = build_prompt(
             key.category, source=key.source, locale=key.locale, batch_date=batch_date,
@@ -261,7 +269,27 @@ def run(
             continue
 
         content_hashes = [r["content_hash"] for r in rows]
-        cache_key = compute_cache_key(content_hashes, prompt_version)
+        baseline_payload = [
+            {
+                "uid": h.uid,
+                "type": h.mechanism_type,
+                "mechanics": h.key_mechanics,
+                "reward": h.reward_range,
+                "users": h.target_users,
+                "start": h.start_date,
+                "end": h.end_date,
+            }
+            for h in zmx_hits
+        ]
+        context_hash = hashlib.sha256(
+            json.dumps(baseline_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+        ).hexdigest()
+        cache_key = compute_cache_key(
+            content_hashes,
+            prompt_version,
+            model=credentials.model,
+            context_hash=context_hash,
+        )
         cached = get_cached_response(conn, cache_key)
         if cached is not None:
             raw_text = cached
@@ -300,7 +328,7 @@ def run(
             raw_text, category=key.category, related_uids=set(related_uids), zmx_hits=zmx_hits,
             article_status=article_status,
         )
-        if not result.valid:
+        if not result.valid or any(issue.startswith("missing_article_uids:") for issue in result.issues):
             report.validation_failed += 1
 
         upsert_insight(

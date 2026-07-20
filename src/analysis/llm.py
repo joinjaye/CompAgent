@@ -47,6 +47,17 @@ _VALID_ARTICLE_DIFF_TYPES = _VALID_DIFF_TYPES
 _VALID_ARTICLE_PRIORITY: set[str] = {"高", "中", "低"}
 _VALID_CHANGE_KIND: set[str] = {"reward", "rule", "other"}
 _VALID_LISTING_KIND: set[str] = {"spot", "perp"}
+_VALID_ACTION_TYPES: dict[str, set[str]] = {
+    "campaign": {"no_action", "monitor", "manual_verify", "benchmark", "campaign_design"},
+    "product": {"no_action", "monitor", "manual_verify", "benchmark", "product_evaluation"},
+}
+_VALID_OWNERS: dict[str, set[str]] = {
+    "campaign": {"campaign_ops", "regional_ops", "product"},
+    "product": {"product", "regional_ops"},
+}
+_GENERIC_FOLLOW_UP_RE = re.compile(
+    r"^\s*(建议)?(持续)?(关注|评估|跟进|观察)(一下|该动态|此事|相关情况)?[。.!！]?\s*$"
+)
 
 
 def _normalize_article_fields(
@@ -92,7 +103,38 @@ def _normalize_article_fields(
     item["priority"] = priority
 
     follow_up = item.get("follow_up")
-    item["follow_up"] = follow_up if isinstance(follow_up, str) else None
+    if not isinstance(follow_up, str) or not follow_up.strip():
+        item["follow_up"] = None
+    elif _GENERIC_FOLLOW_UP_RE.match(follow_up):
+        issues.append(f"article:{uid}:generic_follow_up_removed")
+        item["follow_up"] = None
+    else:
+        item["follow_up"] = follow_up.strip()
+
+    priority_reason = item.get("priority_reason")
+    if not isinstance(priority_reason, str) or not priority_reason.strip():
+        if priority in {"高", "中"}:
+            issues.append(f"article:{uid}:missing_priority_reason")
+        item["priority_reason"] = None
+    else:
+        item["priority_reason"] = priority_reason.strip()
+
+    action_type = item.get("action_type")
+    if action_type not in _VALID_ACTION_TYPES.get(category, set()):
+        if action_type is not None:
+            issues.append(f"article:{uid}:invalid_action_type:{action_type!r}")
+        action_type = None
+    item["action_type"] = action_type
+
+    owner = item.get("owner")
+    if owner not in _VALID_OWNERS.get(category, set()):
+        if owner is not None:
+            issues.append(f"article:{uid}:invalid_owner:{owner!r}")
+        owner = None
+    item["owner"] = owner
+
+    if action_type not in {None, "no_action"} and item["follow_up"] is None:
+        issues.append(f"article:{uid}:action_without_executable_follow_up")
 
     change_kind = item.get("change_kind")
     if category == "campaign" and article_status.get(uid) == "changed" and change_kind in _VALID_CHANGE_KIND:
@@ -106,16 +148,25 @@ def _normalize_article_fields(
     return item
 
 
-def compute_cache_key(content_hashes: list[str], prompt_version: str) -> str:
-    """key = SHA256(SHA256(排序后的 content_hash 拼接) || prompt_version)。
+def compute_cache_key(
+    content_hashes: list[str],
+    prompt_version: str,
+    *,
+    model: str = "",
+    context_hash: str = "",
+) -> str:
+    """分析缓存 key。
 
     content_hashes 排序后再拼接，保证同一批次不管 SQL 返回顺序如何都能算出同一个
-    key；任何一条内容变化（changed）或批次新增文章都会改变这个 hash，天然满足
-    "同批次内容没变、prompt 版本没变时才复用缓存"的要求。
+    key。model 防止切换模型后复用旧结果；context_hash 用于包含 Zoomex 基线摘要，
+    避免竞品正文未变、基线已更新时继续复用过期比较。两个新参数默认空字符串，
+    保持既有调用方兼容。
     """
     joined = "".join(sorted(content_hashes))
     inner = hashlib.sha256(joined.encode("utf-8")).hexdigest()
-    return hashlib.sha256(f"{inner}|{prompt_version}".encode("utf-8")).hexdigest()
+    return hashlib.sha256(
+        f"{inner}|{prompt_version}|{model}|{context_hash}".encode("utf-8")
+    ).hexdigest()
 
 
 def get_cached_response(conn: sqlite3.Connection, cache_key: str) -> Optional[str]:
@@ -225,6 +276,7 @@ def validate_and_normalize(
 
     articles_raw = data.get("articles")
     filtered_articles: list[dict[str, Any]] = []
+    seen_article_uids: set[str] = set()
     if isinstance(articles_raw, list):
         for item in articles_raw:
             if not isinstance(item, dict):
@@ -234,10 +286,18 @@ def validate_and_normalize(
                 logger.warning("丢弃 articles 条目：uid=%r 不在本批次 related_uids 内", uid)
                 issues.append(f"dropped_article_uid_not_in_batch:{uid}")
                 continue
+            if uid in seen_article_uids:
+                issues.append(f"dropped_duplicate_article_uid:{uid}")
+                continue
+            seen_article_uids.add(uid)
             item = _normalize_article_fields(
                 item, category=category, article_status=article_status, issues=issues
             )
             filtered_articles.append(item)
+    returned_uids = {item["uid"] for item in filtered_articles}
+    missing_uids = sorted(related_uids - returned_uids)
+    if missing_uids:
+        issues.append(f"missing_article_uids:{','.join(missing_uids)}")
 
     zmx = data.get("zmx_comparison") or {}
     if not isinstance(zmx, dict):

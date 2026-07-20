@@ -32,6 +32,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import re
 import sqlite3
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -49,6 +50,7 @@ logger = logging.getLogger(__name__)
 # delisting 不建基线：跟 prompts.py 的 delisting 模板一致（没有 zmx_comparison 部分），
 # run.py 里 `if key.category != "delisting"` 这个分支现在守护的就是这张表。
 BASELINE_CATEGORIES = ("campaign", "product", "listing")
+_TERM_RE = re.compile(r"[a-z0-9]{3,}|[\u4e00-\u9fff]{2,}", re.IGNORECASE)
 
 
 def _cutoff_iso(lookback_days: int, reference_date: Optional[datetime] = None) -> str:
@@ -58,6 +60,54 @@ def _cutoff_iso(lookback_days: int, reference_date: Optional[datetime] = None) -
 
 def _chunk(items: list, size: int) -> list[list]:
     return [items[i : i + size] for i in range(0, len(items), size)]
+
+
+def _terms(text: str) -> set[str]:
+    return {m.group(0).lower() for m in _TERM_RE.finditer(text or "")}
+
+
+def select_relevant_baseline(
+    rows: list[sqlite3.Row],
+    entries: list["ZmxBaselineEntry"],
+    *,
+    max_entries: int,
+) -> list["ZmxBaselineEntry"]:
+    """从类型覆盖池中选择与当前批次更相关的少量基线。
+
+    使用标题/正文与结构化基线字段的确定性词项重叠，不调用 embedding/LLM，因此没有
+    额外成本。零重叠时保持原有类型覆盖顺序；有重叠时优先相关条目，并给每个不同
+    mechanism_type 的首条一个小幅 diversity bonus，避免单一玩法占满候选。
+    """
+    if max_entries <= 0 or len(entries) <= max_entries:
+        return entries
+
+    query = _terms(
+        "\n".join(f"{r['title'] or ''}\n{(r['content'] or '')[:1200]}" for r in rows)
+    )
+    seen_types: set[str] = set()
+    scored: list[tuple[int, int, ZmxBaselineEntry]] = []
+    for position, entry in enumerate(entries):
+        candidate = _terms(
+            " ".join(
+                filter(
+                    None,
+                    [
+                        entry.title,
+                        entry.mechanism_type,
+                        entry.key_mechanics,
+                        entry.reward_range,
+                        entry.target_users,
+                    ],
+                )
+            )
+        )
+        overlap = len(query & candidate)
+        diversity = 1 if entry.mechanism_type not in seen_types else 0
+        seen_types.add(entry.mechanism_type)
+        scored.append((overlap * 10 + diversity, -position, entry))
+
+    scored.sort(key=lambda x: (x[0], x[1]), reverse=True)
+    return [entry for _score, _position, entry in scored[:max_entries]]
 
 
 # ============================================================

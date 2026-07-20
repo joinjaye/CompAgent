@@ -23,21 +23,18 @@ llm:
   timeout_s: 60
   max_retries: 3
   max_tokens_by_category:
-    campaign: 2800   # v2（2026-07-20）：每篇 article 新增 5 个字段，随批次文章数
-    product: 2800    # 线性增长（不再只是单个 zmx_comparison 对象的固定开销），
-    listing: 2200    # 上调后的数值是经验起点，真实 --dry-run/小批量验收后可再校准
-    delisting: 1300
+    campaign: 2200
+    product: 2000
 
 prompt_versions:          # 改某个 category 的 prompt 正文后必须递增这里的版本号
-  campaign: campaign-v2   # v2（2026-07-20）：articles[] 逐条新增 diff_type/priority/
-  product: product-v2     # follow_up/change_kind(仅campaign)/listing_kind(仅listing)/
-  listing: listing-v2     # evidence_indices(campaign/product/listing)，详见模板正文
-  delisting: delisting-v2
+  campaign: campaign-v3
+  product: product-v3
 
 zmx_baseline:              # 结构化 Zoomex 基线（取代原来的 zmx_index TF-IDF 检索，
                             # 见 src/analysis/zmx_baseline.py 顶部注释 / CLAUDE.md）
   lookback_days: 90        # 只取近 90 天（提取和查询两端都受这个窗口约束）
   max_entries_per_batch: 20    # 注入单次竞品分析 prompt 的基线条数上限
+  candidate_entries_per_batch: 8  # 从类型覆盖池确定性召回后实际注入 Prompt 的上限
   max_examples_per_type: 2     # 每个 mechanism_type 最多保留几条最新示例
   extraction:               # python -m src.analysis.zmx_baseline 用，跟竞品分析
                              # （python -m src.analysis）完全独立的一套熔断上限
@@ -53,7 +50,6 @@ zmx_baseline:              # 结构化 Zoomex 基线（取代原来的 zmx_index
                                       # 真实执行本次用 CLI --max-tokens 5000000 传入
 
 content_truncation:
-  article_content_chars: 4000   # 单篇正文喂给 LLM 前的截断上限，超长正文（个别 Weex
-                                 # 活动规则页）避免把 token 预算全部耗在一篇文章上
+  article_content_chars: 2400   # 先按高价值句压缩，再执行这个硬上限
   zmx_preview_chars: 400         # ZMX_BLOCK 每条摘要长度，跟 prompt 文本里的
                                  # content_preview 定义一致
