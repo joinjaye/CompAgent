@@ -24,10 +24,14 @@ import yaml
 
 from src.collectors.base import BaseCollector, RunStats
 from src.collectors.bingx import BingXCollector
+from src.collectors.bingx_events import BingXEventsCollector
 from src.collectors.bitunix import BitunixCollector
+from src.collectors.bitunix_activity import BitunixActivityCollector
 from src.collectors.lbank import LbankCollector
+from src.collectors.lbank_events import LbankEventsCollector
 from src.collectors.phemex import PhemexCollector
 from src.collectors.weex import WeexCollector
+from src.collectors.weex_rewards import WeexRewardsCollector
 from src.collectors.zoomex import ZoomexCollector
 from src.db.connection import DEFAULT_DB_PATH, get_connection, init_db
 
@@ -61,6 +65,55 @@ def _categorized_collector_builder(collector_cls: type[BaseCollector]) -> Collec
     return build
 
 
+def _campaign_endpoint_config(cfg: dict[str, Any]) -> Optional[dict[str, Any]]:
+    """把 locale 配置块下的 `campaign_endpoint` 子块跟父级 cfg 合并成一份完整
+    config（父级字段打底、`campaign_endpoint` 自己的字段覆盖，如 `endpoint`/
+    `pagination`/`strategy`/`rate_limit_ms`），供活动端口专属的 collector 使用。
+    没有 `campaign_endpoint` 时返回 None（该 locale 暂未配置活动端口）。"""
+    campaign_cfg = cfg.get("campaign_endpoint")
+    if not campaign_cfg:
+        return None
+    merged = {**cfg, **campaign_cfg}
+    merged.pop("categories", None)
+    merged.pop("campaign_endpoint", None)
+    return merged
+
+
+def _bitunix_builder(locale: str, cfg: dict[str, Any]) -> list[BaseCollector]:
+    """Bitunix：常规 Zendesk 采集（单实例/categories 展开，逻辑完全不变，复用
+    `_categorized_collector_builder`）+ 新增的 `campaign_endpoint`（活动中心
+    www.bitunix.com/activity/act-center，非 Zendesk）额外产出一个
+    `BitunixActivityCollector` 实例，两路数据并集写入同一个 source，见
+    src/collectors/bitunix_activity.py 顶部注释。"""
+    collectors = _categorized_collector_builder(BitunixCollector)(locale, cfg)
+    campaign_config = _campaign_endpoint_config(cfg)
+    if campaign_config:
+        collectors.append(BitunixActivityCollector(locale, campaign_config))
+    return collectors
+
+
+def _weex_builder(locale: str, cfg: dict[str, Any]) -> list[BaseCollector]:
+    """Weex：常规帮助中心采集（categories 展开，逻辑不变）+ 新增的
+    `campaign_endpoint`（活动奖励 www.weex.com/rewards）额外产出一个
+    `WeexRewardsCollector` 实例，见 src/collectors/weex_rewards.py 顶部注释。"""
+    collectors = _categorized_collector_builder(WeexCollector)(locale, cfg)
+    campaign_config = _campaign_endpoint_config(cfg)
+    if campaign_config:
+        collectors.append(WeexRewardsCollector(locale, campaign_config))
+    return collectors
+
+
+def _bingx_builder(locale: str, cfg: dict[str, Any]) -> list[BaseCollector]:
+    """BingX：常规首屏聚合采集（逻辑不变）+ 新增的 `campaign_endpoint`（活动中心
+    bingx.com/{locale}/events，浏览器驱动）额外产出一个 `BingXEventsCollector`
+    实例，见 src/collectors/bingx_events.py 顶部注释。"""
+    collectors = _categorized_collector_builder(BingXCollector)(locale, cfg)
+    campaign_config = _campaign_endpoint_config(cfg)
+    if campaign_config:
+        collectors.append(BingXEventsCollector(locale, campaign_config))
+    return collectors
+
+
 def _zoomex_builder(locale: str, cfg: dict[str, Any]) -> list[BaseCollector]:
     """多分类源：一个 locale 配置块下的每个 categories.<name>（menu_id）各展开成一个实例。"""
     categories = cfg.get("categories") or {}
@@ -90,21 +143,27 @@ def _phemex_builder(locale: str, cfg: dict[str, Any]) -> list[BaseCollector]:
 def _lbank_builder(locale: str, cfg: dict[str, Any]) -> list[BaseCollector]:
     """多分类源：全部 categories.<name> 共用同一个 endpoint（真实 JSON API，见
     src/collectors/lbank.py），只是请求体里的 categoryCode 不同，跟 Zoomex 的
-    menu_id 模式一致（不是 Bitunix/Weex/Phemex 那种"每个分类各自独立 endpoint"）。"""
+    menu_id 模式一致（不是 Bitunix/Weex/Phemex 那种"每个分类各自独立 endpoint"）。
+    额外新增的 `campaign_endpoint`（精选活动 www.lbank.com/new-popular-events，
+    跟 `notice/latestList` 是完全不同的接口）产出一个 `LbankEventsCollector`
+    实例，见 src/collectors/lbank_events.py 顶部注释。"""
     categories = cfg.get("categories") or {}
     collectors: list[BaseCollector] = []
     for category_key, category_cfg in categories.items():
         merged_cfg = {**cfg}
         merged_cfg.pop("categories", None)
         collectors.append(LbankCollector(locale, merged_cfg, category_key, category_cfg["category_code"]))
+    campaign_config = _campaign_endpoint_config(cfg)
+    if campaign_config:
+        collectors.append(LbankEventsCollector(locale, campaign_config))
     return collectors
 
 
 COLLECTOR_BUILDERS: dict[str, CollectorBuilder] = {
-    "bitunix": _categorized_collector_builder(BitunixCollector),
-    "weex": _categorized_collector_builder(WeexCollector),
+    "bitunix": _bitunix_builder,
+    "weex": _weex_builder,
     "zoomex": _zoomex_builder,
-    "bingx": _categorized_collector_builder(BingXCollector),
+    "bingx": _bingx_builder,
     "phemex": _phemex_builder,
     "lbank": _lbank_builder,
 }

@@ -85,6 +85,19 @@ sources:
       # 时间格式：ISO8601 字符串，Z 后缀（UTC）
       # www.bitunix.com 主站 SPA + platformgateway.bitunix.com 已确认为死路（403，
       # Cloudflare 拦截），不作为该源的 endpoint 候选。
+      # 【2026-07-20 新增 campaign_endpoint，见 CLAUDE.md「补充活动类内容采集端口」】
+      # 常规 Zendesk 公告流只覆盖 "Events and Activities" 这一个 section，验证后
+      # 发现活动中心页面（www.bitunix.com/activity/act-center，独立 Nuxt 应用，跟
+      # 上面已确认死路的 platformgateway.bitunix.com 不是一回事）上很多活动内容
+      # 根本不在这条公告流里出现过。真实请求确认 EN 用 devalue 编码的
+      # __NUXT_DATA__，单次请求同时返回 ongoing+ended 两个列表；?page=2 会让这
+      # 两个 key 从响应里整个消失，是固定单页视图，不是真分页，解析细节见
+      # src/parsers/bitunix_activity.py 顶部注释。
+      campaign_endpoint:
+        endpoint: "https://www.bitunix.com/activity/act-center"
+        pagination: {type: none, note: "固定单页视图，?page=2 会让数据整个消失，非真分页"}
+        rate_limit_ms: 500
+        strategy: full_scan   # 没有可靠的"最后编辑时间"，只有活动起止时间，变更检测交给 content_hash
     FR:
       endpoint: "https://support.bitunix.com/api/v2/help_center/fr/categories/13760946490649/articles.json"
       method: GET
@@ -102,6 +115,14 @@ sources:
         post_time: created_at
         update_time: updated_at
         category: section_id
+      # campaign_endpoint：FR 数据格式跟 EN 不同（明文 window.__custom__nuxt__payload，
+      # 不是 devalue），真实核对过标题/规则是翻译版本，解析逻辑见
+      # src/parsers/bitunix_activity.py（dual-path，同一份代码处理两种格式）。
+      campaign_endpoint:
+        endpoint: "https://www.bitunix.com/fr-fr/activity/act-center"
+        pagination: {type: none, note: "同 EN，固定单页视图"}
+        rate_limit_ms: 500
+        strategy: full_scan
     ID:
       endpoint: "https://support.bitunix.com/api/v2/help_center/id/categories/13760946490649/articles.json"
       method: GET
@@ -119,6 +140,11 @@ sources:
         post_time: created_at
         update_time: updated_at
         category: section_id
+      campaign_endpoint:
+        endpoint: "https://www.bitunix.com/id-id/activity/act-center"
+        pagination: {type: none, note: "同 EN，固定单页视图；ID 也走明文 __custom__nuxt__payload 格式"}
+        rate_limit_ms: 500
+        strategy: full_scan
   weex:
     # ============================================================
     # 【2026-07-14 数据源迁移侦察，详见 CLAUDE.md「Weex 数据源迁移」】原 Phase 1/2/2.7
@@ -212,6 +238,18 @@ sources:
       #   jardouvu207hhp7lbfvclxmo createdAt=1783589400000 (2026-07-09T09:30:00Z)
       #     "Uniswap (UNI) WE-Launch..."
       # 与用户截图日期（北京时间 2026/07/12 17:30、2026/07/09 17:30 = UTC+8）精确对上。
+      # 【2026-07-20 新增 campaign_endpoint，见 CLAUDE.md「补充活动类内容采集端口」】
+      # 常规帮助中心只覆盖 Zendesk 迁移出来的分类，验证后发现 /rewards 活动奖励
+      # 落地页上很多内容根本不在帮助中心里出现过。标准 __NEXT_DATA__（不是 flight
+      # 流），props.pageProps.myPopular[] 就是固定精选列表（18 条），详情页
+      # （/[locale/]events/{promo|roll|draw}/{slug}）真的 SSR 出了正文，是四个新
+      # 端口里唯一一个详情页有正文可用的，解析细节见 src/parsers/weex_rewards.py。
+      campaign_endpoint:
+        endpoint: "https://www.weex.com/rewards"
+        locale_path: ""   # EN 无前缀（/en/rewards 会 301 到无前缀，真实验证过）
+        pagination: {type: none, note: "固定精选列表（myPopular），非真分页"}
+        rate_limit_ms: 500
+        strategy: full_scan
     FR:
       locale_path: "fr"
       categories:
@@ -234,6 +272,12 @@ sources:
         content: (详情页 <div class="zendesk-html"> 内层 HTML，非列表字段)
         post_time: createdAt
         category: sectionId
+      campaign_endpoint:
+        endpoint: "https://www.weex.com/fr/rewards"
+        locale_path: "fr/"   # 拼详情页 URL 用，注意要带尾部斜杠
+        pagination: {type: none, note: "同 EN，固定精选列表（11 条，真实核对过法语译文）"}
+        rate_limit_ms: 500
+        strategy: full_scan
   bingx:
     # ============================================================
     # 侦察结论（Phase 1，2026-07-13）：✅ 通，EN/VN。Nuxt 3 SSR（不是 SPA），
@@ -323,6 +367,24 @@ sources:
       #   5 个分区都出现过，证实首屏是跨分区聚合，非单分区。
       # 时间格式：ISO8601 字符串，显式 +08:00 偏移（非 UTC）
       # 详情页 endpoint 模式："https://bingx.com/en/support/articles/{articleId}"
+      # 【2026-07-20 新增 campaign_endpoint，见 CLAUDE.md「补充活动类内容采集端口」】
+      # /events 活动中心页面纯客户端渲染（跟本文件其它注释里记录的 BingX 签名保护
+      # 是同一堵墙：真实请求确认背后是 `GET api-app.qq-os.com/api/act-operation/
+      # v1/activity/center?page=N&pageSize=10&status=2`，带一整套签名头，用户已
+      # 确认不再投入逆向签名算法）。**这个端口改用浏览器驱动采集**（本项目目前
+      # 唯一一个，见 src/collectors/bingx_events.py 顶部注释）：启动真实 headless
+      # Chromium 打开页面，让页面自己算出合法签名、拦截响应。真分页（total=21 >
+      # 10 条一页），但真实测试过的滚动交互只会触发 page=1，找不到可用的翻页/
+      # 加载更多交互，`max_pages` 目前实际只能拿到 1 页——如实记录，不是遗漏。
+      campaign_endpoint:
+        endpoint: "https://bingx.com/en/events"
+        pagination:
+          type: page_number
+          page_size: 10
+          max_pages: 2
+          note: "真分页 API，但浏览器驱动采集目前只能稳定拿到 page=1，见 src/collectors/bingx_events.py"
+        rate_limit_ms: 500
+        strategy: full_scan
     VN:
       endpoint: "https://bingx.com/vi/support/notice-center"
       detail_endpoint: "https://bingx.com/vi/support/articles/{article_id}"
@@ -341,6 +403,15 @@ sources:
         post_time: createTime
         update_time: updateTime
         category: sectionId
+      campaign_endpoint:
+        endpoint: "https://bingx.com/vi/events"
+        pagination:
+          type: page_number
+          page_size: 10
+          max_pages: 2
+          note: "同 EN，浏览器驱动，真实验证过 total=12（VN 侧数值，跟 EN 的 21 不同属实）"
+        rate_limit_ms: 500
+        strategy: full_scan
   phemex:
     # ============================================================
     # 侦察结论（Phase 1，2026-07-13）：✅ 通，EN/FR，且是本项目截至目前爬取
@@ -635,6 +706,18 @@ sources:
       #   64 System Upgrades & Maintenance: 3422 / 69 Platform Updates: 523 /
       #   57 Delisting Information: 796 / 63 Fiat: 59
       # 时间格式：unix 毫秒，UTC
+      # 【2026-07-20 新增 campaign_endpoint，见 CLAUDE.md「补充活动类内容采集端口」】
+      # 常规 7 个顶层分类的 notice/latestList API 覆盖的是公告，验证后发现精选
+      # 活动落地页（www.lbank.com/new-popular-events）上很多活动内容根本不在
+      # 公告流里出现过。跟已删除的旧版 lbank_web.py 一样走 Next.js RSC flight 流
+      # （不是 latestList 这套 JSON API），固定 8 条精选列表，?page=2 返回内容
+      # 与不带参数完全相同，非真分页。详情页没有 SSR 出任何正文，只能用列表页的
+      # title+subtitle，解析细节见 src/parsers/lbank_events.py 顶部注释。
+      campaign_endpoint:
+        endpoint: "https://www.lbank.com/new-popular-events"
+        pagination: {type: none, note: "固定精选列表，?page=2 返回内容与不带参数完全相同，非真分页"}
+        rate_limit_ms: 500
+        strategy: full_scan
     VN:
       endpoint: "https://www.lbank.com/lbk-api/huamao-media-center/notice/latestList"
       detail_endpoint: "https://www.lbank.com/lbk-api/huamao-media-center/notice/content/{code}?noticeCode={code}"
@@ -669,6 +752,11 @@ sources:
         post_time: contentShowTime
         update_time: updateTime   # 不再落库，见 EN 块注释
         category: category_code   # 2026-07-15 由 columnId 改为 category_code，见 EN 块注释
+      campaign_endpoint:
+        endpoint: "https://www.lbank.com/vi-VN/new-popular-events"
+        pagination: {type: none, note: "同 EN，固定精选列表，真实核对过越南语译文"}
+        rate_limit_ms: 500
+        strategy: full_scan
     ID:
       endpoint: "https://www.lbank.com/lbk-api/huamao-media-center/notice/latestList"
       detail_endpoint: "https://www.lbank.com/lbk-api/huamao-media-center/notice/content/{code}?noticeCode={code}"
@@ -703,6 +791,11 @@ sources:
         post_time: contentShowTime
         update_time: updateTime   # 不再落库，见 EN 块注释
         category: category_code   # 2026-07-15 由 columnId 改为 category_code，见 EN 块注释
+      campaign_endpoint:
+        endpoint: "https://www.lbank.com/id/new-popular-events"
+        pagination: {type: none, note: "同 EN，固定精选列表，真实核对过印尼语译文"}
+        rate_limit_ms: 500
+        strategy: full_scan
   zoomex:  # 我方基线，非竞品
     # ============================================================
     # 侦察结论（Phase 1，2026-07-13）：BLOCKED（详见下方"补充侦察"，本次已解除）。

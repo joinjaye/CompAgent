@@ -11,13 +11,29 @@
   builder 只要求 `(locale, config)` / `(locale, config, category_key)` 构造签名，
   不要求特定基类
 - --category 过滤（_build_collectors）能只选中其中一个分类
+- 【2026-07-20 新增，见 CLAUDE.md「补充活动类内容采集端口」】`campaign_endpoint`
+  子块能让 `_bitunix_builder`/`_weex_builder`/`_bingx_builder`/`_lbank_builder`
+  在常规展开结果之外，额外产出一个活动端口专属的 collector 实例，两路数据并集
+  写入同一个 source；没有配置 `campaign_endpoint` 时行为跟改动前逐字节一致
+  （不额外产出任何实例）
 """
 
 from __future__ import annotations
 
-from src.collectors.__main__ import _build_collectors, _categorized_collector_builder
+from src.collectors.__main__ import (
+    _bingx_builder,
+    _bitunix_builder,
+    _build_collectors,
+    _categorized_collector_builder,
+    _lbank_builder,
+    _weex_builder,
+)
+from src.collectors.bingx_events import BingXEventsCollector
 from src.collectors.bitunix import BitunixCollector
+from src.collectors.bitunix_activity import BitunixActivityCollector
+from src.collectors.lbank_events import LbankEventsCollector
 from src.collectors.weex import WeexCollector
+from src.collectors.weex_rewards import WeexRewardsCollector
 
 SHARED_CFG = {
     "method": "GET",
@@ -98,3 +114,90 @@ def test_build_collectors_without_category_filter_returns_all_categories():
     collectors = _build_collectors(sources, source_filter="weex", locale_filter="EN", category_filter=None)
 
     assert len(collectors) == 2
+
+
+# ---------------------------------------------------------- campaign_endpoint ----
+
+def test_bitunix_builder_without_campaign_endpoint_unchanged():
+    cfg = {**SHARED_CFG, "endpoint": "https://support.bitunix.com/.../articles.json"}
+
+    collectors = _bitunix_builder("EN", cfg)
+
+    assert len(collectors) == 1
+    assert isinstance(collectors[0], BitunixCollector)
+
+
+def test_bitunix_builder_with_campaign_endpoint_appends_activity_collector():
+    cfg = {
+        **SHARED_CFG,
+        "endpoint": "https://support.bitunix.com/.../articles.json",
+        "campaign_endpoint": {"endpoint": "https://www.bitunix.com/activity/act-center", "strategy": "full_scan"},
+    }
+
+    collectors = _bitunix_builder("EN", cfg)
+
+    assert len(collectors) == 2
+    assert isinstance(collectors[0], BitunixCollector)
+    assert isinstance(collectors[1], BitunixActivityCollector)
+    assert collectors[1].category == "campaign_center"
+    assert collectors[1].config["endpoint"] == "https://www.bitunix.com/activity/act-center"
+
+
+def test_weex_builder_with_campaign_endpoint_appends_rewards_collector():
+    cfg = {
+        **SHARED_CFG,
+        "categories": {"latest_announcements": {"endpoint": "https://www.weex.com/en/help/categories/x"}},
+        "campaign_endpoint": {"endpoint": "https://www.weex.com/rewards", "strategy": "full_scan"},
+    }
+
+    collectors = _weex_builder("EN", cfg)
+
+    assert len(collectors) == 2
+    assert isinstance(collectors[-1], WeexRewardsCollector)
+    assert collectors[-1].category == "rewards"
+
+
+def test_bingx_builder_with_campaign_endpoint_appends_events_collector():
+    cfg = {
+        **SHARED_CFG,
+        "endpoint": "https://bingx.com/en/support/notice-center",
+        "campaign_endpoint": {"endpoint": "https://bingx.com/en/events", "strategy": "full_scan"},
+    }
+
+    collectors = _bingx_builder("EN", cfg)
+
+    assert len(collectors) == 2
+    assert isinstance(collectors[-1], BingXEventsCollector)
+    assert collectors[-1].category == "activity_center"
+
+
+def test_lbank_builder_with_campaign_endpoint_appends_events_collector():
+    cfg = {
+        **SHARED_CFG,
+        "lang_header": "en-US",
+        "categories": {"new_listings": {"category_code": "CO00000053"}},
+        "campaign_endpoint": {"endpoint": "https://www.lbank.com/new-popular-events", "strategy": "full_scan"},
+    }
+
+    collectors = _lbank_builder("EN", cfg)
+
+    assert len(collectors) == 2
+    assert isinstance(collectors[-1], LbankEventsCollector)
+    assert collectors[-1].category == "new_popular_events"
+
+
+def test_build_collectors_category_filter_selects_campaign_endpoint_only():
+    sources = {
+        "bitunix": {
+            "EN": {
+                **SHARED_CFG,
+                "endpoint": "https://support.bitunix.com/.../articles.json",
+                "campaign_endpoint": {"endpoint": "https://www.bitunix.com/activity/act-center", "strategy": "full_scan"},
+            }
+        }
+    }
+
+    collectors = _build_collectors(sources, source_filter="bitunix", locale_filter="EN", category_filter="campaign_center")
+
+    assert len(collectors) == 1
+    assert isinstance(collectors[0], BitunixActivityCollector)

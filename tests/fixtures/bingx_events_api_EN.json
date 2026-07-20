@@ -1,0 +1,319 @@
+{
+  "code": 0,
+  "timestamp": 1784535514416,
+  "data": {
+    "total": 21,
+    "activityCenterInfoVos": [
+      {
+        "activityUrl": "https://bingx.com/activity/worldcup2026?ch=bingx_Eventcenter",
+        "activityId": 138,
+        "type": 4,
+        "title": "World Cup Gold Rush: Predict & win a share in $10M",
+        "tags": [
+          {
+            "id": 101,
+            "name": "Airdrop",
+            "urlKey": "airdrop"
+          },
+          {
+            "id": 114,
+            "name": "High Rewards",
+            "urlKey": "highReward"
+          }
+        ],
+        "top": true,
+        "beginTime": "2026-06-09T10:00:00.000+08:00",
+        "endTime": "2026-07-21T00:00:00.000+08:00",
+        "onTime": "2026-06-04T10:25:13.000+08:00",
+        "activityCenterPcImg": "https://static-app.bb-os.com/social_feed_pictures/20260604/605b8c7984aae57a553de342cde29352ccf72e9fd9a531878e3e36d5f56e8969.png",
+        "activityCenterAppImg": "https://static-app.bb-os.com/social_feed_pictures/20260604/be2a92cecc297a3913e5d4e22f168092c33e94c86da8e4ce9d303ea4bc04aa9b.png",
+        "activityUserType": 2,
+        "activityCountdown": 1,
+        "registerShowTime": 0,
+        "signUpFlag": 0
+      },
+      {
+        "activityUrl": "https://bingx.com/vi-vn/act/general/8445861892/",
+        "activityId": 10013349,
+        "type": 6,
+        "title": "BingX Partners Exclusive Offer",
+        "tags": [],
+        "top": false,
+        "beginTime": "2026-07-15T05:00:00.000+08:00",
+        "endTime": "2026-09-16T04:59:59.000+08:00",
+        "onTime": "2026-07-14T20:45:12.000+08:00",
+        "activityCenterPcImg": "https://static-app.bb-os.com/social_feed_pictures/20260714/cb34d66682cbc4fc7ded88e79ce741f2144aa3fe5224f8418b94ba0b980896f6.png",
+        "activityCenterAppImg": "https://static-app.bb-os.com/social_feed_pictures/20260714/ea56e01150affa5d0bb8b2d164926d05e1f31949528df6da2b253c1c3b7420a5.png",
+        "originTitle": "BingX Partners Exclusive Offer",
+        "activityUserType": 1,
+        "activityCountdown": 1,
+        "registerShowTime": 0
+      },
+      {
+        "activityUrl": "https://bingx.com/en-us/act/task/8883232256/",
+        "activityId": 10013021,
+        "type": 6,
+        "title": "P2P Booster Challenge: Get Up to 20% Bonus!",
+        "tags": [
+          {
+            "id": 106,
+            "name": "Deposit",
+            "urlKey": "deposit"
+          },
+          {
+            "id": 110,
+            "name": "Buy Crypto",
+            "urlKey": "P2P"
+          }
+        ],
+        "top": false,
+        "beginTime": "2026-07-01T08:00:00.000+08:00",
+        "endTime": "2026-10-01T07:59:59.000+08:00",
+        "onTime": "2026-07-02T16:09:45.000+08:00",
+        "activityCenterPcImg": "https://static-app.bb-os.com/social_feed_pictures/20260702/all%23black_white_450x300/1782979777251.png",
+        "activityCenterAppImg": "https://static-app.bb-os.com/social_feed_pictures/20260702/all%23black_white_450x300/1782979775360.png",
+        "originTitle": "P2P Booster Challenge",
+        "activityUserType": 1,
+        "activityCountdown": 1,
+        "registerShowTime": 0
+      },
+      {
+        "activityUrl": "https://bingx.com/zh-hk/act/general/2772075078/",
+        "activityId": 10006318,
+        "type": 6,
+        "title": "Copy Trading 2.0 Newbie Exclusive｜Claim 20 USDT Copy Trading Subsidy Voucher & Try New Features",
+        "tags": [
+          {
+            "id": 105,
+            "name": "New User Exclusive",
+            "urlKey": "new_user"
+          },
+          {
+            "id": 109,
+            "name": "Copy Trading",
+            "urlKey": "copytrading"
+          }
+        ],
+        "top": false,
+        "beginTime": "2025-08-12T00:00:00.000+08:00",
+        "endTime": "2026-10-28T00:00:00.000+08:00",
+        "onTime": "2025-08-12T13:20:20.000+08:00",
+        "activityCenterPcImg": "https://static-app.bb-os.com/fe-common/activityCenter/custom_black.png",
+        "activityCenterAppImg": "https://static-app.bb-os.com/fe-common/activityCenter/custom_white.png",
+        "originTitle": "新人跟單專屬福利",
+        "activityUserType": 0,
+        "activityCountdown": 0,
+        "registerShowTime": 0
+      },
+      {
+        "activityUrl": "https://bingx.com/en-us/activity/turntable/grid/4461448236",
+        "activityId": 10013094,
+        "type": 6,
+        "title": "Pitch Showdown: The 1 ETH Penalty Shootout",
+        "tags": [
+          {
+            "id": 3,
+            "name": "Futures",
+            "urlKey": "futures"
+          },
+          {
+            "id": 107,
+            "name": "Lucky Draw",
+            "urlKey": "draw"
+          }
+        ],
+        "top": false,
+        "beginTime": "2026-07-02T23:00:00.000+08:00",
+        "endTime": "2026-07-20T22:59:59.000+08:00",
+        "onTime": "2026-07-03T17:17:22.000+08:00",
+        "activityCenterPcImg": "https://static-app.bb-os.com/social_feed_pictures/20260703/1783070233827_all%23white_black_450x300.png",
+        "activityCenterAppImg": "https://static-app.bb-os.com/social_feed_pictures/20260703/1783070225812_all%23white_black_450x300.png",
+        "originTitle": "Pitch Showdown: The 1 ETH Penalty Shootout",
+        "activityUserType": 0,
+        "activityCountdown": 1,
+        "registerShowTime": 0
+      },
+      {
+        "activityUrl": "https://bingx.com/en-us/activity/turntable/5589741128",
+        "activityId": 10013350,
+        "type": 6,
+        "title": "RWA × DeFi Trading Festival: Trade to Win 1 ETH & Share 200,000 USDT!",
+        "tags": [
+          {
+            "id": 3,
+            "name": "Futures",
+            "urlKey": "futures"
+          },
+          {
+            "id": 103,
+            "name": "Spot",
+            "urlKey": "spot"
+          }
+        ],
+        "top": false,
+        "beginTime": "2026-07-14T18:00:00.000+08:00",
+        "endTime": "2026-07-21T23:59:59.000+08:00",
+        "onTime": "2026-07-14T17:32:24.000+08:00",
+        "activityCenterPcImg": "https://static-app.bb-os.com/social_feed_pictures/20260714/1784021495756_banner_450x300.png",
+        "activityCenterAppImg": "https://static-app.bb-os.com/social_feed_pictures/20260714/1784021495756_banner_450x300.png",
+        "originTitle": "RWA × DeFi Trading Festival: Trade to Win 1 ETH & Share 200,000 USDT!",
+        "activityUserType": 2,
+        "activityCountdown": 1,
+        "registerShowTime": 0
+      },
+      {
+        "activityUrl": "https://bingx.com/zh-hk/act/general/8032042145/",
+        "activityId": 10013265,
+        "type": 6,
+        "title": "U.S. Earnings Season: Trade & Share 1M USDT!",
+        "tags": [
+          {
+            "id": 3,
+            "name": "Futures",
+            "urlKey": "futures"
+          }
+        ],
+        "top": false,
+        "beginTime": "2026-07-09T18:00:00.000+08:00",
+        "endTime": "2026-07-29T23:59:59.000+08:00",
+        "onTime": "2026-07-09T20:28:06.000+08:00",
+        "activityCenterPcImg": "https://static-app.bb-os.com/social_feed_pictures/20260709/1783600018604_banner_450x300.png",
+        "activityCenterAppImg": "https://static-app.bb-os.com/social_feed_pictures/20260709/1783600018604_banner_450x300.png",
+        "originTitle": "玩轉美股財報季，瓜分1,000,000 USDT！",
+        "activityUserType": 2,
+        "activityCountdown": 1,
+        "registerShowTime": 0
+      },
+      {
+        "activityUrl": "https://bingx.com/zh-hk/act/general/4541810441/",
+        "activityId": 10013058,
+        "type": 6,
+        "title": "BTC July Extravaganza · Compete for a 500,000 USDT Prize Pool",
+        "tags": [],
+        "top": false,
+        "beginTime": "2026-07-01T18:00:00.000+08:00",
+        "endTime": "2026-07-30T23:59:59.000+08:00",
+        "onTime": "2026-07-01T21:49:19.000+08:00",
+        "activityCenterPcImg": "https://static-app.bb-os.com/social_feed_pictures/20260701/1782913709156_banner_450x300.png",
+        "activityCenterAppImg": "https://static-app.bb-os.com/social_feed_pictures/20260701/1782913709156_banner_450x300.png",
+        "originTitle": "BTC七月盛典 · 角逐500,000 USDT獎池",
+        "activityUserType": 2,
+        "activityCountdown": 1,
+        "registerShowTime": 0
+      },
+      {
+        "activityUrl": "https://bingx.com/en-us/act/task/9552380810/",
+        "activityId": 10013399,
+        "type": 6,
+        "title": "$10 = $100. Stack Up to $5,000 + Apple Premium Bundle!",
+        "tags": [
+          {
+            "id": 3,
+            "name": "Futures",
+            "urlKey": "futures"
+          },
+          {
+            "id": 110,
+            "name": "Buy Crypto",
+            "urlKey": "P2P"
+          }
+        ],
+        "top": false,
+        "beginTime": "2026-07-20T08:00:00.000+08:00",
+        "endTime": "2026-10-01T07:59:59.000+08:00",
+        "onTime": "2026-07-20T11:03:53.000+08:00",
+        "activityCenterPcImg": "https://static-app.bb-os.com/social_feed_pictures/20260720/1784516610452_all%23black_white_450x300.png",
+        "activityCenterAppImg": "https://static-app.bb-os.com/social_feed_pictures/20260720/1784516605710_all%23black_white_450x300.png",
+        "originTitle": "Deposit Fiesta: Start With $10, Get $100 FREE + Apple Premium Bundle",
+        "activityUserType": 0,
+        "activityCountdown": 1,
+        "registerShowTime": 0
+      },
+      {
+        "activityUrl": "https://bingx.com/zh-tw/activity/contest/7476629933/",
+        "activityId": 10013469,
+        "type": 6,
+        "title": "July Copy Trading Contest · $30,000 Prize Pool + Personal Task Rewards",
+        "tags": [
+          {
+            "id": 108,
+            "name": "Trading Tournament",
+            "urlKey": "trading_tournament"
+          },
+          {
+            "id": 109,
+            "name": "Copy Trading",
+            "urlKey": "copytrading"
+          }
+        ],
+        "top": false,
+        "beginTime": "2026-07-18T00:00:00.000+08:00",
+        "endTime": "2026-08-01T00:00:00.000+08:00",
+        "onTime": "2026-07-18T13:54:21.000+08:00",
+        "activityCenterPcImg": "https://static-app.bb-os.com/social_feed_pictures/20260718/1784353894749_all%23black_white_450x300.png",
+        "activityCenterAppImg": "https://static-app.bb-os.com/social_feed_pictures/20260718/1784353891369_all%23black_white_450x300.png",
+        "originTitle": "7月帶單交易賽 · $30,000獎池 + 個人任務獎金",
+        "activityUserType": 2,
+        "activityCountdown": 1,
+        "registerShowTime": 0
+      }
+    ],
+    "tagInfoVos": [
+      {
+        "id": 114,
+        "name": "High Rewards",
+        "urlKey": "highReward"
+      },
+      {
+        "id": 3,
+        "name": "Futures",
+        "urlKey": "futures"
+      },
+      {
+        "id": 103,
+        "name": "Spot",
+        "urlKey": "spot"
+      },
+      {
+        "id": 109,
+        "name": "Copy Trading",
+        "urlKey": "copytrading"
+      },
+      {
+        "id": 105,
+        "name": "New User Exclusive",
+        "urlKey": "new_user"
+      },
+      {
+        "id": 108,
+        "name": "Trading Tournament",
+        "urlKey": "trading_tournament"
+      },
+      {
+        "id": 107,
+        "name": "Lucky Draw",
+        "urlKey": "draw"
+      },
+      {
+        "id": 106,
+        "name": "Deposit",
+        "urlKey": "deposit"
+      },
+      {
+        "id": 110,
+        "name": "Buy Crypto",
+        "urlKey": "P2P"
+      },
+      {
+        "id": 101,
+        "name": "Airdrop",
+        "urlKey": "airdrop"
+      },
+      {
+        "id": 113,
+        "name": "Other",
+        "urlKey": "Others"
+      }
+    ]
+  }
+}

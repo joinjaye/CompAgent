@@ -103,7 +103,15 @@
 │   │   ├── zoomex.py           # ✅ 批次 2（我方基线，多分类 menu_id，full 全量回填保留）
 │   │   ├── bingx.py            # ✅ 批次 4（首屏 NUXT_DATA 聚合视图，force_full no-op）
 │   │   ├── phemex.py           # ✅ 批次 4（3 分类 news/activities/newsletter，force_full no-op）
-│   │   ├── lbank.py            # ✅ 批次 4（RSC flight 流，仅默认聚合视图 10 条，force_full no-op）
+│   │   ├── lbank.py            # ✅ 批次 4（真实 JSON API notice/latestList，2026-07-14 重写，
+│   │   │                        #   已替代早期 RSC flight 流方案，旧版 lbank_web.py 已删除）
+│   │   ├── bitunix_activity.py # ✅ 2026-07-20 新增：Bitunix 活动中心端口（www.bitunix.com/
+│   │   │                        #   activity/act-center），跟常规 bitunix.py 并集写入同一 source
+│   │   ├── lbank_events.py     # ✅ 2026-07-20 新增：Lbank 精选活动端口（new-popular-events）
+│   │   ├── weex_rewards.py     # ✅ 2026-07-20 新增：Weex 活动奖励端口（/rewards）
+│   │   ├── bingx_events.py     # ✅ 2026-07-20 新增：BingX 活动中心端口（/events），本项目
+│   │   │                        #   唯一浏览器驱动（Playwright）的采集器，见「补充活动类内容
+│   │   │                        #   采集端口」一节
 │   │   └── __main__.py         # `python -m src.collectors --source <x> --locale <y> [--category <c>] [--force-full]`
 │   ├── parsers/                  # 每种响应格式一个 parser，离线可单测
 │   │   ├── zendesk.py          # ✅ Bitunix 用（标准 Zendesk articles.json，cursor 分页）
@@ -116,8 +124,11 @@
 │   │   │                        #   解引用器，非第三方 devalue 库）
 │   │   ├── phemex_web.py       # ✅ 批次 4：Phemex window.preloadedData 宽松 JS 对象字面量
 │   │   │                        #   解析（手写字符级解析器，不是正则替换）
-│   │   └── lbank_web.py        # ✅ 批次 4：Lbank RSC flight 流解析，含文本分段引用
-│   │                            #   （"$N"）还原、高亮模板标记剥离
+│   │   ├── lbank.py            # ✅ Lbank notice/latestList 响应解析（2026-07-14 重写）
+│   │   ├── bitunix_activity.py # ✅ 2026-07-20 新增：devalue（EN）+ 明文 __custom__nuxt__payload
+│   │   │                        #   （FR/ID）双格式解析，同一份代码
+│   │   ├── lbank_events.py     # ✅ 2026-07-20 新增：RSC flight 流提取，复用 weex_web.py 思路
+│   │   └── weex_rewards.py     # ✅ 2026-07-20 新增：标准 __NEXT_DATA__（列表+详情）
 │   ├── pipeline/                # 跨语言归组、分类打标（Phase 3；清洗已在 Phase 2.5 前移到采集层）
 │   ├── analysis/                 # ✅ Phase 4：批次级 LLM summary & ZMX 差异
 │   │   ├── config.py           # analysis.yaml + .env 加载（LlmCredentials）
@@ -3876,3 +3887,176 @@ Dashboard 忽略旧 listing insight、标题规则识别 perp、EN-Asia placehol
   避免“一条漏项导致整批可用分析全部作废”。
 - 新增 `tests/analysis/test_baseline_selection.py` 以及 action/owner/漏项/重复 UID
   校验用例；全量测试总数更新为 308。
+
+## 补充活动类内容采集端口：Bitunix / Lbank / Weex / BingX（2026-07-20）
+
+### 背景
+
+`campaign` 类目公告此前完全靠 Phase 3 pipeline 对**已采集的常规公告源**（Zendesk
+帮助中心 / `notice/latestList` / help-center 页面等）做 `raw_category` 事后归类
+得到。用户验证后发现这种"从公告流里筛"的方式数据不全——四个竞品各自还维护一个
+独立的营销活动/活动中心页面（Bitunix `/activity/act-center`、Lbank
+`/new-popular-events`、Weex `/rewards`、BingX `/events`），这些页面上的很多活动
+内容根本不在常规公告流里出现过，纯靠事后分类永远捞不到。Phemex 已有 `activities`
+分类端口覆盖良好，本次不涉及。
+
+本次任务：给这四个平台各自新增一个独立的"活动端口"采集器，产出数据跟现有实现做
+**并集**（同一个 `source` 值，写入同一张 `announcements` 表），不改动、不替换
+现有常规公告采集逻辑，复用现有的 `max_pages`/`force_full`/`--lookback-days`/
+`upsert_announcement` 去重机制。范围只到「采集器产出新数据、真实网络验收、单测」
+为止——不跑 Phase 3 pipeline、不跑 Phase 4 分析、不动看板/推送。
+
+### 四个端口的真实结构（均已用真实请求验证，无一凭空猜测）
+
+- **Bitunix**（`www.bitunix.com/activity/act-center`）：**同一页面在不同 locale
+  下用了两种完全不同的数据格式**——EN（无前缀）是 Nuxt devalue 编码的
+  `__NUXT_DATA__`；FR（`/fr-fr/...`）/ID（`/id-id/...`）是一段明文
+  `window.__custom__nuxt__payload = {}; Object.assign(window.__custom__nuxt__payload,
+  {...真实JSON...})`，直接 `json.loads` 即可。单次请求同时返回 ongoing+ended
+  两个列表（`data` 字典下 `__act-center__activity-center-{ongoing,ended}-list-page`
+  两个 key），每条自带 `ruleDescription`（完整 HTML 规则正文），不需要详情请求。
+  `?page=2` 会让这两个 key 从响应里整个消失，是固定单页视图，不是真分页。
+  **顺带修了一个 devalue 解析的真实 bug**：`bingx_web.py` 的 `_normalize` 判断
+  Vue 响应式包装时是 `value[0] in _REACTIVE_TAGS`，Bitunix 这个页面的 devalue
+  数组里出现过 `[<dict>, ...]` 形状的 list（第一个元素是 dict 不是字符串 tag），
+  `dict in set` 直接抛 `TypeError`——`src/parsers/bitunix_activity.py` 自己实现
+  的 `_normalize`（不跨文件 import bingx_web.py 的私有函数）加了
+  `isinstance(value[0], str)` 前置判断修掉这个问题，`bingx_web.py` 本身未受影响
+  （该文件处理的页面从未真实撞见过这个形状）。
+- **Lbank**（`www.lbank.com/new-popular-events`）：跟已删除的旧版
+  `lbank_web.py` 同一种 Next.js RSC flight 流机制（`self.__next_f.push(...)`），
+  不是常规采集器现在用的 `notice/latestList` JSON API。固定 8 条精选列表，
+  `?page=2` 返回内容跟不带参数完全相同，非真分页。**详情页
+  （`routeUrl`）真实请求确认没有 SSR 出任何正文**，只有 meta description，
+  正文靠未逆向的客户端请求——所以这个端口 content 只能用列表页的
+  `title`+`subtitle`，跟常规 Lbank collector"不发详情请求"的既有简化设计一致。
+- **Weex**（`www.weex.com/rewards`）：标准 Next.js `__NEXT_DATA__`
+  （`props.pageProps.myPopular[]`），不是 flight 流，比 Bitunix/Lbank 都简单。
+  固定精选列表（18 EN / 11 FR），非真分页。**这是四个端口里唯一一个详情页真的
+  SSR 出正文的**：`/[locale/]events/{promo|roll|draw}/{slug}`
+  （`{sub}` 由 `activityType` 决定，真实核对过 7→promo/23→roll/5→draw 三个值，
+  遇到未登记的类型返回 None、跳过详情请求，不猜路径）→
+  `props.pageProps.defaultDetail`：`agentShareContent`（顶层摘要）+
+  `miniActivity[].introI18[]`（**真实核对过每个任务的 introI18 一次性返回全部
+  语言**，不是只返回当前 URL locale 那一种——只需要请求一次详情页，不需要按
+  locale 分别请求，调用方按自己的 locale 去查对应 `lang` key，如
+  `en_US`/`fr_FR`，查不到就跳过那条，不拿别的语言凑数）。
+- **BingX**（`bingx.com/{locale}/events`）：页面本身纯客户端渲染，
+  `__NUXT_DATA__` 里只有导航壳，没有活动数据——跟本文件「BingX 签名保护」一节
+  记录的现象一致。用 Playwright 真实抓包确认背后请求是
+  `GET api-app.qq-os.com/api/act-operation/v1/activity/center?page=N&pageSize=10
+  &status=2`，带一整套签名头，是同一套 `qq-os.com` 签名 API。顺着签名调用链
+  追到 `bc()` 函数（`const{sign:p}=bc({timestamp,traceId,deviceId,...})`），
+  但这个函数经过 bundler 拆包重命名（`import{... o as bc}from"./MyV5kmA2.js"`
+  这类跨 chunk 重导出），继续手工追踪工作量不可预估——用户确认后**不再重复当年
+  放弃这条路的结论**，改为浏览器驱动方案：真实跑通 headless Chromium 打开
+  `/events` 页面、拦截 `activity/center` 响应，拿到了真实完整数据（EN
+  `total:21`，VN `total:12`）。**这是本项目第一个、也是目前唯一一个依赖真实
+  浏览器运行时的采集器**——比其余纯 HTTP 请求的采集器慢得多、重得多、也更脆弱，
+  这个代价已经跟用户确认过。**分页现状如实记录**：`activity/center` 响应本身
+  真分页（`total`/`pageSize` 真实存在），但真实测试过的滚动交互只会触发
+  page=1 这一次请求，找不到任何可用的"加载更多"/翻页控件（页面上的"More"文本
+  是顶部导航菜单项，跟活动列表无关）；手动在页面 JS 上下文里直接 `fetch()`
+  page=2 会因为绕过了应用自己的签名封装，拿到 `设备时间不正确` 的错误——说明
+  签名不是挂在全局 `window.fetch` 上的简单拦截器，无法这样借道。**目前这个
+  采集器只能稳定拿到 page=1（10 条）**，`pagination.max_pages` 配置保留（万一
+  以后 BingX 前端改版出现真正的翻页交互，只需要在
+  `_capture_activity_pages()` 里补上真实验证过的触发方式），当前运行时如果
+  `max_pages > 1` 会记一条警告说明只拿到了 1 页，不会假装拿到了更多。
+
+### 设计原则（全部复用现有机制，不新建一套）
+
+- **`source_name` 不变**：新采集器跟现有采集器写入同一个 `source` 值，数据落进
+  同一张 `announcements` 表，靠 `crawl_state.(source,locale,category)` 独立
+  维护抓取状态，互不干扰。
+- **`raw_category` = 字面量 category_key**（不是任何数值 ID），跟 Phemex
+  `news`/`activities`/`newsletter` 是同一惯例。`category_mapping.yaml` 新增
+  四条字面量直接映射到 `campaign`：`bitunix.campaign_center` /
+  `lbank.new_popular_events` / `weex.rewards` / `bingx.activity_center`。
+- **`article_id` 加前缀防误撞**（`actcenter-`/`event-`/`reward-`/`promocenter-`）：
+  四个端口的数值 id 跟同源常规公告流是不同空间（已核实无实际冲突），但统一加
+  前缀彻底消除未来偶然撞号导致两条本质不同内容被 `upsert_announcement` 错误
+  合并成一行的风险；`group_id` 用同样前缀，已用真实数据核对过同一个活动 id
+  跨 locale 一致（Bitunix/Lbank 均验证过），能正确跨语言归组。单测里专门加了
+  "手动插入一条跟活动 id 数值相同的常规公告行，验证两者是完全独立的两行"这个
+  回归测试（四个 collector 各一个）。
+- **`upsert_announcement` 原样复用**，不写新去重逻辑——两路数据只要
+  `article_id` 不冲突就是自然并集。
+- **`pagination`/`max_pages`/`force_full`/`--lookback-days` 全部复用
+  `BaseCollector.run()` 现成逻辑**：Bitunix/Lbank/Weex 三个新端口真实验证是
+  固定单页精选列表，`pagination: {type: none}`，跟现有 BingX 首屏聚合视图同一
+  先例，`force_full` 对这三个是 no-op。BingX 新端口配
+  `pagination: {page_size: 10, max_pages: 2}`，`force_full=True` 语义上应该
+  忽略上限翻到 `total`，但实际受限于「分页现状」一节记录的浏览器交互限制，
+  当前效果等同 `max_pages=1`。四个新端口都是 `strategy: full_scan`（都没有
+  可靠的"最后编辑时间"，只有起止日期），`--lookback-days` 走现有 full_scan
+  分支的 cutoff 过滤逻辑，`base.py` 未改动一行。
+- **locale 范围不扩大**：完全复用各源现有 locale 集合（Bitunix EN/FR/ID、Lbank
+  EN/VN/ID、Weex EN/FR、BingX EN/VN），每个 locale 均已用真实请求验证过可用。
+- **content 构造**：Bitunix 用 `html_to_text(ruleDescription)`；Lbank 用
+  `title+subtitle`；Weex 用 `agentShareContent` + 匹配 locale 的
+  `miniActivity[].introI18[]` 拼接；BingX 用 `title` + `tags[].name` 拼接。
+  四个都在正文末尾附一行"活动周期: {start} ~ {end}"（复用现成的
+  `ms_to_iso`/`offset_iso_to_utc_iso`），因为 schema 没有专门的活动起止时间列。
+
+### 改动文件
+
+新增 `src/parsers/{bitunix_activity,lbank_events,weex_rewards}.py` +
+`src/collectors/{bitunix_activity,lbank_events,weex_rewards,bingx_events}.py`
+（BingX 端口响应本身是干净 JSON，不需要单独的 parser 文件）。`src/collectors/
+__main__.py` 新增 `_campaign_endpoint_config()`（合并父级 cfg 与
+`campaign_endpoint` 子块）+ `_bitunix_builder`/`_weex_builder`/`_bingx_builder`
+（替换掉原来直接用 `_categorized_collector_builder(...)` 的
+`COLLECTOR_BUILDERS` 条目）+ 扩展现有 `_lbank_builder`——每个新 builder 都是
+"常规展开结果 + 有 `campaign_endpoint` 就多追加一个活动端口 collector 实例"，
+`_categorized_collector_builder` 本体未改动一行。`config/sources.yaml` 12 个
+locale 块（4 源 × 各自 locale 数）各自新增 `campaign_endpoint:` 同级配置，
+未改动任何现有 `endpoint`/`categories`/`pagination` 字段。`config/
+category_mapping.yaml` 新增本节前述的四条字面量映射。
+
+### 测试与验证
+
+`tests/fixtures/` 新增 `bitunix_activity_{EN,FR,ID}.html`、
+`lbank_events_{EN,VN,ID}.html` + `lbank_events_EN_detail.html`、
+`weex_rewards_{EN,FR}.html` + `weex_rewards_{EN,FR}_detail.html`、
+`bingx_events_api_{EN,VN}.json`（真实请求抓取，非合成样本）。新增
+`tests/parsers/test_{bitunix_activity,lbank_events,weex_rewards}.py`
+（25 个用例）+ `tests/collectors/test_{bitunix_activity,lbank_events,
+weex_rewards,bingx_events}_collector.py`（23 个用例，BingX 的通过 mock
+`_capture_activity_pages()` 避免单测依赖真实浏览器）+ `tests/collectors/
+test_main_builders.py` 补充 6 个新 builder 用例。
+
+```
+pytest
+# 356 通过（Phase 4 v3 质量门禁那次记录的 308 之后，本次新增 48 个）
+```
+
+真实网络验收（`--category campaign_center`/`new_popular_events`）：
+
+```
+python -m src.collectors --source bitunix --category campaign_center
+# EN new=2  FR new=2  ID new=2（全部 6 条，跟 fixture 观察一致：当前 ongoing=0，
+# ended=2，count 会随源站真实活动数量自然变化）
+
+python -m src.collectors --source lbank --category new_popular_events
+# EN new=8  VN new=8  ID new=8（固定精选列表，跟研究阶段观察一致）
+```
+
+Weex（`rewards`）、BingX（`activity_center`，浏览器驱动）的真实网络验收在本
+session 内尚未执行完（用户中途打断要求先更新本文档），下一步继续跑并把结果
+补充到这一节；已经跑过的 Bitunix/Lbank 两个源零 failed，字段/前缀/dedup 均
+正常，验证了"并集"确实生效——这两个源在活动端口拿到的 article_id 集合，跟
+数据库里该源已有的常规公告流 article_id 集合没有重合，是真实的新增数据，直接
+证明这次改动解决了"数据不全"的问题。
+
+### 已知限制（如实记录）
+
+- **BingX 的活动中心目前只能拿到 page=1（10/21 条，EN）**，见上文「分页现状」，
+  不是遗漏，是真实测试过的浏览器交互限制。
+- **Lbank 的活动端口 content 只有 title+subtitle**，没有更深正文可用（详情页
+  没有 SSR 出任何内容），是源端真实限制，不是解析 bug。
+- **Weex 的 `activityType` → 详情页子路径映射只登记了 3 个已验证值**
+  （7→promo/23→roll/5→draw），遇到新的未登记类型会跳过详情请求、只用列表页
+  摘要兜底，不会崩溃，但也不会强行猜一个子路径去发请求。
+- **本次范围内没有跑 Phase 3 pipeline（`classify`/`region`）、没有跑 Phase 4
+  分析、没有动看板/推送**，按用户要求，这些留给用户后续单独触发。
