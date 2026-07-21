@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 
 from src.collectors.base import RawItem
-from src.collectors.phemex import PhemexCollector
+from src.collectors.phemex import PhemexCollector, _slug_from_url
 from src.db.connection import get_connection, init_db
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
@@ -170,6 +170,22 @@ def test_fetch_detail_handles_parse_failure_gracefully(monkeypatch):
     assert result.title == "old title"
 
 
+# ---------------------------------------------------------------- _slug_from_url ----
+
+def test_slug_from_url_extracts_path_segment():
+    assert _slug_from_url("https://phemex.com/announcements/foo-bar-123") == "foo-bar-123"
+
+
+def test_slug_from_url_strips_query_and_fragment():
+    assert _slug_from_url("https://phemex.com/announcements/foo?x=1#y") == "foo"
+
+
+def test_slug_from_url_returns_none_for_missing_or_unmatched():
+    assert _slug_from_url(None) is None
+    assert _slug_from_url("") is None
+    assert _slug_from_url("https://phemex.com/other-path") is None
+
+
 # ---------------------------------------------------------------- normalize ----
 
 def test_normalize_uses_category_key_not_response_field():
@@ -182,7 +198,7 @@ def test_normalize_uses_category_key_not_response_field():
     ann = collector.normalize(raw)
 
     assert ann.source == "Phemex"
-    assert ann.group_id == "phemex_1"
+    assert ann.group_id == "phemex_x"
     assert ann.raw_category == "activities"
     assert ann.content == "hello"
 
@@ -194,6 +210,36 @@ def test_normalize_handles_missing_content():
     ann = collector.normalize(raw)
 
     assert ann.content == ""
+
+
+def test_normalize_groups_by_url_slug_not_article_id():
+    # 2026-07-21 真实数据核实：Phemex 同一篇公告在 EN/FR 下 article_id 不同，但
+    # url slug 相同——group_id 必须用 slug 才能跨语言归组，见 _slug_from_url 顶部注释。
+    collector_en = PhemexCollector("EN", {**CFG, "list_category_id": 432}, "news")
+    collector_fr = PhemexCollector("FR", {**CFG, "list_category_id": 432}, "news")
+    raw_en = RawItem(
+        article_id=135479, title="Phemex Will Delist KORUUSDT Futures",
+        url="https://phemex.com/announcements/phemex-will-delist-koruusdt914",
+    )
+    raw_fr = RawItem(
+        article_id=135481, title="Phemex Will Delist KORUUSDT Futures",
+        url="https://phemex.com/announcements/phemex-will-delist-koruusdt914",
+    )
+
+    ann_en = collector_en.normalize(raw_en)
+    ann_fr = collector_fr.normalize(raw_fr)
+
+    assert ann_en.article_id != ann_fr.article_id
+    assert ann_en.group_id == ann_fr.group_id == "phemex_phemex-will-delist-koruusdt914"
+
+
+def test_normalize_falls_back_to_article_id_when_url_missing():
+    collector = PhemexCollector("EN", {**CFG, "list_category_id": 432}, "news")
+    raw = RawItem(article_id=42, title="t", url=None)
+
+    ann = collector.normalize(raw)
+
+    assert ann.group_id == "phemex_42"
 
 
 # ---------------------------------------------------------------- run() 端到端 ----

@@ -48,7 +48,8 @@ def call_llm_cursor_agent(
 ) -> tuple[str, Optional[int]]:
     """返回 (原始响应文本, 本次调用消耗的 token 数或 None)，跟 llm.call_llm() 同构
     （同样是 (raw_text, tokens_used) 二元组），run.py 按 provider 切换调用函数时，
-    下游 validate_and_normalize()/入库逻辑不需要跟着分支。
+    下游 validate_fact_extraction()/validate_business_judgment()/入库逻辑不需要
+    跟着分支。
     """
     message = f"{system}\n\n{user}{_NO_TOOLS_SUFFIX}"
     try:

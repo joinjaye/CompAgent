@@ -1,9 +1,8 @@
-"""src/analysis/llm.py 单测：JSON 解析失败处理、evidence_indices 空数组强制改
-「不适用」、uid 不在 related_uids 内时丢弃并记日志、diff_type 非法枚举强制修正、
-cache key 计算的顺序无关性、call_llm 的 HTTP 调用（mock http_fetch，不发真实请求）。
-
--v2（2026-07-20）新增：articles[] 逐条字段（diff_type/priority/follow_up/
-change_kind/listing_kind）的校验测试，见 test_validate_and_normalize_article_*。
+"""src/analysis/llm.py 单测：staged-v1 两段响应校验
+（validate_fact_extraction/validate_business_judgment，Phase②新增，取代旧的单体
+validate_and_normalize）、批次级 diff_type 的纯程序化聚合
+（aggregate_batch_diff_type）、缓存读写、call_llm 的 HTTP 调用（mock http_fetch，
+不发真实请求）。
 """
 
 from __future__ import annotations
@@ -11,348 +10,227 @@ from __future__ import annotations
 import json
 import sqlite3
 
-import pytest
-
 from src.analysis.config import LlmCredentials
 from src.analysis.llm import (
+    aggregate_batch_diff_type,
     call_llm,
-    compute_cache_key,
     get_cached_response,
     set_cached_response,
-    validate_and_normalize,
+    validate_business_judgment,
+    validate_fact_extraction,
 )
-from src.analysis.zmx_baseline import ZmxBaselineEntry
+from src.analysis.zmx_catalog import ZmxCatalogEntry
 
 
-def test_validate_and_normalize_json_parse_failure_returns_invalid():
-    result = validate_and_normalize("not a json {{{", category="campaign", related_uids={"u1"})
+# ---------------------------------------------------------------- validate_fact_extraction ----
+
+
+def test_validate_fact_extraction_json_parse_failure_returns_invalid():
+    result = validate_fact_extraction("not a json {{{", expected_index=1)
     assert result.valid is False
-    assert result.summary is None
-    assert result.articles_analysis == []
-    assert result.zmx_diff is None
     assert any("json_parse_failed" in i for i in result.issues)
 
 
-def test_validate_and_normalize_strips_markdown_code_fences():
-    raw = '```json\n{"batch_summary": "s", "articles": [], "zmx_comparison": {"diff_type": "不适用", "analysis": null, "evidence_indices": [], "priority": "低", "priority_reason": "r"}}\n```'
-    result = validate_and_normalize(raw, category="campaign", related_uids=set())
+def test_validate_fact_extraction_strips_markdown_code_fences():
+    raw = '```json\n{"i": 1, "event_type": "created", "confidence": 0.9}\n```'
+    result = validate_fact_extraction(raw, expected_index=1)
     assert result.valid is True
-    assert result.summary == "s"
+    assert result.event_type == "created"
 
 
-def test_validate_and_normalize_drops_article_uid_not_in_batch():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [
-            {"uid": "u1", "title": "in batch"},
-            {"uid": "u_ghost", "title": "not in batch"},
-        ],
-        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
-    })
-    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
-    assert len(result.articles_analysis) == 1
-    assert result.articles_analysis[0]["uid"] == "u1"
-    assert any("dropped_article_uid_not_in_batch" in i for i in result.issues)
-
-
-def test_validate_and_normalize_forces_not_applicable_when_evidence_indices_empty():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [],
-        "zmx_comparison": {"diff_type": "ZMX缺失", "analysis": "some analysis", "evidence_indices": [], "priority": "高", "priority_reason": "r"},
-    })
-    result = validate_and_normalize(raw, category="campaign", related_uids=set())
-    assert result.diff_type == "不适用"
-    assert any("empty_evidence_indices" in i for i in result.issues)
-
-
-def test_validate_and_normalize_forces_not_applicable_on_invalid_enum():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [],
-        "zmx_comparison": {"diff_type": "某种奇怪的值", "analysis": "x", "evidence_indices": [1], "priority": "低", "priority_reason": None},
-    })
-    result = validate_and_normalize(raw, category="campaign", related_uids=set())
-    assert result.diff_type == "不适用"
-    assert any("invalid_diff_type" in i for i in result.issues)
-
-
-def test_validate_and_normalize_listing_rejects_zmx_variant_type():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [],
-        "zmx_comparison": {"diff_type": "ZMX玩法不同", "analysis": "x", "evidence_indices": [1], "priority": "低", "priority_reason": None},
-    })
-    result = validate_and_normalize(raw, category="listing", related_uids=set())
-    # listing 的合法枚举不含 "ZMX玩法不同"
-    assert result.diff_type == "不适用"
-
-
-def test_validate_and_normalize_delisting_always_not_applicable_even_with_evidence():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [],
-        "zmx_comparison": {"diff_type": "ZMX缺失", "analysis": "x", "evidence_indices": [1], "priority": "高", "priority_reason": None},
-    })
-    result = validate_and_normalize(raw, category="delisting", related_uids=set())
-    assert result.diff_type == "不适用"
-
-
-def test_validate_and_normalize_maps_evidence_indices_to_zmx_uids():
-    hits = [
-        ZmxBaselineEntry(uid="z1", title="t1", mechanism_type="入金活动", key_mechanics=None,
-                          reward_range=None, target_users=None, start_date=None, end_date=None,
-                          post_time="2026-01-01T00:00:00Z"),
-        ZmxBaselineEntry(uid="z2", title="t2", mechanism_type="交易赛", key_mechanics=None,
-                          reward_range=None, target_users=None, start_date=None, end_date=None,
-                          post_time="2026-01-02T00:00:00Z"),
-    ]
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [],
-        "zmx_comparison": {"diff_type": "ZMX已有", "analysis": "见 [Z2]", "evidence_indices": [2], "priority": "低", "priority_reason": "因为..."},
-    })
-    result = validate_and_normalize(raw, category="campaign", related_uids=set(), zmx_hits=hits)
-    assert result.zmx_evidence_uids == ["z2"]
-    assert "优先级依据：因为..." in result.zmx_diff
-
-
-def test_validate_and_normalize_ignores_out_of_range_evidence_index():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [],
-        "zmx_comparison": {"diff_type": "ZMX已有", "analysis": "x", "evidence_indices": [99], "priority": "低", "priority_reason": None},
-    })
-    result = validate_and_normalize(raw, category="campaign", related_uids=set(), zmx_hits=[])
-    assert result.zmx_evidence_uids == []
-
-
-def _article(**overrides):
-    base = {
-        "uid": "u1", "title": "t", "diff_type": "ZMX缺失", "evidence_indices": [1],
-        "priority": "高", "follow_up": "跟进一下",
-    }
-    base.update(overrides)
-    return base
-
-
-def test_validate_and_normalize_article_listing_rejects_zmx_variant_type():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(diff_type="ZMX玩法不同")],
-        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
-    })
-    result = validate_and_normalize(raw, category="listing", related_uids={"u1"})
-    assert result.articles_analysis[0]["diff_type"] == "不适用"
-    assert any("invalid_diff_type" in i for i in result.issues)
-
-
-def test_validate_and_normalize_article_empty_evidence_forces_not_applicable():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(diff_type="ZMX缺失", evidence_indices=[])],
-        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
-    })
-    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
-    assert result.articles_analysis[0]["diff_type"] == "不适用"
-    assert any("empty_evidence_indices_forced_not_applicable" in i for i in result.issues)
-
-
-def test_validate_and_normalize_article_delisting_diff_type_always_not_applicable():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(diff_type="ZMX缺失", evidence_indices=[1])],
-        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
-    })
-    result = validate_and_normalize(raw, category="delisting", related_uids={"u1"})
-    assert result.articles_analysis[0]["diff_type"] == "不适用"
-
-
-def test_validate_and_normalize_article_invalid_priority_becomes_null_not_fabricated():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(priority="超级高")],
-        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
-    })
-    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
-    assert result.articles_analysis[0]["priority"] is None
-    assert any("invalid_priority" in i for i in result.issues)
-
-
-def test_validate_and_normalize_article_change_kind_kept_only_for_campaign_and_changed_status():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(diff_type="不适用", evidence_indices=[], change_kind="reward")],
-        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
-    })
-    result = validate_and_normalize(
-        raw, category="campaign", related_uids={"u1"}, article_status={"u1": "changed"}
-    )
-    assert result.articles_analysis[0]["change_kind"] == "reward"
-
-
-def test_validate_and_normalize_article_change_kind_null_when_status_not_changed():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(diff_type="不适用", evidence_indices=[], change_kind="reward")],
-        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
-    })
-    result = validate_and_normalize(
-        raw, category="campaign", related_uids={"u1"}, article_status={"u1": "new"}
-    )
-    assert result.articles_analysis[0]["change_kind"] is None
-
-
-def test_validate_and_normalize_article_change_kind_null_without_article_status_param():
-    # 不传 article_status（默认 None）等价于"每条状态都不是 changed"，change_kind 恒 null，
-    # 这保证了所有既有调用方/测试（不知道这个新参数）行为不受影响。
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(diff_type="不适用", evidence_indices=[], change_kind="reward")],
-        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
-    })
-    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
-    assert result.articles_analysis[0]["change_kind"] is None
-
-
-def test_validate_and_normalize_article_change_kind_null_for_non_campaign():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(diff_type="不适用", evidence_indices=[], change_kind="reward")],
-        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
-    })
-    result = validate_and_normalize(
-        raw, category="product", related_uids={"u1"}, article_status={"u1": "changed"}
-    )
-    assert result.articles_analysis[0]["change_kind"] is None
-
-
-def test_validate_and_normalize_article_listing_kind_only_kept_for_listing():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(diff_type="不适用", evidence_indices=[], listing_kind="spot")],
-        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
-    })
-    listing_result = validate_and_normalize(raw, category="listing", related_uids={"u1"})
-    assert listing_result.articles_analysis[0]["listing_kind"] == "spot"
-
-    campaign_result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
-    assert campaign_result.articles_analysis[0]["listing_kind"] is None
-
-
-def test_validate_and_normalize_article_listing_kind_invalid_value_becomes_null():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(diff_type="不适用", evidence_indices=[], listing_kind="两者均有")],
-        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
-    })
-    result = validate_and_normalize(raw, category="listing", related_uids={"u1"})
-    assert result.articles_analysis[0]["listing_kind"] is None
-
-
-def test_validate_and_normalize_invalid_article_field_does_not_drop_whole_article():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(diff_type="某种奇怪的值", priority="乱填", follow_up=123)],
-        "zmx_comparison": {"diff_type": "不适用", "analysis": None, "evidence_indices": [], "priority": "低", "priority_reason": None},
-    })
-    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
-    assert len(result.articles_analysis) == 1
-    article = result.articles_analysis[0]
-    assert article["uid"] == "u1"
-    assert article["diff_type"] == "不适用"
-    assert article["priority"] is None
-    assert article["follow_up"] is None
-
-
-def test_validate_and_normalize_business_action_fields():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(
-            priority="高", priority_reason="奖池由 10,000 增至 50,000 USDT",
-            action_type="campaign_design", owner="campaign_ops",
-            follow_up="两日内输出 SEA 合约交易赛奖池对比表",
-        )],
-        "zmx_comparison": {
-            "diff_type": "不适用", "analysis": None, "evidence_indices": [],
-            "priority": "低", "priority_reason": None,
-        },
-    })
-    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
-    article = result.articles_analysis[0]
-    assert article["priority_reason"].startswith("奖池")
-    assert article["action_type"] == "campaign_design"
-    assert article["owner"] == "campaign_ops"
-    assert article["follow_up"].startswith("两日内")
-
-
-def test_validate_and_normalize_removes_generic_action_and_invalid_enums():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(
-            priority="高", priority_reason=None, action_type="do_something",
-            owner="anyone", follow_up="建议关注",
-        )],
-        "zmx_comparison": {
-            "diff_type": "不适用", "analysis": None, "evidence_indices": [],
-            "priority": "低", "priority_reason": None,
-        },
-    })
-    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
-    article = result.articles_analysis[0]
-    assert article["priority_reason"] is None
-    assert article["action_type"] is None
-    assert article["owner"] is None
-    assert article["follow_up"] is None
-    assert any("generic_follow_up_removed" in i for i in result.issues)
-    assert any("missing_priority_reason" in i for i in result.issues)
-
-
-def test_validate_and_normalize_reports_missing_batch_articles():
-    raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(uid="u1")],
-        "zmx_comparison": {
-            "diff_type": "不适用", "analysis": None, "evidence_indices": [],
-            "priority": "低", "priority_reason": None,
-        },
-    })
-    result = validate_and_normalize(raw, category="campaign", related_uids={"u1", "u2"})
+def test_validate_fact_extraction_corrects_index_mismatch_without_invalidating():
+    raw = json.dumps({"i": 99, "event_type": "created"})
+    result = validate_fact_extraction(raw, expected_index=1)
     assert result.valid is True
-    assert any(issue == "missing_article_uids:u2" for issue in result.issues)
+    assert result.index == 1
+    assert any("index_mismatch" in i for i in result.issues)
 
 
-def test_validate_and_normalize_drops_duplicate_article_uid():
+def test_validate_fact_extraction_invalid_event_type_becomes_unknown():
+    raw = json.dumps({"i": 1, "event_type": "something_made_up"})
+    result = validate_fact_extraction(raw, expected_index=1)
+    assert result.event_type == "unknown"
+    assert any("invalid_event_type" in i for i in result.issues)
+
+
+def test_validate_fact_extraction_confidence_clamped_to_0_1():
+    raw = json.dumps({"i": 1, "event_type": "created", "confidence": 5})
+    result = validate_fact_extraction(raw, expected_index=1)
+    assert result.confidence == 1.0
+
+
+def test_validate_fact_extraction_reads_evidence_target_users_and_changes():
     raw = json.dumps({
-        "batch_summary": "s",
-        "articles": [_article(uid="u1"), _article(uid="u1")],
-        "zmx_comparison": {
-            "diff_type": "不适用", "analysis": None, "evidence_indices": [],
-            "priority": "低", "priority_reason": None,
-        },
+        "i": 1, "event_type": "reward_changed", "confidence": 0.8,
+        "target_users": ["新用户", 123, "VIP"],
+        "changes": [{"field": "reward", "before": 100, "after": 200}, "not-a-dict"],
+        "evidence": ["a", "b", "c", "d", "e", "f"],
     })
-    result = validate_and_normalize(raw, category="campaign", related_uids={"u1"})
-    assert len(result.articles_analysis) == 1
-    assert any(issue == "dropped_duplicate_article_uid:u1" for issue in result.issues)
+    result = validate_fact_extraction(raw, expected_index=1)
+    assert result.target_users == ["新用户", "VIP"]
+    assert result.changes == [{"field": "reward", "before": 100, "after": 200}]
+    assert len(result.evidence) == 5  # 最多 5 条
 
 
-def test_compute_cache_key_is_order_independent():
-    k1 = compute_cache_key(["hashA", "hashB"], "campaign-v1")
-    k2 = compute_cache_key(["hashB", "hashA"], "campaign-v1")
-    assert k1 == k2
+# ---------------------------------------------------------------- validate_business_judgment ----
 
 
-def test_compute_cache_key_changes_with_content_or_prompt_version():
-    base = compute_cache_key(["hashA", "hashB"], "campaign-v1")
-    assert base != compute_cache_key(["hashA", "hashC"], "campaign-v1")
-    assert base != compute_cache_key(["hashA", "hashB"], "campaign-v2")
+def _entry(uid: str, mechanism_type: str = "deposit_reward") -> ZmxCatalogEntry:
+    return ZmxCatalogEntry(
+        uid=uid, title="t", mechanism_type=mechanism_type, key_mechanics=None,
+        reward_range=None, target_users=None, start_date=None, end_date=None, post_time=None,
+    )
+
+
+def test_validate_business_judgment_json_parse_failure_returns_invalid():
+    result = validate_business_judgment("not json", expected_indices={1}, candidates_by_index={})
+    assert result.valid is False
+
+
+def test_validate_business_judgment_maps_gap_type_to_diff_type():
+    # confirmed_gap 也需要至少有候选可看（哪怕候选最终都被判定为"不是同一回事"），
+    # 完全没有候选时无法真正"确认"缺失，见下面 test_..._no_candidates_forces_...
+    raw = json.dumps({"items": [
+        {"i": 1, "gap_type": "confirmed_gap", "business_impact": "high", "novelty": 2, "urgency": 1,
+         "zmx_evidence": [], "reason": "x"},
+    ]})
+    result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index={1: [_entry("z1")]})
+    assert result.items[0].gap_type == "confirmed_gap"
+    assert result.items[0].diff_type == "ZMX缺失"
+
+
+def test_validate_business_judgment_baseline_not_found_maps_to_not_applicable_diff_type():
+    """关键区分：baseline_not_found（没召回到候选）不等于 confirmed_gap（确认缺失），
+    映射到的 diff_type 必须是「不适用」，不是「ZMX缺失」——这是防止误报缺失的核心。
+    """
+    raw = json.dumps({"items": [
+        {"i": 1, "gap_type": "baseline_not_found", "business_impact": "low", "novelty": 0, "urgency": 0,
+         "zmx_evidence": [], "reason": "无候选"},
+    ]})
+    result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index={1: []})
+    assert result.items[0].diff_type == "不适用"
+
+
+def test_validate_business_judgment_drops_item_not_in_batch():
+    raw = json.dumps({"items": [
+        {"i": 1, "gap_type": "not_applicable", "business_impact": "low", "reason": "in batch"},
+        {"i": 99, "gap_type": "not_applicable", "business_impact": "low", "reason": "not in batch"},
+    ]})
+    result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index={})
+    assert len(result.items) == 1
+    assert result.items[0].index == 1
+    assert any("dropped_item_index_not_in_batch" in i for i in result.issues)
+
+
+def test_validate_business_judgment_no_candidates_forces_baseline_not_found():
+    raw = json.dumps({"items": [
+        {"i": 1, "gap_type": "confirmed_gap", "business_impact": "high", "reason": "x"},
+    ]})
+    result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index={1: []})
+    assert result.items[0].gap_type == "baseline_not_found"
+    assert any("no_candidates_forced_baseline_not_found" in i for i in result.issues)
+
+
+def test_validate_business_judgment_empty_evidence_forces_baseline_not_found():
+    """有候选，但没引用任何一条作为证据时断言 covered/different_mechanism 一样是
+    防幻觉降级对象——跟旧版 evidence_indices 空数组强制"不适用"是同一条规则。"""
+    raw = json.dumps({"items": [
+        {"i": 1, "gap_type": "covered", "business_impact": "low", "zmx_evidence": [], "reason": "x"},
+    ]})
+    result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index={1: [_entry("z1")]})
+    assert result.items[0].gap_type == "baseline_not_found"
+    assert any("empty_evidence_forced_baseline_not_found" in i for i in result.issues)
+
+
+def test_validate_business_judgment_maps_evidence_position_to_real_zmx_uid():
+    raw = json.dumps({"items": [
+        {"i": 1, "gap_type": "covered", "business_impact": "low", "zmx_evidence": [2], "reason": "见候选2"},
+    ]})
+    candidates = {1: [_entry("z1"), _entry("z2")]}
+    result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index=candidates)
+    assert result.items[0].zmx_evidence_uids == ["z2"]
+
+
+def test_validate_business_judgment_out_of_range_evidence_ignored():
+    raw = json.dumps({"items": [
+        {"i": 1, "gap_type": "covered", "business_impact": "low", "zmx_evidence": [99], "reason": "x"},
+    ]})
+    candidates = {1: [_entry("z1")]}
+    result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index=candidates)
+    # 越界证据被丢弃 -> 没有真实证据 -> 防幻觉降级
+    assert result.items[0].zmx_evidence_uids == []
+    assert result.items[0].gap_type == "baseline_not_found"
+
+
+def test_validate_business_judgment_invalid_gap_type_becomes_not_applicable():
+    raw = json.dumps({"items": [
+        {"i": 1, "gap_type": "something_weird", "business_impact": "low", "reason": "x"},
+    ]})
+    result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index={1: []})
+    assert result.items[0].gap_type == "not_applicable"
+    assert result.items[0].diff_type == "不适用"
+
+
+def test_validate_business_judgment_invalid_business_impact_defaults_to_low():
+    raw = json.dumps({"items": [
+        {"i": 1, "gap_type": "not_applicable", "business_impact": "super_high", "reason": "x"},
+    ]})
+    result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index={})
+    assert result.items[0].business_impact == "low"
+
+
+def test_validate_business_judgment_reports_missing_indices():
+    raw = json.dumps({"items": [{"i": 1, "gap_type": "not_applicable", "business_impact": "low"}]})
+    result = validate_business_judgment(raw, expected_indices={1, 2}, candidates_by_index={})
+    assert any(issue == "missing_item_indices:2" for issue in result.issues)
+
+
+def test_validate_business_judgment_drops_duplicate_index():
+    raw = json.dumps({"items": [
+        {"i": 1, "gap_type": "not_applicable", "business_impact": "low"},
+        {"i": 1, "gap_type": "not_applicable", "business_impact": "low"},
+    ]})
+    result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index={})
+    assert len(result.items) == 1
+    assert any("dropped_duplicate_index" in i for i in result.issues)
+
+
+def test_validate_business_judgment_novelty_urgency_clamped_0_3():
+    raw = json.dumps({"items": [
+        {"i": 1, "gap_type": "not_applicable", "business_impact": "low", "novelty": 99, "urgency": -5},
+    ]})
+    result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index={})
+    assert result.items[0].novelty == 3
+    assert result.items[0].urgency == 0
+
+
+# ---------------------------------------------------------------- aggregate_batch_diff_type ----
+
+
+def test_aggregate_batch_diff_type_all_not_applicable():
+    assert aggregate_batch_diff_type(["不适用", "不适用"]) == "不适用"
+
+
+def test_aggregate_batch_diff_type_empty_batch():
+    assert aggregate_batch_diff_type([]) == "不适用"
+
+
+def test_aggregate_batch_diff_type_single_non_na_value_passthrough():
+    assert aggregate_batch_diff_type(["不适用", "ZMX缺失", "不适用"]) == "ZMX缺失"
+
+
+def test_aggregate_batch_diff_type_multiple_distinct_values_is_mixed():
+    assert aggregate_batch_diff_type(["ZMX已有", "ZMX缺失"]) == "混合"
+
+
+# ---------------------------------------------------------------- cache / call_llm ----
 
 
 def test_cache_roundtrip():
     conn = sqlite3.connect(":memory:")
     conn.row_factory = sqlite3.Row
     conn.execute("CREATE TABLE llm_cache (cache_key TEXT PRIMARY KEY, response TEXT NOT NULL, created_at TEXT NOT NULL)")
-    key = compute_cache_key(["h1"], "campaign-v1")
+    key = "some-key"
     assert get_cached_response(conn, key) is None
     set_cached_response(conn, key, '{"ok": true}')
     assert get_cached_response(conn, key) == '{"ok": true}'

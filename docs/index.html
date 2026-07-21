@@ -47,6 +47,17 @@ body {
   max-width: 1120px; margin: 0 auto; padding-bottom: 4rem;
   -webkit-font-smoothing: antialiased;
 }
+@media (max-width: 640px) {
+  body { padding-bottom: 2rem; }
+  .topbar { padding: .85rem 1rem; align-items: flex-start; }
+  .topbar-right { display: none; }
+  .category-tabs, .overview-grid, .filter-bar, .market-tabs, .search-toolbar { padding-left: 1rem; padding-right: 1rem; }
+  .table-wrap, .trend-card, .insight-card, .rank-card { margin-left: 1rem; margin-right: 1rem; }
+  .section-label { padding-left: 1rem; padding-right: 1rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
 button, input, select { font-family: inherit; }
 button { cursor: pointer; }
 a { color: inherit; }
@@ -117,6 +128,12 @@ a { color: inherit; }
 .legend-dot { width:7px; height:7px; display:inline-block; border-radius:50%; margin-right:5px; }
 .summary-table td strong { font-size:16px; }
 .overview-actions { display:flex; align-items:center; justify-content:space-between; padding:.5rem 1.5rem 0; flex-wrap:wrap; gap:8px; }
+.rule-guide { margin:.8rem 1.5rem 0; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-1); color:var(--text-secondary); font-size:12px; }
+.rule-guide summary { cursor:pointer; min-height:44px; display:flex; align-items:center; padding:0 1rem; color:var(--text-primary); font-weight:650; }
+.rule-guide-body { border-top:1px solid var(--border); padding:.8rem 1rem; line-height:1.65; display:grid; gap:5px; }
+.rule-guide code { color:var(--hue-campaign); font-family:var(--font-mono); }
+.freshness { display:inline-flex; align-items:center; gap:6px; padding:4px 9px; border:1px solid var(--border); border-radius:20px; color:var(--text-secondary); font-size:11px; }
+.source-link { color:var(--hue-campaign); font-weight:650; white-space:nowrap; }
 
 /* ---------- activity ranking (reused on Overview) ---------- */
 .rank-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); margin: 0 1.5rem; box-shadow: var(--shadow-card); overflow: hidden; }
@@ -188,6 +205,7 @@ a { color: inherit; }
 .tag-delisting { background: color-mix(in srgb, var(--hue-delisting) 18%, transparent); color: #f5928d; }
 .tag-other { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
 .tag-mock { background: transparent; color: var(--text-muted); border: 1px dashed var(--text-muted); font-weight: 500; }
+.tag-llm { background: color-mix(in srgb, var(--status-good) 18%, transparent); color: var(--status-good); border: 1px solid var(--status-good); }
 
 /* ---------- filter bar (shared: Campaign/Product/Listing/Markets/Search) ---------- */
 .filter-bar { display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; flex-wrap: wrap; gap: 8px; }
@@ -285,6 +303,107 @@ a { color: inherit; }
 .push-header { display: flex; align-items: baseline; justify-content: space-between; padding: 1rem 1.25rem 0.25rem; border-bottom: 1px solid var(--border); margin-bottom: 0.25rem; }
 .push-title { font-size: 15px; font-weight: 650; }
 .push-date { font-size: 12px; color: var(--text-muted); }
+
+/* ---------- v2 visual system: wide dark operations console ---------- */
+:root {
+  color-scheme: dark;
+  --surface-0:#07111f; --surface-1:#0e1a2b; --surface-2:#152338; --surface-3:#1b2c44;
+  --text-primary:#f1f5fb; --text-secondary:#b2bfd0; --text-muted:#8190a5;
+  --border:#223650; --border-strong:#38516f; --on-accent:#ffffff;
+  --hue-campaign:#4f8cff; --hue-product:#2dd4a7; --hue-listing:#f3ad3d; --hue-delisting:#ff6b6b;
+  --status-good:#2dd4a7; --status-warning:#f3ad3d; --status-serious:#fb8b5a; --status-critical:#ff6b6b;
+  --shadow-card:0 1px 2px rgba(0,0,0,.3),0 12px 32px rgba(0,0,0,.18);
+  --radius-sm:8px; --radius:12px; --radius-lg:18px;
+}
+html,body { background:var(--surface-0); }
+body { max-width:1480px; min-height:100vh; font-size:14px; }
+.topbar { margin:16px 20px 0; padding:18px 22px; border:1px solid var(--border); border-radius:var(--radius-lg); background:rgba(14,26,43,.94); box-shadow:var(--shadow-card); z-index:30; }
+.topbar-title { font-size:18px; letter-spacing:-.02em; }
+.status-dot { box-shadow:0 0 0 4px rgba(5,150,105,.12); }
+.category-tabs { margin:10px 20px 0; padding:6px; border:1px solid var(--border); border-radius:12px; background:var(--surface-1); gap:4px; box-shadow:0 1px 2px rgba(0,0,0,.2); }
+.category-tab { flex:1; text-align:center; padding:10px 16px; border:0; border-radius:8px; min-height:40px; }
+.category-tab.active { color:#fff; background:#2859c5; border:0; box-shadow:0 4px 16px rgba(40,89,197,.32); }
+.category-tab:hover { background:var(--surface-2); }
+.category-tab.active:hover { background:#2859c5; }
+.section-label { padding-top:28px; font-size:11px; color:#91a2b8; }
+.overview-grid { gap:14px; }
+.stat-card { padding:18px; border-color:var(--border); box-shadow:var(--shadow-card); }
+.stat-card:hover { border-color:var(--border-strong); transform:translateY(-1px); }
+.stat-value { font-size:30px; }
+.table-wrap { max-width:calc(100% - 3rem); overflow:auto; border-color:var(--border); box-shadow:var(--shadow-card); }
+.data-table { min-width:980px; table-layout:auto; }
+.data-table thead { position:sticky; top:0; z-index:10; background:#111f32; }
+.data-table thead th { padding:12px 14px; color:#91a2b8; border-color:var(--border); }
+.data-table tbody td { padding:12px 14px; line-height:1.55; border-color:var(--border); }
+.data-table tbody tr:hover { background:#12233a; }
+.data-table .td-title { min-width:230px; max-width:340px; }
+.cell-copy { display:-webkit-box; -webkit-line-clamp:3; line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; min-width:180px; max-width:320px; }
+.cell-copy:hover { -webkit-line-clamp:unset; line-clamp:unset; }
+.filter-bar { margin-top:20px; }
+.filter-btn { min-height:36px; padding:7px 12px; background:var(--surface-1); }
+.filter-btn.active { box-shadow:0 3px 10px rgba(37,99,235,.18); }
+.rule-guide { background:#0b1727; box-shadow:none; }
+.rule-guide summary { color:var(--text-secondary); }
+.insight-card { background:linear-gradient(135deg,rgba(79,140,255,.16),var(--surface-1)); border-color:#2d4e78; color:var(--text-secondary); }
+.trend-card,.rank-card { box-shadow:var(--shadow-card); }
+.source-pill { background:#17263a; border-color:#2a405c; color:#c9d4e3; }
+.tag { border:1px solid transparent; }
+.tag-na { background:#1a293d; color:#9dafc5; border-color:#2b405a; }
+.market-chips { display:flex; flex-wrap:wrap; gap:5px; min-width:110px; }
+.market-chip { display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:999px; background:#17283e; color:#c3d0e0; border:1px solid #2d4664; font-size:11px; font-weight:650; }
+.variant-links { display:flex; flex-wrap:wrap; gap:6px; margin-top:7px; }
+.variant-link { font-size:11px; color:#7eacff; font-weight:650; text-decoration:none; }
+.comparison-box { min-width:220px; max-width:300px; padding:9px 10px; border-radius:9px; background:#132239; border:1px solid #2b4260; }
+.comparison-box strong { display:block; color:#e9eff8; font-size:12px; margin-bottom:4px; }
+.comparison-box small { color:#9dadc2; line-height:1.45; }
+.comparison-box.matched { background:#0d302a; border-color:#236b58; }
+.comparison-box.unmatched { background:#352515; border-color:#795128; }
+.product-coverage { display:flex; flex-wrap:wrap; gap:8px; padding:0 1.5rem; }
+.coverage-chip { padding:8px 11px; border-radius:10px; background:var(--surface-1); border:1px solid var(--border); color:#b9c7d8; font-size:12px; box-shadow:0 1px 2px rgba(0,0,0,.18); }
+.coverage-chip strong { color:#f1f5fb; margin-left:5px; }
+.quality-banner { margin:14px 1.5rem 0; padding:13px 15px; border-radius:10px; background:#352515; border:1px solid #795128; color:#f6c87c; font-size:12px; line-height:1.55; }
+.readiness-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding:0 1.5rem; }
+.readiness-item { padding:14px 15px; border:1px solid var(--border); background:var(--surface-1); border-radius:10px; color:#aebdd0; font-size:12px; line-height:1.55; }
+.readiness-item strong { display:block; color:#eef3fa; margin-bottom:4px; }
+.global-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.global-select { min-height:36px; padding:0 30px 0 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:#dce6f3; }
+a { color:#7eacff; }
+.source-link { color:#7eacff; }
+.footnote { color:#8190a5; }
+@media(max-width:860px){
+  .topbar { margin:8px 8px 0; border-radius:12px; }
+  .category-tabs { margin:8px 8px 0; overflow-x:auto; }
+  .category-tab { flex:0 0 auto; min-width:108px; }
+  .overview-grid { grid-template-columns:1fr 1fr; }
+  .table-wrap { max-width:calc(100% - 2rem); }
+  .readiness-grid { grid-template-columns:1fr; }
+}
+@media(max-width:520px){
+  .overview-grid { grid-template-columns:1fr; }
+  .topbar-left { display:block; }
+  .stat-card { padding:16px; }
+}
+@media(max-width:640px){
+  .topbar { flex-direction:column; gap:12px; }
+  .topbar-right { display:flex; width:100%; flex-wrap:wrap; }
+  .global-controls { width:100%; }
+  .global-select { flex:1; min-width:130px; }
+}
+
+/* ---------- Detail drill-down (Campaign/Product row expand) ---------- */
+.row-expand-toggle {
+  background:none; border:none; padding:0; color:inherit; font:inherit; text-align:left;
+  cursor:pointer; display:inline;
+}
+.row-expand-toggle:hover { color:var(--hue-campaign); }
+tr.detail-row td { background:var(--surface-2); padding:14px 16px; }
+.detail-panel { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:16px; }
+@media(max-width:1024px){ .detail-panel { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+.detail-panel-col { font-size:12.5px; color:var(--text-secondary); line-height:1.6; display:flex; flex-direction:column; gap:4px; }
+.detail-panel-col .section-label { padding:0 0 2px !important; }
+.zmx-compare-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.zmx-compare-col { padding:8px 10px; border-radius:8px; background:var(--surface-1); border:1px solid var(--border); font-size:12px; }
+.zmx-compare-col strong { display:block; color:var(--text-primary); font-size:11px; text-transform:uppercase; letter-spacing:.04em; margin-bottom:4px; }
 </style>
 
 <div id="app">
@@ -304,7 +423,7 @@ const TOP_TABS = [
 ];
 const CATEGORY_ORDER = ['campaign', 'product', 'listing', 'delisting'];
 const CATEGORY_LABEL = { campaign: '活动 Campaign', product: '产品 Product', listing: '上币 Listing', delisting: '下架 Delisting', other: '其他' };
-const DIFF_LABEL = { missing: 'ZMX缺失', diff: 'ZMX玩法不同', same: 'ZMX已有', mixed: '混合', na: '不适用', pending: '待分析' };
+const DIFF_LABEL = { missing: '未检索到同类', diff: '已有同类 · 机制不同', same: '已有同类', mixed: '需人工核验', na: '未进行对比', pending: '待分析' };
 const STATUS_LABEL = { new: '新增', changed: '变更', unchanged: '未变' };
 const SOURCES = ['Bitunix', 'Weex', 'BingX', 'Phemex', 'Lbank'];
 const LOCALE_LABEL = { EN: 'EN', FR: 'FR', VN: 'VN', ID: 'ID' };
@@ -314,12 +433,12 @@ const DIFF_SORT_ORDER = { missing: 0, diff: 1, mixed: 2, same: 3, na: 3 };
 const SEARCH_PAGE_SIZE = 50;
 
 let DATA = null;
-let state = { tab: 'overview', trendDays: 7 };
-let campaignState = { source: 'all' };
-let productState = { source: 'all' };
+let state = { tab: 'overview', trendDays: 7, globalSource: 'all', globalMarket: 'all' };
+let campaignState = { source: 'all', limit: 10, type: 'all', status: 'all', diffType: 'all', keyword: '', expanded: new Set() };
+let productState = { source: 'all', limit: 10, category: 'all', status: 'all', market: 'all', diffType: 'all', keyword: '', expanded: new Set() };
 let listingState = { source: 'all' };
 let marketsState = { market: 'EN' };
-let searchState = { locale: 'all', source: 'all', category: 'all', diffType: 'all', range: 'all', query: '', page: 1 };
+let searchState = { locale: 'all', source: 'all', category: 'all', diffType: 'all', range: 'all', dateFrom: '', dateTo: '', query: '', page: 1 };
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -328,11 +447,57 @@ function mockBadge(isMock) { return isMock ? `<span class="tag tag-mock">模拟<
 function priorityClass(p) { return p === '高' ? 'priority-high' : p === '中' ? 'priority-medium' : 'priority-low'; }
 function priorityRank(p) { return PRIORITY_ORDER[p] ?? 3; }
 function diffRank(tag) { return DIFF_SORT_ORDER[tag] ?? 4; }
-// 全局共用的排序规则：priority 高->中->低，同级内按 diff_type 严重度
-// (ZMX缺失 -> 玩法不同 -> 混合 -> 已有/不适用)。每个 tab 的列表都调这同一个函数，
-// 不各自重新实现一遍，避免六个 tab 的"优先级排序"行为悄悄产生差异。
-function sortByPriorityThenDiff(rows) {
-  return [...rows].sort((a, b) => priorityRank(a.priority) - priorityRank(b.priority) || diffRank(a.diff_tag) - diffRank(b.diff_tag));
+// 业务页面一律使用确定性排序；AI priority/diff 只展示，不参与顺序。
+function publishTimeRank(row) { return Date.parse(row.post_time || 0) || 0; }
+function campaignRuleRank(row) {
+  if (campaignDisplayStatus(row) === 'New') return 0;
+  if (row.status === 'changed') return 1;
+  const today = DATA.meta.batch_date;
+  if (row.start_date && row.start_date > today) return 3;
+  if (row.end_date && row.end_date < today) return 4;
+  return 2;
+}
+function campaignDisplayStatus(row) {
+  const today = DATA.meta.batch_date;
+  if (row.status === 'changed') return 'Updated';
+  if (row.status === 'new' && formatDate(row.post_time) === today) return 'New';
+  if (row.start_date && row.start_date > today) return 'Upcoming';
+  if (row.end_date && row.end_date < today) return 'Ended';
+  if (row.start_date || row.end_date) return 'Ongoing';
+  return 'Date unknown';
+}
+function campaignRows() { return globalFiltered(DATA.campaign_all || DATA.campaign); }
+function productRuleRank(row) { return row.status === 'new' ? 0 : 1; }
+function listingRuleRank(row) {
+  if (row.category === 'delisting') return 2;
+  if (row.listing_kind === 'spot') return 0;
+  if (row.listing_kind === 'perp') return 1;
+  return 3;
+}
+function ruleSort(rows, category) {
+  const rank = category === 'campaign' ? campaignRuleRank : category === 'product' ? productRuleRank : listingRuleRank;
+  return [...rows].sort((a,b) => rank(a) - rank(b) || publishTimeRank(b) - publishTimeRank(a) || a.title.localeCompare(b.title));
+}
+function globalRuleSort(rows) {
+  const moduleRank = { campaign: 0, product: 1, listing: 2, delisting: 2, other: 3 };
+  return [...rows].sort((a,b) =>
+    (moduleRank[a.category] ?? 4) - (moduleRank[b.category] ?? 4) ||
+    (a.category === 'campaign' ? campaignRuleRank(a) : a.category === 'product' ? productRuleRank(a) : listingRuleRank(a)) -
+    (b.category === 'campaign' ? campaignRuleRank(b) : b.category === 'product' ? productRuleRank(b) : listingRuleRank(b)) ||
+    publishTimeRank(b) - publishTimeRank(a)
+  );
+}
+function sourceLink(row, label='View source ↗') {
+  return row.url ? `<a class="source-link" href="${esc(row.url)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>` : '<span title="源数据缺少 URL">链接缺失</span>';
+}
+function ruleGuide(scope) {
+  const details = {
+    overview: '<code>模块</code> Campaign → Product → Listing → Other；同模块按事件类型，再按发布时间倒序。全局 Top 5，每个交易所最多 2 条。多语言与重复抓取只计一次。',
+    campaign: '<code>排序</code> New → Updated → Ongoing → Upcoming → Ended；同状态按发布时间倒序。AI 仅做抽取与总结，不参与排序或是否值得关注的判断。',
+    product: '<code>排序</code> New Product → Update；同类型按发布时间倒序。产品覆盖表示本期涉及的能力分类，不代表历史产品总量。',
+    listing: '<code>排序</code> New Spot → New Perpetual → Delisting → 未识别；同类型按发布时间倒序。Listing 不调用 AI 做优先级或 Zoomex 对比。',
+  }[scope];
+  return `<details class="rule-guide"><summary>口径与排序规则</summary><div class="rule-guide-body"><div>${details}</div><div><code>Zoomex 对比</code>“未检索到同类”仅表示当前基线没有召回证据，不等于确认缺失；“未进行对比”表示该模块不做对比或尚无分析结果。</div><div><code>可追溯性</code>每条记录均提供原始公告链接；完整历史统一在 Search 中检索。</div></div></details>`;
 }
 function formatTime(iso) {
   if (!iso) return '--:--';
@@ -345,6 +510,35 @@ function formatDate(iso) {
 function localeDot(locale) {
   const cls = LOCALE_DOT_CLASS[locale];
   return cls ? `<span class="locale-dot ${cls}"></span> ` : '';
+}
+function rowMarkets(row) { return row.markets || (row.locale ? [row.locale] : []); }
+function globalFiltered(rows) {
+  return (rows || []).filter(row =>
+    (state.globalSource === 'all' || row.source === state.globalSource) &&
+    (state.globalMarket === 'all' || rowMarkets(row).includes(state.globalMarket))
+  );
+}
+function marketChips(row) {
+  return `<div class="market-chips">${rowMarkets(row).map(locale => `<span class="market-chip">${localeDot(locale)}${esc(locale)}</span>`).join('')}</div>`;
+}
+function variantLinks(row) {
+  const variants = row.localized_variants || [{ locale: row.locale, title: row.title, url: row.url }];
+  return `<div class="variant-links">${variants.map(v => v.url ? `<a class="variant-link" href="${esc(v.url)}" target="_blank" rel="noopener noreferrer">${esc(v.locale)} source ↗</a>` : '').join('')}</div>`;
+}
+// Phase③起 Zoomex 对照来自 zmx_catalog_entry（目录 exists_flag）+ zmx_summary
+// （zmx_counterpart 具体示例），campaign/product 共用同一套字段——不再是旧版
+// 只有 product 才有的、基于全量历史词项重叠的 comparison_status
+// in (candidate_found, baseline_unmatched)/zmx_candidates 机制（已retired，见
+// export_data.py build_category_section 顶部注释）。
+function zmxComparisonBox(row) {
+  if (row.comparison_status !== 'analyzed') {
+    return `<div class="comparison-box"><strong>尚未分析</strong><small>该条尚未被任何一次竞品分析运行覆盖，不是"确认无差异"。</small></div>`;
+  }
+  const label = esc(DIFF_LABEL[row.diff_tag] || row.diff_type || '不适用');
+  const detail = esc(row.diff_detail || row.zmx_capability_desc || '');
+  const counterpart = row.zmx_counterpart;
+  const cls = row.diff_tag === 'same' ? 'matched' : row.diff_tag === 'missing' ? 'unmatched' : '';
+  return `<div class="comparison-box ${cls}"><strong>${label}</strong>${detail ? `<small>${detail}</small>` : ''}${counterpart?.url ? `<div class="variant-links"><a class="variant-link" href="${esc(counterpart.url)}" target="_blank" rel="noopener noreferrer">Open Zoomex evidence ↗</a></div>` : ''}</div>`;
 }
 
 async function loadData() {
@@ -395,7 +589,7 @@ function renderPushView(locale) {
   const productRows = byLocale(DATA.product);
   const listingRows = byLocale(DATA.listing);
   const allRows = [...campaignRows, ...productRows, ...listingRows];
-  const highlights = sortByPriorityThenDiff(allRows.filter(r => r.priority === '高')).slice(0, PUSH_HIGHLIGHTS_CAP);
+  const highlights = globalRuleSort(allRows).slice(0, PUSH_HIGHLIGHTS_CAP);
 
   app.innerHTML = `
     <div class="push-view">
@@ -408,7 +602,7 @@ function renderPushView(locale) {
         ${pushChipCard('Product', productRows)}
         ${pushChipCard('Listing（含下架）', listingRows)}
       </div>
-      <div class="section-label">今日重点 · priority 高</div>
+      <div class="section-label">今日重点 · Rule-based Top ${PUSH_HIGHLIGHTS_CAP}</div>
       <div class="detail-list" style="padding:0 1.25rem">
         ${highlights.length ? highlights.map(r => `
           <div class="highlight-card ${r.diff_tag === 'missing' ? 'accent-missing' : ''}">
@@ -441,7 +635,11 @@ function render() {
       </div>
       <div class="topbar-right">
         <span class="status-dot"></span>
-        <span>数据生成于 ${esc(DATA.meta.generated_at)}</span>
+        <span>Updated At ${esc(DATA.meta.generated_at)}</span>
+        <div class="global-controls">
+          <select class="global-select" id="globalSource" aria-label="全局平台筛选"><option value="all">All exchanges</option>${SOURCES.map(s => `<option value="${s}">${s}</option>`).join('')}</select>
+          <select class="global-select" id="globalMarket" aria-label="全局市场筛选"><option value="all">All markets</option>${Object.keys(LOCALE_LABEL).map(l => `<option value="${l}">${l}</option>`).join('')}</select>
+        </div>
       </div>
     </div>
     <div class="category-tabs" id="categoryTabs">
@@ -453,8 +651,8 @@ function render() {
       不含实时查询。标注 <span class="mock-note"><span class="tag tag-mock">模拟</span></span> 的条目是本次演示为填补
       insights 缺口生成的占位内容（非真实 LLM 分析结果），详见项目 CLAUDE.md「Phase 7」。
       共 ${DATA.meta.insights_total} 个分析批次（真实 ${DATA.meta.insights_total - DATA.meta.insights_mock} / 模拟 ${DATA.meta.insights_mock}），
-      Zoomex 基线累计 ${DATA.meta.zoomex_baseline_total} 条。Overview/Campaign/Product/Listing/Markets 的明细部分只展示
-      最新一批（${esc(DATA.meta.batch_date)}）的数据，完整历史请见「Search」tab。
+      Zoomex 基线累计 ${DATA.meta.zoomex_baseline_total} 条。Overview/Product/Listing/Markets 默认展示最新批次（${esc(DATA.meta.batch_date)}）；
+      Campaign 同时展示全量活动生命周期。完整去重历史请见「Search」。
     </div>
   `;
 
@@ -463,6 +661,10 @@ function render() {
     if (!t) return;
     switchTab(t.dataset.tab);
   });
+  ['globalSource','globalMarket'].forEach(id => document.getElementById(id).addEventListener('change', e => {
+    state[id === 'globalSource' ? 'globalSource' : 'globalMarket'] = e.target.value;
+    renderActivePane();
+  }));
   document.querySelector('[data-tab="overview"]').classList.add('active');
   renderActivePane();
 }
@@ -495,12 +697,17 @@ function computeActivityRanking() {
 function chipCard(key, label, chip) {
   const total = chip.today ?? (chip.count_new + chip.count_changed);
   const diffs = Object.entries(chip.diff_breakdown).filter(([, n]) => n > 0);
+  // campaign/product 都走真实 Stage1/Stage3 分析（Phase②起），diff_breakdown
+  // 对两者同样有意义，不再是只有 campaign 才展示的特殊逻辑。
+  let secondary = (key === 'campaign' || key === 'product') && diffs.length
+    ? `<div class="chip-diffs">${diffs.map(([tag, n]) => `<span class="tag tag-${tag}">${esc(DIFF_LABEL[tag] || tag)} ${n}</span>`).join('')}</div>`
+    : '';
   return `
     <div class="stat-card">
       <div class="stat-label">${esc(label)}</div>
       <div class="stat-value ${key === 'announcement' ? '' : 'accent'}">${total}</div>
       <div class="stat-delta">新增 ${chip.count_new} · 变更 ${chip.count_changed}</div>
-      ${diffs.length ? `<div class="chip-diffs">${diffs.map(([tag, n]) => `<span class="tag tag-${tag}">${esc(DIFF_LABEL[tag] || tag)} ${n}</span>`).join('')}</div>` : ''}
+      ${secondary}
     </div>
   `;
 }
@@ -515,6 +722,37 @@ function insightText(insight) {
   const total = Object.values(DATA.overview.chips).reduce((n, c) => n + (c.today || 0), 0);
   parts.push(`今日共识别 ${total} 条去重后的新增或更新情报，建议优先查看 P1–P3 活动变化。`);
   return parts.join('。') + '。';
+}
+
+// Phase⑤：优先展示 src/analysis/daily_digest.py 产出的真实 LLM 综述（命中缓存时），
+// 否则回退到上面纯规则统计拼接的占位文案——两者用明显不同的角标区分，不让占位符
+// 冒充真实分析结论（DATA.daily_digest 由 export_data.py 的 build_daily_digest()
+// 只读 llm_cache 生成，导出过程本身从不触发新的 LLM 调用）。
+function todaysInsightMarkup(ov) {
+  const digest = DATA.daily_digest;
+  if (digest && digest.source === 'llm' && digest.summary) {
+    return `<div class="insight-card"><span class="tag tag-llm">LLM 生成</span> ${esc(digest.summary)}${digest.priority_focus ? `<div style="margin-top:6px">→ ${esc(digest.priority_focus)}</div>` : ''}</div>`;
+  }
+  return `<div class="insight-card"><span class="tag tag-na">占位符 · 待接入 LLM 生成</span> ${esc(insightText(ov.insight))}</div>`;
+}
+
+function overviewForFilters() {
+  if (state.globalSource === 'all' && state.globalMarket === 'all') return DATA.overview;
+  const chip = rows => {
+    const values = globalFiltered(rows);
+    const diff_breakdown = { missing:0, diff:0, same:0, mixed:0, na:0 };
+    values.forEach(r => { diff_breakdown[r.diff_tag || 'na']++; });
+    return { today:values.length, count_new:values.filter(r => r.status === 'new').length, count_changed:values.filter(r => r.status === 'changed').length, diff_breakdown };
+  };
+  const pool = globalFiltered([...(DATA.campaign||[]),...(DATA.product||[]),...(DATA.listing||[]),...(DATA.announcements||[])])
+    .sort((a,b) => Number((a.business_priority||'P9').slice(1))-Number((b.business_priority||'P9').slice(1)) || publishTimeRank(b)-publishTimeRank(a));
+  const counts = {}, selected = [];
+  for (const r of pool) { if ((counts[r.source]||0)>=2) continue; selected.push(r); counts[r.source]=(counts[r.source]||0)+1; if(selected.length===5) break; }
+  return {
+    ...DATA.overview,
+    chips:{ campaign:chip(DATA.campaign), product:chip(DATA.product), listing:chip((DATA.listing||[]).filter(r=>r.category==='listing')), announcement:chip([...(DATA.announcements||[]),...(DATA.listing||[]).filter(r=>r.category==='delisting')]) },
+    highlights:selected.map(r=>({source:r.source,category:r.category,priority:r.business_priority||'P7',title:r.title,one_line_summary:(r.description||r.follow_up||'').slice(0,160),time:formatTime(r.post_time),url:r.url,is_mock:r.is_mock})),
+  };
 }
 
 function trendMarkup(days) {
@@ -541,7 +779,7 @@ function trendMarkup(days) {
 }
 
 function renderOverviewPane() {
-  const ov = DATA.overview;
+  const ov = overviewForFilters();
   const ranking = computeActivityRanking();
   const maxRank = Math.max(1, ...ranking.map(r => r.count));
 
@@ -555,7 +793,8 @@ function renderOverviewPane() {
       <label class="date-control">Date <input class="date-input" type="date" value="${esc(ov.batch_date)}" min="${esc(DATA.search_index.date_min || ov.batch_date)}" max="${esc(DATA.search_index.date_max || ov.batch_date)}" id="overviewDate"></label>
     </div>
 
-    <div class="section-label">最新一批概览 · ${esc(ov.batch_date)}</div>
+    ${ruleGuide('overview')}
+    <div class="section-label">最新一批概览 · ${esc(ov.batch_date)} <span class="freshness">● Updated ${esc(DATA.meta.generated_at)}</span></div>
     <div class="overview-grid">
       ${chipCard('campaign', '活动 Campaign', ov.chips.campaign)}
       ${chipCard('product', '产品 Product', ov.chips.product)}
@@ -563,7 +802,7 @@ function renderOverviewPane() {
       ${chipCard('announcement', '公告 Announcement（下架+其他）', ov.chips.announcement)}
     </div>
 
-    <div class="section-label">Daily Highlights · 按业务价值排序 / 每个竞品 Top 5</div>
+    <div class="section-label">Daily Highlights · Rule-based 全局 Top 5 / 每个竞品最多 2 条</div>
     <div class="table-wrap">
       <table class="data-table">
         <thead><tr><th>Priority</th><th>Exchange</th><th>Category</th><th>Title</th><th>Summary</th><th>Publish Time</th><th>Detail</th></tr></thead>
@@ -572,7 +811,7 @@ function renderOverviewPane() {
         <tr><td><strong>${esc(h.priority)}</strong></td><td><span class="source-pill">${esc(h.source)}</span></td>
         <td><span class="tag tag-${h.category}">${esc(CATEGORY_LABEL[h.category] || h.category)}</span></td>
         <td class="td-title">${esc(h.title)} ${mockBadge(h.is_mock)}</td><td>${esc(h.one_line_summary || '—')}</td>
-        <td class="td-time">${esc(h.time)}</td><td>${h.url ? `<a href="${esc(h.url)}" target="_blank" rel="noopener">View Detail ↗</a>` : '—'}</td></tr>
+        <td class="td-time">${esc(h.time)}</td><td>${sourceLink(h, 'View Detail ↗')}</td></tr>
       `).join('') : `<tr><td colspan="7" class="table-empty">最新一批没有值得重新进入 Highlights 的变化</td></tr>`}
         </tbody>
       </table>
@@ -587,14 +826,14 @@ function renderOverviewPane() {
       ].map(([name, c]) => `<tr><td>${name}</td><td><strong>${c.today}</strong></td><td>${c.count_new}</td><td>${c.count_changed}</td></tr>`).join('')}</tbody>
     </table></div>
 
-    <div class="section-label">7 / 30 Days Trend · 仅统计新增</div>
+    <div class="section-label">7 / 30 Days Trend · 统计新增 + 内容变更，排除重复抓取</div>
     <div class="trend-card">
       <div class="filter-group" style="margin-bottom:10px"><button class="filter-btn ${state.trendDays === 7 ? 'active' : ''}" data-trend-days="7">7 Days</button><button class="filter-btn ${state.trendDays === 30 ? 'active' : ''}" data-trend-days="30">30 Days</button></div>
       <div id="trendChart">${trendMarkup(state.trendDays)}</div>
     </div>
 
     <div class="section-label">Today's Insight</div>
-    <div class="insight-card">${esc(insightText(ov.insight))}</div>
+    ${todaysInsightMarkup(ov)}
 
     <div class="section-label">今日采集量 · 按竞品</div>
     <div class="rank-card">
@@ -605,6 +844,13 @@ function renderOverviewPane() {
           <span class="rank-count">${r.count}</span>
         </div>
       `).join('')}
+    </div>
+
+    <div class="section-label">Data readiness · 尚未伪装成已完成的能力</div>
+    <div class="readiness-grid">
+      <div class="readiness-item"><strong>Campaign lifecycle · Partial</strong>Ongoing / Upcoming / Ending Soon 依赖公告中可抽取的 Start/End；缺少时间字段的活动明确显示 Date unknown。</div>
+      <div class="readiness-item"><strong>Product evolution · Pending entity model</strong>当前能展示公告级 New / Update，但尚无稳定 Product Entity ID，因此不伪造跨公告 Change History。</div>
+      <div class="readiness-item"><strong>KR market · No source</strong>当前没有 KR collector。KR 页面显示真实空数据，不从其他语言推断或复制。</div>
     </div>
   `;
 }
@@ -620,114 +866,226 @@ function wireOverviewPane() {
   document.getElementById('overviewDate').addEventListener('change', e => {
     if (e.target.value !== DATA.overview.batch_date) {
       searchState.range = 'all';
+      searchState.dateFrom = e.target.value;
+      searchState.dateTo = e.target.value;
       searchState.query = '';
       switchTab('search');
     }
   });
 }
 
-/* ==================== Campaign / Product (detail cards) ==================== */
+/* ==================== Campaign / Product (Detail drill-down + filters) ==================== */
 
-function detailCard(r, expandedByDefault) {
-  const isLong = (r.description || '').length > 140;
-  const startClamped = !expandedByDefault && isLong;
-  return `
-    <div class="detail-card ${r.diff_tag === 'missing' ? 'accent-missing' : ''}">
-      <div class="detail-card-head">
-        <span class="source-pill">${esc(r.source)}</span>
-        <span>${localeDot(r.locale)}${esc(LOCALE_LABEL[r.locale] || r.locale)}</span>
-        ${r.is_region_exclusive ? `<span class="excl-badge">地区独占</span>` : ''}
-        ${r.is_locale_derived ? `<span class="tag tag-na">复用自 EN</span>` : ''}
-        ${mockBadge(r.is_mock)}
-        <span style="flex:1"></span>
-        ${r.priority ? `<span class="tag ${priorityClass(r.priority)}">优先级 ${esc(r.priority)}</span>` : ''}
-        <span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || r.diff_tag)}</span>
-      </div>
-      <div class="detail-title">
-        ${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title)}
-        <span class="status-chip ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span>
-      </div>
-      ${r.description ? `<div class="detail-body ${startClamped ? 'clamped' : ''}">${esc(r.description)}</div>` : ''}
-      ${isLong ? `<button class="analysis-toggle" data-toggle>${startClamped ? '展开全文 ▾' : '收起 ▴'}</button>` : ''}
-      ${r.priority_reason ? `<div class="detail-body" style="margin-top:7px">依据：${esc(r.priority_reason)}</div>` : ''}
+function detailField(label, value) {
+  return value ? `<div><span style="color:var(--text-muted)">${esc(label)}：</span>${esc(value)}</div>` : '';
+}
+
+function zmxCompareTwoColumn(r) {
+  const left = `<div class="zmx-compare-col"><strong>${esc(r.source)}</strong><div>${esc(r.title)}</div>${r.description ? `<div class="detail-body" style="margin-top:4px">${esc(r.description)}</div>` : ''}</div>`;
+  let right;
+  if (r.comparison_status !== 'analyzed') {
+    right = `<div class="zmx-compare-col"><strong>Zoomex</strong><div class="detail-body">尚未被任何一次分析运行覆盖，不是"确认无差异"。</div></div>`;
+  } else if (r.zmx_counterpart) {
+    const c = r.zmx_counterpart;
+    right = `<div class="zmx-compare-col"><strong>Zoomex</strong><div>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title)}</a>` : esc(c.title)}</div>${c.core_summary ? `<div class="detail-body" style="margin-top:4px">${esc(c.core_summary)}</div>` : ''}${c.reward_range ? `<div class="detail-body">奖励：${esc(c.reward_range)}</div>` : ''}</div>`;
+  } else {
+    right = `<div class="zmx-compare-col"><strong>Zoomex</strong><div class="detail-body">${esc(r.zmx_capability_desc || (r.zmx_exists === 'no' ? '目前没有此类玩法/功能' : '暂无具体对照示例'))}</div></div>`;
+  }
+  const diffLine = r.diff_detail || r.diff_type
+    ? `<div class="detail-body" style="margin-top:8px"><span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || r.diff_type)}</span> ${esc(r.diff_detail || '')}</div>`
+    : '';
+  return `<div class="zmx-compare-grid">${left}${right}</div>${diffLine}`;
+}
+
+function renderDetailPanelRow(r, category) {
+  const basicInfo = `
+    <div class="detail-panel-col">
+      <div class="section-label">Basic Info</div>
+      ${detailField('Exchange', r.source)}
+      ${detailField('Name', r.title)}
+      ${detailField('Type', category === 'campaign' ? (r.mechanism_type || '—') : (r.product_category || 'Others'))}
+      ${detailField('Status', category === 'campaign' ? campaignDisplayStatus(r) : (r.update_kind || STATUS_LABEL[r.status] || r.status))}
+      <div>${sourceLink(r, 'Open source ↗')}</div>
+    </div>`;
+  const middleCol = category === 'campaign' ? `
+    <div class="detail-panel-col">
+      <div class="section-label">Rule / Reward / Timeline</div>
+      ${detailField('Target users', r.target_users)}
+      ${detailField('Reward', r.reward_range)}
+      ${detailField('Start', r.start_date)}
+      ${detailField('End', r.end_date)}
+      ${(!r.target_users && !r.reward_range && !r.start_date && !r.end_date) ? '<div style="color:var(--text-muted)">暂无结构化字段</div>' : ''}
+    </div>` : `
+    <div class="detail-panel-col">
+      <div class="section-label">Feature</div>
+      ${detailField('Main feature', r.feature)}
+      ${detailField('Change type', r.update_kind)}
+      ${(!r.feature && !r.update_kind) ? '<div style="color:var(--text-muted)">暂无结构化字段</div>' : ''}
+    </div>`;
+  const aiSummary = `
+    <div class="detail-panel-col">
+      <div class="section-label">AI Summary</div>
+      <div class="detail-body">${esc((category === 'product' ? (r.feature || r.description) : r.description) || '待分析')}</div>
       ${r.follow_up ? `<div class="follow-up">→ ${esc(r.follow_up)}</div>` : ''}
-      <div class="detail-meta">
-        <span>${formatTime(r.post_time)}</span>
-        ${r.owner ? `<span>Owner: ${esc(r.owner)}</span>` : ''}
-        ${r.action_type ? `<span>Action: ${esc(r.action_type)}</span>` : ''}
-      </div>
-    </div>
-  `;
+    </div>`;
+  const zmxCol = `
+    <div class="detail-panel-col">
+      <div class="section-label">Zoomex Comparison</div>
+      ${zmxCompareTwoColumn(r)}
+    </div>`;
+  return `<tr class="detail-row"><td colspan="9"><div class="detail-panel">${basicInfo}${middleCol}${aiSummary}${zmxCol}</div></td></tr>`;
 }
 
 function categoryStateFor(category) {
   return category === 'campaign' ? campaignState : productState;
 }
 
+function categoryFilterOptions(category, rows) {
+  if (category === 'campaign') {
+    return [...new Set(rows.map(r => r.mechanism_type).filter(Boolean))].sort();
+  }
+  return [...new Set(rows.map(r => r.product_category).filter(Boolean))].sort();
+}
+
 function renderCategoryPane(category) {
-  const rows = DATA[category] || [];
+  const rows = category === 'campaign' ? campaignRows() : globalFiltered(DATA[category]);
+  const latestRows = globalFiltered(DATA[category]);
   const label = category === 'campaign' ? 'Campaign' : 'Product';
-  const newCount = rows.filter(r => r.status === 'new').length;
-  const updatedCount = rows.filter(r => r.status === 'changed').length;
+  const newCount = category === 'product' ? rows.filter(r => r.update_kind === 'New Product').length : latestRows.filter(r => r.status === 'new').length;
+  const updatedCount = category === 'product' ? rows.filter(r => r.update_kind !== 'New Product').length : latestRows.filter(r => r.status === 'changed').length;
+  const ongoingCount = category === 'campaign' ? rows.filter(r => campaignDisplayStatus(r) === 'Ongoing').length : 0;
+  const endingSoonCount = category === 'campaign' ? rows.filter(r => {
+    if (!r.end_date || campaignDisplayStatus(r) !== 'Ongoing') return false;
+    const days = daysBetween(DATA.meta.batch_date, r.end_date);
+    return days >= 0 && days <= 3;
+  }).length : 0;
+  const typeOptions = categoryFilterOptions(category, rows);
+  const statusOptions = category === 'campaign'
+    ? ['New', 'Updated', 'Ongoing', 'Upcoming', 'Ended', 'Date unknown']
+    : [...new Set(rows.map(r => r.update_kind).filter(Boolean))].sort();
   return `
     <div class="overview-grid" style="margin-top:1rem">
       <div class="stat-card"><div class="stat-label">New ${esc(label)}</div><div class="stat-value accent">${newCount}</div></div>
       <div class="stat-card"><div class="stat-label">Updated ${esc(label)}</div><div class="stat-value warn">${updatedCount}</div></div>
-      <div class="stat-card"><div class="stat-label">High Priority</div><div class="stat-value">${rows.filter(r => r.priority === '高').length}</div></div>
-      <div class="stat-card"><div class="stat-label">ZMX Gap</div><div class="stat-value danger">${rows.filter(r => r.diff_tag === 'missing').length}</div></div>
+      <div class="stat-card"><div class="stat-label">${category === 'product' ? 'Zoomex Analyzed' : 'Ongoing Campaign'}</div><div class="stat-value">${category === 'product' ? rows.filter(r => r.comparison_status === 'analyzed').length : ongoingCount}</div></div>
+      <div class="stat-card"><div class="stat-label">${category === 'product' ? 'Zoomex Pending' : 'Ending Soon · ≤3 days'}</div><div class="stat-value warn">${category === 'product' ? rows.filter(r => r.comparison_status === 'pending').length : endingSoonCount}</div></div>
     </div>
+    ${ruleGuide(category)}
+    ${category === 'product' ? `<div class="quality-banner"><strong>Comparison coverage</strong> · 已被真实分析运行覆盖 ${DATA.quality.product_comparison.analyzed}；尚未被任何分析运行覆盖 ${DATA.quality.product_comparison.pending}。"已覆盖"里的具体结论（含"不适用"）见每行 Zoomex 对照，pending 不能解读为"确认无差异"。</div>` : ''}
+    ${category === 'product' ? `<div class="section-label">Product coverage · 本期变化涉及的能力</div><div class="product-coverage">${Object.entries(rows.reduce((acc,r) => (acc[r.product_category || 'Others']=(acc[r.product_category || 'Others']||0)+1,acc),{})).map(([name,n]) => `<span class="coverage-chip">${esc(name)}<strong>${n}</strong></span>`).join('')}</div>` : ''}
     <div class="filter-bar">
-      <div class="section-label" style="padding:0">${esc(label)} · 最新一批（${esc(DATA.overview.batch_date)}）共 ${rows.length} 条</div>
+      <div class="section-label" style="padding:0">${esc(label)} · ${category === 'campaign' ? `全部活动 ${rows.length} 条；最新批次变化 ${latestRows.length} 条` : `最新一批（${esc(DATA.overview.batch_date)}）共 ${rows.length} 条`}</div>
       <div class="filter-group" id="${category}SourceFilter">
         <button class="filter-btn active" data-src="all">全部</button>
         ${SOURCES.map(s => `<button class="filter-btn" data-src="${s}">${s}</button>`).join('')}
       </div>
     </div>
+    <div class="filter-bar" style="margin-top:6px">
+      <div class="filter-group">
+        <select class="global-select" id="${category}TypeFilter" aria-label="按类型筛选">
+          <option value="all">${category === 'campaign' ? '全部类型' : '全部分类'}</option>
+          ${typeOptions.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('')}
+        </select>
+        <select class="global-select" id="${category}StatusFilter" aria-label="按状态筛选">
+          <option value="all">全部状态</option>
+          ${statusOptions.map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('')}
+        </select>
+        ${category === 'product' ? `<select class="global-select" id="productMarketFilter" aria-label="按市场筛选"><option value="all">全部市场</option>${Object.keys(LOCALE_LABEL).map(l => `<option value="${l}">${esc(l)}</option>`).join('')}</select>` : ''}
+        <select class="global-select" id="${category}DiffFilter" aria-label="按 Zoomex 差异筛选">
+          <option value="all">全部差异</option>
+          ${Object.entries(DIFF_LABEL).filter(([k]) => k !== 'pending').map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}
+        </select>
+        <input type="text" class="search-input" id="${category}KeywordFilter" placeholder="搜索标题…" style="max-width:220px">
+      </div>
+    </div>
     <div class="table-wrap"><table class="data-table">
       <thead>${category === 'campaign'
-        ? '<tr><th>Exchange</th><th>Activity Name</th><th>Campaign Type</th><th>Reward</th><th>Start</th><th>End</th><th>Market</th><th>AI Analysis</th><th>ZMX / Action</th><th>Detail</th></tr>'
-        : '<tr><th>Exchange</th><th>Product / Update</th><th>Status</th><th>Market</th><th>AI Analysis</th><th>Zoomex Difference</th><th>Follow-up</th><th>Detail</th></tr>'}
+        ? '<tr><th>Exchange</th><th>Activity</th><th>Type</th><th>Reward</th><th>Timeline</th><th>Markets</th><th>AI Summary</th><th>Zoomex / Action</th><th>Sources</th></tr>'
+        : '<tr><th>Exchange</th><th>Product / Update</th><th>Category</th><th>Change Type</th><th>Markets</th><th>AI Summary</th><th>Zoomex Comparison</th><th>Follow-up</th><th>Sources</th></tr>'}
       </thead><tbody id="${category}Body"></tbody>
     </table></div>
   `;
 }
 
 function renderCategoryBody(category) {
-  const rows = DATA[category] || [];
+  const rows = category === 'campaign' ? campaignRows() : globalFiltered(DATA[category]);
   const st = categoryStateFor(category);
-  const filtered = st.source === 'all' ? rows : rows.filter(r => r.source === st.source);
-  const sorted = sortByPriorityThenDiff(filtered);
+  let filtered = st.source === 'all' ? rows : rows.filter(r => r.source === st.source);
+  if (category === 'campaign') {
+    if (st.type !== 'all') filtered = filtered.filter(r => (r.mechanism_type || '') === st.type);
+    if (st.status !== 'all') filtered = filtered.filter(r => campaignDisplayStatus(r) === st.status);
+  } else {
+    if (st.type !== 'all') filtered = filtered.filter(r => (r.product_category || 'Others') === st.type);
+    if (st.status !== 'all') filtered = filtered.filter(r => (r.update_kind || '') === st.status);
+    if (st.market !== 'all') filtered = filtered.filter(r => rowMarkets(r).includes(st.market));
+  }
+  if (st.diffType !== 'all') filtered = filtered.filter(r => r.diff_tag === st.diffType);
+  if (st.keyword) {
+    const kw = st.keyword.toLowerCase();
+    filtered = filtered.filter(r => (r.title || '').toLowerCase().includes(kw));
+  }
+  const sorted = ruleSort(filtered, category);
+  const visible = sorted.slice(0, st.limit);
   const body = document.getElementById(`${category}Body`);
+  document.getElementById(`${category}LoadMore`)?.remove();
   body.innerHTML = sorted.length
-    ? sorted.map(r => category === 'campaign' ? `
+    ? visible.map(r => {
+        const expanded = st.expanded.has(r.uid);
+        const summaryRow = category === 'campaign' ? `
       <tr>
-        <td><span class="source-pill">${esc(r.source)}</span><br><small>${esc(r.locale)}</small></td>
-        <td class="td-title">${esc(r.title)}<br><span class="status-chip ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span></td>
+        <td><span class="source-pill">${esc(r.source)}</span></td>
+        <td class="td-title"><button class="row-expand-toggle" data-expand="${esc(r.uid)}">${expanded ? '▾' : '▸'} ${esc(r.title)}</button><br><span class="status-chip ${r.status}">${esc(campaignDisplayStatus(r))}</span></td>
         <td>${esc(r.mechanism_type || '—')}</td><td>${esc(r.reward_range || '—')}</td>
-        <td>${esc(r.start_date || '—')}</td><td>${esc(r.end_date || '—')}</td><td>${esc(r.target_users || r.locale || '—')}</td>
-        <td>${esc(r.description || '待分析')}</td>
+        <td>${esc(r.start_date || '—')}<br><small>→ ${esc(r.end_date || '—')}</small></td><td>${marketChips(r)}</td>
+        <td><div class="cell-copy">${esc(r.description || '待分析')}</div></td>
         <td><span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || '待分析')}</span>${r.follow_up ? `<br>${esc(r.follow_up)}` : ''}</td>
-        <td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">View Detail ↗</a>` : '—'}</td>
+        <td>${variantLinks(r)}</td>
       </tr>` : `
       <tr>
-        <td><span class="source-pill">${esc(r.source)}</span><br><small>${esc(r.locale)}</small></td>
-        <td class="td-title">${esc(r.title)}</td><td><span class="status-chip ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span></td>
-        <td>${esc(r.target_users || r.locale || '—')}</td><td>${esc(r.feature || r.description || '待分析')}</td>
-        <td><span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || '待分析')}</span></td>
-        <td>${esc(r.follow_up || '—')}</td><td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">View Detail ↗</a>` : '—'}</td>
-      </tr>`).join('')
-    : `<tr><td colspan="${category === 'campaign' ? 10 : 8}" class="table-empty">无匹配数据</td></tr>`;
+        <td><span class="source-pill">${esc(r.source)}</span></td>
+        <td class="td-title"><button class="row-expand-toggle" data-expand="${esc(r.uid)}">${expanded ? '▾' : '▸'} ${esc(r.title)}</button><br><span class="status-chip ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span></td>
+        <td><span class="tag tag-product">${esc(r.product_category || 'Others')}</span></td><td>${esc(r.update_kind || '—')}</td>
+        <td>${marketChips(r)}</td><td><div class="cell-copy">${esc(r.feature || r.description || '待分析')}</div></td>
+        <td>${zmxComparisonBox(r)}</td><td><div class="cell-copy">${esc(r.follow_up || '—')}</div></td><td>${variantLinks(r)}</td>
+      </tr>`;
+        return summaryRow + (expanded ? renderDetailPanelRow(r, category) : '');
+      }).join('')
+    : `<tr><td colspan="9" class="table-empty">无匹配数据</td></tr>`;
+  if (sorted.length > visible.length) {
+    body.insertAdjacentHTML('afterend', `<tbody id="${category}LoadMore"><tr><td colspan="9" class="table-footer"><span>当前展示 ${visible.length} / ${sorted.length}</span><button class="filter-btn" data-load-more="${category}">Load More</button></td></tr></tbody>`);
+    document.querySelector(`[data-load-more="${category}"]`).addEventListener('click', () => { st.limit += 10; renderCategoryBody(category); });
+  }
+  body.querySelectorAll('[data-expand]').forEach(btn => btn.addEventListener('click', () => {
+    const uid = btn.dataset.expand;
+    if (st.expanded.has(uid)) st.expanded.delete(uid); else st.expanded.add(uid);
+    renderCategoryBody(category);
+  }));
 }
 
 function wireCategoryPane(category) {
-  categoryStateFor(category).source = 'all';
+  const st = categoryStateFor(category);
+  st.source = 'all'; st.limit = 10; st.type = 'all'; st.status = 'all'; st.diffType = 'all'; st.keyword = '';
+  if (category === 'product') st.market = 'all';
   document.getElementById(`${category}SourceFilter`).addEventListener('click', e => {
     const t = e.target.closest('[data-src]');
     if (!t) return;
     document.querySelectorAll(`#${category}SourceFilter .filter-btn`).forEach(x => x.classList.remove('active'));
     t.classList.add('active');
-    categoryStateFor(category).source = t.dataset.src;
+    st.source = t.dataset.src;
+    st.limit = 10;
     renderCategoryBody(category);
+  });
+  document.getElementById(`${category}TypeFilter`).addEventListener('change', e => { st.type = e.target.value; st.limit = 10; renderCategoryBody(category); });
+  document.getElementById(`${category}StatusFilter`).addEventListener('change', e => { st.status = e.target.value; st.limit = 10; renderCategoryBody(category); });
+  document.getElementById(`${category}DiffFilter`).addEventListener('change', e => { st.diffType = e.target.value; st.limit = 10; renderCategoryBody(category); });
+  if (category === 'product') {
+    document.getElementById('productMarketFilter').addEventListener('change', e => { st.market = e.target.value; st.limit = 10; renderCategoryBody(category); });
+  }
+  const kw = document.getElementById(`${category}KeywordFilter`);
+  let debounce;
+  kw.addEventListener('input', () => {
+    clearTimeout(debounce);
+    debounce = setTimeout(() => { st.keyword = kw.value; st.limit = 10; renderCategoryBody(category); }, 200);
   });
   renderCategoryBody(category);
 }
@@ -745,10 +1103,11 @@ function renderListingRow(r) {
   return `
     <tr>
       <td><span class="source-pill">${esc(r.source)}</span></td>
-      <td>${localeDot(r.locale)}${esc(LOCALE_LABEL[r.locale] || r.locale)}</td>
+      <td>${marketChips(r)}</td>
       <td class="td-title">
-        ${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title)}
+        ${esc(r.title)}
         ${mockBadge(r.is_mock)}
+        ${variantLinks(r)}
       </td>
       <td><span class="tag ${r.category === 'delisting' ? 'tag-delisting' : 'tag-listing'}">${esc(listingKindLabel(r))}</span></td>
       <td class="td-time">${formatDate(r.post_time)}</td>
@@ -758,8 +1117,9 @@ function renderListingRow(r) {
 }
 
 function renderListingPane() {
-  const rows = DATA.listing || [];
+  const rows = globalFiltered(DATA.listing);
   return `
+    ${ruleGuide('listing')}
     <div class="filter-bar">
       <div class="section-label" style="padding:0">Listing · 最新一批（${esc(DATA.overview.batch_date)}）共 ${rows.length} 条（含下架）</div>
       <div class="filter-group" id="listingSourceFilter">
@@ -769,7 +1129,7 @@ function renderListingPane() {
     </div>
     <div class="table-wrap">
       <table class="data-table">
-        <thead><tr><th style="width:90px">来源</th><th style="width:64px">地区</th><th>标题</th><th style="width:80px">类型</th><th class="td-time">日期</th><th style="width:76px">状态</th></tr></thead>
+        <thead><tr><th style="width:90px">Exchange</th><th>Markets</th><th>Event</th><th style="width:100px">Type</th><th class="td-time">Publish date</th><th style="width:86px">Status</th></tr></thead>
         <tbody id="listingBody"></tbody>
       </table>
     </div>
@@ -777,9 +1137,9 @@ function renderListingPane() {
 }
 
 function renderListingBody() {
-  const rows = DATA.listing || [];
+  const rows = globalFiltered(DATA.listing);
   const filtered = listingState.source === 'all' ? rows : rows.filter(r => r.source === listingState.source);
-  const sorted = sortByPriorityThenDiff(filtered);
+  const sorted = ruleSort(filtered, 'listing');
   document.getElementById('listingBody').innerHTML = sorted.length
     ? sorted.map(renderListingRow).join('')
     : `<tr><td colspan="6" class="table-empty">无匹配数据</td></tr>`;
@@ -808,7 +1168,7 @@ const MARKET_TABS = [
 ];
 
 function marketSection(category, label, rows) {
-  const top = sortByPriorityThenDiff(rows).slice(0, 5);
+  const top = ruleSort(rows, category === 'listing' ? 'listing' : category).slice(0, 5);
   return `
     <div class="market-section">
       <div class="market-section-head"><span>${esc(label)}</span><span style="color:var(--text-muted);font-weight:400">${rows.length} 条</span></div>
@@ -816,7 +1176,7 @@ function marketSection(category, label, rows) {
         ${top.length ? top.map(r => `
           <div class="market-item">
             <span class="tag tag-${r.diff_tag}" style="margin-right:6px">${esc(DIFF_LABEL[r.diff_tag] || r.diff_tag)}</span>
-            <span class="market-item-title">${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title)}</span>
+            <span class="market-item-title">${sourceLink(r, r.title)}</span>
             ${mockBadge(r.is_mock)}
           </div>
         `).join('') : `<div class="market-empty">本地区最新一批无数据</div>`}
@@ -827,10 +1187,10 @@ function marketSection(category, label, rows) {
 
 function renderMarketsPane() {
   const tab = MARKET_TABS.find(m => m.key === marketsState.market) || MARKET_TABS[0];
-  const inLocales = row => tab.locales.includes(row.locale);
-  const campaignRows = (DATA.campaign || []).filter(inLocales);
-  const productRows = (DATA.product || []).filter(inLocales);
-  const listingRows = (DATA.listing || []).filter(inLocales);
+  const inLocales = row => rowMarkets(row).some(locale => tab.locales.includes(locale));
+  const campaignRows = globalFiltered(DATA.campaign).filter(inLocales);
+  const productRows = globalFiltered(DATA.product).filter(inLocales);
+  const listingRows = globalFiltered(DATA.listing).filter(inLocales);
   const region = DATA.markets.regions;
   return `
     <div class="market-tabs" id="marketTabs">
@@ -881,17 +1241,19 @@ function wireMarketsPane() {
 function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 86400000); }
 
 function searchFilteredRows() {
-  const rows = DATA.search_index.rows;
+  const rows = globalFiltered(DATA.search_index.rows);
   const anchor = DATA.meta.batch_date;
   const rangeDays = { '30d': 30, '90d': 90, '365d': 365 }[searchState.range];
   const q = searchState.query.trim().toLowerCase();
   return rows.filter(r => {
-    if (searchState.locale !== 'all' && r.locale !== searchState.locale) return false;
+    if (searchState.locale !== 'all' && !rowMarkets(r).includes(searchState.locale)) return false;
     if (searchState.source !== 'all' && r.source !== searchState.source) return false;
     if (searchState.category !== 'all' && r.category !== searchState.category) return false;
     if (searchState.diffType !== 'all' && (r.diff_type ? { 'ZMX缺失': 'missing', 'ZMX玩法不同': 'diff', 'ZMX已有': 'same', '混合': 'mixed', '不适用': 'na' }[r.diff_type] : 'na') !== searchState.diffType) return false;
     const date = r.post_time ? r.post_time.slice(0, 10) : null;
     if (rangeDays && (!date || daysBetween(date, anchor) > rangeDays)) return false;
+    if (searchState.dateFrom && (!date || date < searchState.dateFrom)) return false;
+    if (searchState.dateTo && (!date || date > searchState.dateTo)) return false;
     if (q && !r.title.toLowerCase().includes(q)) return false;
     return true;
   });
@@ -912,6 +1274,9 @@ function renderSearchPane() {
         <button class="filter-btn" data-f="range" data-v="30d">近 30 天</button>
         <button class="filter-btn" data-f="range" data-v="90d">近 90 天</button>
         <button class="filter-btn" data-f="range" data-v="365d">近 1 年</button>
+        <label class="date-control">From <input class="date-input" id="searchDateFrom" type="date" min="${esc(idx.date_min)}" max="${esc(idx.date_max)}" value="${esc(searchState.dateFrom)}"></label>
+        <label class="date-control">To <input class="date-input" id="searchDateTo" type="date" min="${esc(idx.date_min)}" max="${esc(idx.date_max)}" value="${esc(searchState.dateTo)}"></label>
+        <button class="filter-btn" id="clearDates">清除日期</button>
         <span style="font-size:11px;color:var(--text-muted);margin-left:4px">数据跨度 ${esc(idx.date_min)} ~ ${esc(idx.date_max)}</span>
       </div>
       <div class="search-filter-row">
@@ -959,8 +1324,8 @@ function renderSearchTable() {
     return `
     <tr>
       <td><span class="source-pill">${esc(r.source)}</span></td>
-      <td>${esc(LOCALE_LABEL[r.locale] || r.locale)}</td>
-      <td class="td-title">${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.title)}</a>` : esc(r.title)}</td>
+      <td>${marketChips(r)}</td>
+      <td class="td-title">${esc(r.title)}${variantLinks(r)}</td>
       <td><span class="tag tag-${r.category}">${esc(CATEGORY_LABEL[r.category] || r.category)}</span></td>
       <td class="td-time">${formatDate(r.post_time)}</td>
       <td><span class="tag tag-${diffTag}">${esc(DIFF_LABEL[diffTag] || diffTag)}</span></td>
@@ -1007,6 +1372,15 @@ function wireSearchPane() {
       searchState.page = 1;
       renderSearchTable();
     }, 200);
+  });
+  ['From','To'].forEach(which => document.getElementById(`searchDate${which}`).addEventListener('change', e => {
+    searchState[`date${which}`] = e.target.value;
+    searchState.range = 'all';
+    searchState.page = 1;
+    renderSearchTable();
+  }));
+  document.getElementById('clearDates').addEventListener('click', () => {
+    searchState.dateFrom = ''; searchState.dateTo = ''; searchState.page = 1; renderActivePane();
   });
   document.getElementById('downloadCsv').addEventListener('click', () => {
     const fields = ['source','locale','category','title','post_time','status','diff_type','priority','url'];

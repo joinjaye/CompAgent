@@ -13,10 +13,13 @@ from dataclasses import dataclass
 from difflib import ndiff
 from typing import Any, Iterable, Optional
 
-from src.analysis.zmx_baseline import ZmxBaselineEntry
+from src.analysis.zmx_catalog import ZmxCatalogEntry
 
 EXTRACTION_SCHEMA_VERSION = "article-facts-v1"
-COMPARISON_SCHEMA_VERSION = "business-judgment-v1"
+COMPARISON_SCHEMA_VERSION = "business-judgment-v2"  # v2：移除 action_type/owner/action/
+                                                     # deliverable/deadline/needs_human_review
+                                                     # ——这些不再由 LLM 产出，Follow-up
+                                                     # 改为 Phase⑤ 的确定性规则派生
 
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?。！？])\s+|\n+")
 _MONEY_RE = re.compile(
@@ -133,7 +136,7 @@ def extraction_cache_key(content_hash: str, *, model: str, provider: str) -> str
 
 def comparison_cache_key(
     facts: list[dict[str, Any]],
-    candidates: dict[int, list[ZmxBaselineEntry]],
+    candidates: dict[int, list[ZmxCatalogEntry]],
     *,
     prompt_version: str,
     model: str,
@@ -170,10 +173,10 @@ def _terms(value: Any) -> set[str]:
 
 def recall_candidates(
     facts: dict[str, Any],
-    entries: list[ZmxBaselineEntry],
+    entries: list[ZmxCatalogEntry],
     *,
     top_k: int = 4,
-) -> list[ZmxBaselineEntry]:
+) -> list[ZmxCatalogEntry]:
     """结构化字段词项重叠召回。零重叠不返回候选，避免把无关基线硬塞给模型。"""
     query_terms = _terms({
         "mechanism": facts.get("mechanism"),
@@ -182,7 +185,7 @@ def recall_candidates(
         "target_users": facts.get("target_users"),
         "feature": facts.get("feature"),
     })
-    scored: list[tuple[int, int, ZmxBaselineEntry]] = []
+    scored: list[tuple[int, int, ZmxCatalogEntry]] = []
     for pos, entry in enumerate(entries):
         entry_terms = _terms({
             "mechanism_type": entry.mechanism_type,
@@ -229,14 +232,3 @@ def calculate_priority(
         + max(0, min(3, int(urgency))) * 2
     )
     return score, "高" if score >= 70 else "中" if score >= 40 else "低"
-
-
-def render_action(item: dict[str, Any]) -> Optional[str]:
-    action = item.get("action")
-    if not isinstance(action, str) or not action.strip() or item.get("action_type") == "no_action":
-        return None
-    owner = item.get("owner") or "unassigned"
-    deadline = item.get("deadline") or "unscheduled"
-    deliverable = item.get("deliverable")
-    suffix = f"，交付：{deliverable}" if deliverable else ""
-    return f"{owner}｜{deadline}｜{action.strip()}{suffix}"

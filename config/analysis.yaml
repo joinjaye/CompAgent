@@ -14,42 +14,44 @@ llm:
   provider: openai_http   # openai_http（默认，src/analysis/llm.py）| cursor_agent
                            # （2026-07-15 新增，src/analysis/cursor_agent.py，走 cursor_sdk
                            # 的 Agent.prompt()，不是 OpenAI 兼容协议，见该文件顶部注释）
-  max_calls_per_run: null # 熔断：null 不限制。cursor_agent 拿不到真实美元金额（RunResult
-                           # 只有 token 用量），用调用次数近似控制花费，达到这个数就停止
-                           # 对剩余批次发起新的 LLM 调用（已产出的照常入库，跳过的批次留到
-                           # 下次重跑，不是失败）。openai_http 理论上也认这个字段，但目前
-                           # 没有真实需要用到。
+  max_calls_per_run: null # 熔断：null 不限制。Stage1（每篇一次）+ Stage3（每批一次）
+                           # 都计入同一个调用次数熔断——cursor_agent 拿不到真实美元金额
+                           # （RunResult 只有 token 用量），用调用次数近似控制花费，达到
+                           # 这个数就停止对剩余批次发起新的 LLM 调用（已产出的照常入库，
+                           # 跳过的批次留到下次重跑，不是失败）。
+  max_tokens_per_run: null  # 熔断：本进程累计 token 数，null 不限制
   temperature: 0          # 全部 prompt 要求输出稳定，固定为 0
   timeout_s: 60
   max_retries: 3
-  max_tokens_by_category:
-    campaign: 2200
-    product: 2000
+  max_tokens_per_call:      # staged-v1 两段各自的响应 token 上限（取代原来按
+                            # category 分的 max_tokens_by_category——Phase②起
+                            # category 只是 payload 字段，不再是模板选择器）
+    article_facts: 400       # Stage1 单篇事实抽取，响应结构很小
+    business_judgment: 3000  # Stage3 批量业务判断，响应随批次文章数增长
 
-prompt_versions:          # 改某个 category 的 prompt 正文后必须递增这里的版本号
-  campaign: campaign-v3
-  product: product-v3
+prompt_versions:          # 改 staged-v1 任一段 prompt 正文后必须递增对应版本号
+  article_facts: article-facts-v1
+  business_judgment: business-judgment-v1
 
-zmx_baseline:              # 结构化 Zoomex 基线（取代原来的 zmx_index TF-IDF 检索，
-                            # 见 src/analysis/zmx_baseline.py 顶部注释 / CLAUDE.md）
-  lookback_days: 90        # 只取近 90 天（提取和查询两端都受这个窗口约束）
-  max_entries_per_batch: 20    # 注入单次竞品分析 prompt 的基线条数上限
+zmx_catalog:               # Zoomex 能力目录（Phase①，取代原来的 zmx_baseline 结构化
+                            # 基线，见 src/analysis/zmx_catalog.py 顶部注释 / CLAUDE.md）。
+                            # 没有 lookback_days——提取/查询都覆盖 Zoomex 全量历史，
+                            # 这是修复"无法断言缺失"问题的关键，不是遗漏。
+  max_entries_per_batch: 20    # 注入单次竞品分析 prompt 的目录条数上限（类型覆盖池）
   candidate_entries_per_batch: 8  # 从类型覆盖池确定性召回后实际注入 Prompt 的上限
   max_examples_per_type: 2     # 每个 mechanism_type 最多保留几条最新示例
-  extraction:               # python -m src.analysis.zmx_baseline 用，跟竞品分析
-                             # （python -m src.analysis）完全独立的一套熔断上限
+  extraction:               # python -m src.analysis.zmx_catalog extract 用，跟竞品
+                             # 分析（python -m src.analysis）完全独立的一套熔断上限
     batch_size: 15                 # 每次提取 LLM 调用打包的 Zoomex 公告数
-    prompt_version: zmx-extract-v1   # 改提取 prompt 正文必须递增
+    prompt_version: zmx-catalog-extract-v1   # 改提取 prompt 正文必须递增
     response_max_tokens: 3000        # 单次提取调用的响应 token 上限（结构化输出
                                       # 最多 15 条，比竞品分析的 batch_summary 更长）
     max_calls_per_run: null          # 熔断上限（按调用次数），null 不限制
     price_usd_per_1k_tokens: 0.002   # $0.03 / 15k tokens 换算，真实计费口径
-    max_cost_usd_per_run: null       # 熔断上限（按美元），null 不限制；
-                                      # 真实执行本次用 CLI --max-cost-usd 10 传入
-    max_tokens_per_run: null         # 熔断上限（按 token），null 不限制；
-                                      # 真实执行本次用 CLI --max-tokens 5000000 传入
+    max_cost_usd_per_run: null       # 熔断上限（按美元），null 不限制
+    max_tokens_per_run: null         # 熔断上限（按 token），null 不限制
 
 content_truncation:
-  article_content_chars: 2400   # 先按高价值句压缩，再执行这个硬上限
-  zmx_preview_chars: 400         # ZMX_BLOCK 每条摘要长度，跟 prompt 文本里的
-                                 # content_preview 定义一致
+  article_content_chars: 4000   # 仅供 src/analysis/zmx_catalog.py 的 Zoomex 提取用
+                                 # （竞品分析 Stage1 改用 staged.preprocess_article()
+                                 # 自己的 max_chars=1500 硬截断，不读这个配置）

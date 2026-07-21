@@ -6,13 +6,12 @@ from src.analysis.staged import (
     extraction_cache_key,
     preprocess_article,
     recall_candidates,
-    render_action,
 )
-from src.analysis.zmx_baseline import ZmxBaselineEntry
+from src.analysis.zmx_catalog import ZmxCatalogEntry
 
 
-def _entry(uid: str, mechanism: str, mechanics: str) -> ZmxBaselineEntry:
-    return ZmxBaselineEntry(
+def _entry(uid: str, mechanism: str, mechanics: str) -> ZmxCatalogEntry:
+    return ZmxCatalogEntry(
         uid=uid, title=mechanism, mechanism_type=mechanism, key_mechanics=mechanics,
         reward_range=None, target_users=None, start_date=None, end_date=None, post_time=None,
     )
@@ -66,12 +65,3 @@ def test_priority_is_programmatic_and_weight_changes_need_no_llm():
     )
     assert score == 82
     assert priority == "高"
-
-
-def test_render_action_requires_real_action():
-    assert render_action({"action_type": "no_action", "action": "关注"}) is None
-    assert render_action({
-        "action_type": "benchmark", "owner": "campaign_ops",
-        "deadline": "within_2_business_days", "action": "对比奖池机制",
-        "deliverable": "竞品机制表",
-    }) == "campaign_ops｜within_2_business_days｜对比奖池机制，交付：竞品机制表"

@@ -68,13 +68,15 @@ DIFF_TYPE_TAG = {
 DIFF_TYPE_SORT_ORDER = {"missing": 0, "diff": 1, "mixed": 2, "same": 3, "na": 3}
 PRIORITY_SORT_ORDER = {"高": 0, "中": 1, "低": 2}
 
-# 每个 category 里"这条公告到底讲了什么"的描述性字段名不同（campaign 是 mechanics，
-# product 是 feature_description，以此类推），取来填进 article_index 的统一
-# "description" 键，供 Overview highlights / 各品类明细展示用——跟 follow_up（行动
-# 建议）是两个不同性质的字段，都保留。
+# 每个 category 里"这条公告到底讲了什么"的描述性字段名不同。campaign/product 的
+# 字段名是 Phase②（staged.py 接入）Stage1 事实抽取产出的字段（mechanism/feature，
+# 取代了 Phase②之前的 mechanics/feature_description——旧字段名仍在
+# _load_article_index 里做兼容读取，不是这里要处理的事）；listing/delisting 是更早
+# 的历史遗留字段名，这两个类目现在完全不产出 insights（Phase 4 v3 政策收紧后
+# 只分析 campaign/product），只在展示极老的历史数据时可能用到。
 _DESCRIPTIVE_FIELD_BY_CATEGORY = {
-    "campaign": "mechanics",
-    "product": "feature_description",
+    "campaign": "mechanism",
+    "product": "feature",
     "listing": "project_brief",
     "delisting": "reason",
 }
@@ -146,6 +148,42 @@ _AMOUNT_RE = re.compile(
     r"(?:[$€]\s?[\d,.]+(?:\s?(?:K|M))?|[\d,.]+\s?(?:USDT|USDC|BTC|ETH|WXT|STABLE|EDGE))",
     re.IGNORECASE,
 )
+
+def _product_category(title: Optional[str], feature: Optional[str]) -> str:
+    text = f"{title or ''} {feature or ''}".casefold()
+    rules = (
+        ("Copy Trading", ("copy trading", "copy trade", "跟单")),
+        ("Card & Payment", (" card", "payment", "支付", "消费卡")),
+        ("Security", ("proof of reserve", "merkle", "insurance", "custody", "储备金", "保险", "托管")),
+        ("Earn", ("earn", "staking", "apr", "apy", "理财", "质押")),
+        ("API", (" api", "websocket")),
+        ("Bot", ("trading bot", "grid bot", "strategy trading", "机器人", "策略交易")),
+        ("Wallet", ("wallet", "deposit", "withdraw", "钱包", "充提")),
+        ("Convert", ("convert", "swap", "兑换", "置换")),
+        ("Institutional", ("institutional", "broker", "vip", "机构")),
+        ("Trading", ("perpetual", "futures", "leverage", "risk limit", "tick size", "trading", "交易", "合约", "杠杆")),
+    )
+    for label, keywords in rules:
+        if any(keyword in text for keyword in keywords):
+            return label
+    return "Others"
+
+
+def _product_update_kind(title: Optional[str], status: str) -> str:
+    text = (title or "").casefold()
+    if any(k in text for k in ("reminder", "notice", "提醒", "通知")):
+        return "Operational Notice"
+    if status == "new" and not any(k in text for k in ("update", "adjust", "remove", "upgrade", "调整", "移除", "升级")):
+        return "New Product"
+    if any(k in text for k in ("remove", "disable", "sunset", "移除", "下线", "停止")):
+        return "Feature Removed"
+    if any(k in text for k in ("ui", "interface", "界面")):
+        return "UI Updated"
+    if any(k in text for k in ("performance", "latency", "speed", "性能", "延迟")):
+        return "Performance Updated"
+    if any(k in text for k in ("rule", "limit", "fee", "risk", "tick size", "adjust", "规则", "限额", "费率", "风控", "调整")):
+        return "Rule Updated"
+    return "Feature Added" if status == "new" else "Rule Updated"
 
 
 def _campaign_type(title: Optional[str], mechanics: Optional[str]) -> Optional[str]:
@@ -220,15 +258,27 @@ def _resolve_generated_at(conn: sqlite3.Connection) -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
+def _format_zmx_reward(amount: Optional[str], token: Optional[str], form: Optional[str]) -> Optional[str]:
+    joined = " ".join(p for p in (amount, token) if p) or None
+    if joined and form:
+        return f"{joined}（{form}）"
+    return joined or form
+
+
 def _load_article_index(conn: sqlite3.Connection) -> dict[str, dict]:
     """uid -> 该条公告在 Phase 4 分析里产出的逐条字段。
 
     每个 insights 行的 articles_analysis 是一个 JSON 数组（每篇公告的结构化分析），
     这里展开成以 uid 为 key 的扁平索引，供后面按 announcements 逐行 join 用。
 
-    老数据 / 校验失败的批次（articles_analysis 为 NULL 或不是合法 JSON 数组）会被
-    静默跳过，不抛异常——这正是"老批次没有这几个新字段"这条约束在代码里的落地：
-    找不到的 uid，调用方一律用 .get() 取默认值，不会因为这里跳过而报错。
+    字段名对应 Phase②（staged.py 接入）之后 run.py 产出的新形状（event_type/
+    mechanism/feature/diff_type/diff_detail/zmx_counterpart_uids/priority/
+    change_kind——不再有 action_type/owner/follow_up/listing_kind，这几个字段
+    AI 不再产出，follow_up 留给 Phase⑤ 的确定性规则填充）。老数据 / 校验失败的
+    批次（articles_analysis 为 NULL、不是合法 JSON 数组，或是 Phase②之前旧形状
+    产出的字段名）会被静默跳过或取不到值，不抛异常——找不到的字段，调用方一律用
+    .get() 取默认值 None，前端渲染中性默认，如实反映"这条还没有（新形状）逐条
+    分析结果"，不是 bug。
     """
     rows = _dict_rows(
         conn.execute(
@@ -254,6 +304,7 @@ def _load_article_index(conn: sqlite3.Connection) -> dict[str, dict]:
                 continue
             index[uid] = {
                 "diff_type": a.get("diff_type"),
+                "diff_detail": a.get("diff_detail"),
                 "priority": a.get("priority"),
                 "priority_reason": a.get("priority_reason"),
                 "action_type": a.get("action_type"),
@@ -263,11 +314,17 @@ def _load_article_index(conn: sqlite3.Connection) -> dict[str, dict]:
                 "listing_kind": a.get("listing_kind"),
                 "description": a.get(desc_field) if desc_field else None,
                 "mechanism_type": a.get("mechanism_type"),
-                "reward_range": a.get("reward_range"),
-                "target_users": a.get("target_users"),
+                "zmx_counterpart_uids": a.get("zmx_counterpart_uids") or [],
+                "reward_range": a.get("reward_range") or _format_zmx_reward(
+                    (a.get("reward") or {}).get("amount"), (a.get("reward") or {}).get("currency"),
+                    (a.get("reward") or {}).get("type"),
+                ),
+                "target_users": (
+                    ", ".join(a["target_users"]) if isinstance(a.get("target_users"), list) else a.get("target_users")
+                ),
                 "time_window": a.get("time_window"),
-                "start_date": a.get("start_date"),
-                "end_date": a.get("end_date"),
+                "start_date": a.get("start_at") or a.get("start_date"),
+                "end_date": a.get("end_at") or a.get("end_date"),
                 "feature": a.get("feature") or a.get("feature_description"),
                 "token_symbol": a.get("token_symbol"),
                 "launch_time": a.get("launch_time"),
@@ -275,6 +332,87 @@ def _load_article_index(conn: sqlite3.Connection) -> dict[str, dict]:
                 "is_locale_derived": is_locale_derived,
             }
     return index
+
+
+def _load_zmx_catalog_index(conn: sqlite3.Connection) -> dict[tuple[str, str], dict]:
+    """(category, mechanism_type) -> Zoomex 能力目录条目。在导出时现查，不在写入
+    articles_analysis 时冗余存一份——目录可能在竞品分析之后单独重新 rollup，导出
+    应该反映目录的当前状态，不是分析当时的快照（SQLite 是唯一真相源）。
+    """
+    rows = _dict_rows(conn.execute(
+        "SELECT category, mechanism_type, exists_flag, capability_desc, typical_reward FROM zmx_catalog_entry"
+    ))
+    return {
+        (r["category"], r["mechanism_type"]): {
+            "exists_flag": r["exists_flag"],
+            "capability_desc": r["capability_desc"],
+            "typical_reward": r["typical_reward"],
+        }
+        for r in rows
+    }
+
+
+def _load_zmx_counterpart_index(conn: sqlite3.Connection, uids: set[str]) -> dict[str, dict]:
+    """source_uid -> 一条具体的 Zoomex 对照示例（标题/链接/摘要/奖励），供 Detail
+    面板的两栏对比展示用。只查竞品分析实际引用过的 uid（zmx_counterpart_uids），
+    不是整张表。"""
+    if not uids:
+        return {}
+    placeholders = ",".join("?" * len(uids))
+    rows = _dict_rows(conn.execute(
+        f"""SELECT s.source_uid, s.core_summary, s.reward_form, s.reward_amount, s.reward_token,
+                   a.title, a.url
+            FROM zmx_summary s JOIN announcements a ON a.uid = s.source_uid
+            WHERE s.source_uid IN ({placeholders})""",
+        list(uids),
+    ))
+    return {
+        r["source_uid"]: {
+            "title": _clean_title(r["title"]),
+            "url": r["url"],
+            "core_summary": r["core_summary"],
+            "reward_range": _format_zmx_reward(r["reward_amount"], r["reward_token"], r["reward_form"]),
+        }
+        for r in rows
+    }
+
+
+def _merge_localized_rows(rows: list[dict]) -> list[dict]:
+    """One business event per row; locales/URLs remain available as parallel variants."""
+    buckets: list[list[dict]] = []
+    for row in rows:
+        normalized_title = re.sub(r"\s+", " ", (row.get("title") or "").strip()).casefold()
+        matched = None
+        for bucket in buckets:
+            if bucket[0]["source"] != row["source"]:
+                continue
+            same_group = row.get("group_id") and any(r.get("group_id") == row["group_id"] for r in bucket)
+            same_title_cross_locale = normalized_title and any(
+                re.sub(r"\s+", " ", (r.get("title") or "").strip()).casefold() == normalized_title
+                and r.get("locale") != row.get("locale")
+                for r in bucket
+            )
+            if same_group or same_title_cross_locale:
+                matched = bucket
+                break
+        if matched is None:
+            buckets.append([row])
+        else:
+            matched.append(row)
+
+    merged = []
+    locale_order = {"EN": 0, "FR": 1, "VN": 2, "ID": 3, "EN-Asia": 4}
+    for variants in buckets:
+        variants.sort(key=lambda r: (locale_order.get(r.get("locale"), 9), -(len(r.get("description") or ""))))
+        representative = dict(variants[0])
+        representative["markets"] = sorted({r["locale"] for r in variants}, key=lambda x: locale_order.get(x, 9))
+        representative["localized_variants"] = [
+            {"locale": r["locale"], "title": r["title"], "url": r["url"]}
+            for r in variants
+        ]
+        representative["locale"] = representative["markets"][0]
+        merged.append(representative)
+    return merged
 
 
 def _push_candidate(row: dict, article: dict) -> bool:
@@ -300,8 +438,40 @@ def _push_candidate(row: dict, article: dict) -> bool:
     return False
 
 
+def _derive_follow_up(rows: list[dict]) -> None:
+    """Phase⑤：Follow-up 是确定性规则派生，不是 AI 产出——Phase②起 run.py 不再让
+    LLM 输出 action_type/owner/follow_up，这里用同一批公告内的 diff_type +
+    mechanism_type 出现频率做规则判断（原地修改 rows，跟 _push_candidate 的用法
+    一致）：
+    - diff_type=ZMX缺失 且该 mechanism_type 本批被 ≥2 个不同竞品触及（行业共性
+      趋势，不是单一竞品的孤例）→ 建议评估跟进
+    - diff_type=ZMX玩法不同 → 建议观察差异
+    - diff_type=ZMX已有 → 无需关注
+    - 其余（不适用/混合，或已有值——理论上 Phase②后不会有，防御性保留）不产出
+    """
+    sources_by_mechanism: dict[str, set[str]] = {}
+    for r in rows:
+        mt = r.get("mechanism_type")
+        if mt:
+            sources_by_mechanism.setdefault(mt, set()).add(r["source"])
+    for r in rows:
+        if r.get("follow_up"):
+            continue
+        diff_type = r.get("diff_type")
+        mt = r.get("mechanism_type")
+        if diff_type == "ZMX缺失" and mt and len(sources_by_mechanism.get(mt, ())) >= 2:
+            r["follow_up"] = "建议评估跟进"
+        elif diff_type == "ZMX玩法不同":
+            r["follow_up"] = "建议观察差异"
+        elif diff_type == "ZMX已有":
+            r["follow_up"] = "无需关注"
+
+
 def build_category_section(
-    conn: sqlite3.Connection, category: str, as_of_date: str, article_index: dict[str, dict]
+    conn: sqlite3.Connection, category: str, as_of_date: str, article_index: dict[str, dict],
+    zmx_catalog_index: Optional[dict[tuple[str, str], dict]] = None,
+    zmx_counterpart_index: Optional[dict[str, dict]] = None,
+    latest_only: bool = True,
 ) -> list[dict]:
     """最新一批（as_of_date 当天、status IN new/changed）某个 category 的逐条公告，
     一行一篇公告，按 uid join 到 Phase 4 的逐条分析结果（找不到就是中性默认）。
@@ -310,18 +480,29 @@ def build_category_section(
     对外展示的 section 会把 delisting 的结果也拼进去（调用方负责拼接，这里只管单个
     category），"other" 也可以传进来单独查（只用于 Overview 的 Announcement chip
     计数，不作为独立的顶层导出 section）。
+
+    Phase③：campaign/product 都会带上 Zoomex 能力目录对照字段（zmx_exists/
+    zmx_mechanism_type/zmx_capability_desc/zmx_counterpart/comparison_status），
+    不再只有 product 才有——这是 Phase②起 campaign 也真正走 Stage1/Stage3 分析
+    的直接结果。旧版基于全量 Zoomex 历史做确定性词项重叠匹配的
+    `_load_product_baseline`/`_product_baseline_candidates`（`zmx_candidates`/
+    `comparison_status in (candidate_found, baseline_unmatched)`）已整体退休：
+    那套机制是在真实 Stage1/Stage3 管线尚未覆盖 campaign、且 product 的
+    Zoomex 基线还是有 90 天窗口限制时的权宜之计，继续跟新管线的真实
+    diff_type/zmx_counterpart 同屏显示只会造成两套结论互相矛盾。
     """
-    rows = _dict_rows(
-        conn.execute(
-            f"""SELECT uid, group_id, source, locale, title, post_time, update_time, status,
-                       url, is_region_exclusive
-                FROM announcements
-                WHERE source != '{BASELINE_SOURCE}' AND category = ?
-                  AND date(fetched_at) = ? AND status IN ('new', 'changed')
-                ORDER BY post_time DESC""",
-            (category, as_of_date),
-        )
-    )
+    latest_clause = "AND date(fetched_at) = ? AND status IN ('new', 'changed')" if latest_only else ""
+    params = (category, as_of_date) if latest_only else (category,)
+    rows = _dict_rows(conn.execute(
+        f"""SELECT uid, group_id, source, locale, title, post_time, update_time, status,
+                   url, is_region_exclusive
+            FROM announcements
+            WHERE source != '{BASELINE_SOURCE}' AND category = ? {latest_clause}
+            ORDER BY post_time DESC""",
+        params,
+    ))
+    zmx_catalog_index = zmx_catalog_index or {}
+    zmx_counterpart_index = zmx_counterpart_index or {}
     out = []
     for r in rows:
         # Listing/Delisting 自本版起不做任何 LLM 分析或 ZMX 比较；即使数据库里
@@ -329,7 +510,7 @@ def build_category_section(
         art = {} if category in ("listing", "delisting") else article_index.get(r["uid"], {})
         start_date, end_date = _split_time_window(art.get("time_window"))
         description = art.get("description")
-        out.append({
+        item = {
             "uid": r["uid"],
             "group_id": r["group_id"],
             "source": r["source"],
@@ -356,6 +537,7 @@ def build_category_section(
             "launch_time": art.get("launch_time"),
             "diff_type": art.get("diff_type"),
             "diff_tag": DIFF_TYPE_TAG.get(art.get("diff_type") or "", "na"),
+            "diff_detail": art.get("diff_detail"),
             "priority": art.get("priority"),
             "priority_reason": art.get("priority_reason"),
             "action_type": art.get("action_type"),
@@ -369,7 +551,22 @@ def build_category_section(
             ),
             "is_mock": art.get("is_mock", False),
             "is_locale_derived": art.get("is_locale_derived", False),
-        })
+        }
+        if category in ("campaign", "product"):
+            mechanism_type = art.get("mechanism_type")
+            catalog_entry = zmx_catalog_index.get((category, mechanism_type)) if mechanism_type else None
+            counterpart_uid = (art.get("zmx_counterpart_uids") or [None])[0]
+            item["zmx_mechanism_type"] = mechanism_type
+            item["zmx_exists"] = catalog_entry["exists_flag"] if catalog_entry else None
+            item["zmx_capability_desc"] = catalog_entry["capability_desc"] if catalog_entry else None
+            item["zmx_counterpart"] = zmx_counterpart_index.get(counterpart_uid) if counterpart_uid else None
+            # analyzed = 这条公告有真实的 Stage1/Stage3 逐条分析结果（不管结论是不是
+            # "不适用"）；pending = 还没被任何一次分析运行覆盖过，不是"确认没有差异"。
+            item["comparison_status"] = "analyzed" if art else "pending"
+        if category == "product":
+            item["product_category"] = _product_category(r["title"], art.get("feature") or description)
+            item["update_kind"] = _product_update_kind(r["title"], r["status"])
+        out.append(item)
     return out
 
 
@@ -435,20 +632,26 @@ def build_overview(
         return "P7"
 
     all_rows = campaign_rows + product_rows + listing_only_rows + delisting_rows + other_rows
-    # 多语言去重后，每个竞品最多 Top 5；排序只看业务价值，不按发布时间。
+    # 多语言去重后，严格按业务规则选全局 Top 5、每个竞品最多 2 条。
+    # 同一规则层级才用发布时间倒序；不读取 LLM priority/diff_type 参与排序。
     highlights_pool = _dedupe_business_rows(all_rows)
     for r in highlights_pool:
         r["business_priority"] = business_priority(r)
     highlights_pool.sort(
-        key=lambda r: (int(r["business_priority"][1:]), r["is_mock"], _diff_sort_key(r["diff_type"]))
+        key=lambda r: (
+            int(r["business_priority"][1:]),
+            -(datetime.fromisoformat((r.get("post_time") or "1970-01-01T00:00:00Z").replace("Z", "+00:00")).timestamp()),
+        )
     )
     per_source: dict[str, int] = {}
     selected = []
     for r in highlights_pool:
-        if per_source.get(r["source"], 0) >= 5:
+        if per_source.get(r["source"], 0) >= 2:
             continue
         selected.append(r)
         per_source[r["source"]] = per_source.get(r["source"], 0) + 1
+        if len(selected) >= 5:
+            break
     highlights = [
         {
             "source": r["source"],
@@ -509,7 +712,7 @@ def build_trend(conn: sqlite3.Connection) -> dict:
                        COUNT(DISTINCT COALESCE(group_id, uid)) as n
                 FROM announcements
                 WHERE source != '{BASELINE_SOURCE}' AND category IN ({placeholders})
-                  AND status = 'new'
+                  AND status IN ('new', 'changed')
                 GROUP BY d, category
                 ORDER BY d""",
             CATEGORIES,
@@ -573,7 +776,7 @@ def build_search_index(conn: sqlite3.Connection, article_index: dict[str, dict])
     前端筛"，不做服务端分页/筛选。"""
     rows = _dict_rows(
         conn.execute(
-            f"""SELECT uid, source, locale, category, title, post_time, status, url
+            f"""SELECT uid, group_id, source, locale, category, title, post_time, status, url
                 FROM announcements WHERE source != '{BASELINE_SOURCE}'
                 ORDER BY post_time DESC"""
         )
@@ -583,6 +786,7 @@ def build_search_index(conn: sqlite3.Connection, article_index: dict[str, dict])
         art = article_index.get(r["uid"], {})
         out.append({
             "uid": r["uid"],
+            "group_id": r["group_id"],
             "source": r["source"],
             "locale": r["locale"],
             "category": r["category"] or "other",
@@ -593,6 +797,7 @@ def build_search_index(conn: sqlite3.Connection, article_index: dict[str, dict])
             "priority": art.get("priority"),
             "url": r["url"],
         })
+    out = _merge_localized_rows(out)
     dates = [r["post_time"][:10] for r in out if r["post_time"]]
     return {
         "rows": out,
@@ -602,6 +807,26 @@ def build_search_index(conn: sqlite3.Connection, article_index: dict[str, dict])
     }
 
 
+def build_daily_digest(conn: sqlite3.Connection, as_of_date: str) -> dict:
+    """Phase⑤：当日 AI Insight。只读 src/analysis/daily_digest.py 的
+    peek_cached_digest()（从不触发真实 LLM 调用——导出是静态快照生成，不应该在
+    渲染过程中发起网络请求，见该函数自己的 docstring），命中真实缓存则
+    source='llm'；否则 source='fallback'，前端据此显示"LLM 生成"或"占位符"角标，
+    不让占位文案冒充真实分析结论。
+
+    Scoping：daily_digest.py 是按 locale 生成的（"这个 locale 今天整体发生了什么"），
+    但新版看板 Overview 是跨 locale 的单一入口，不再有逐 locale 的今日 Summary
+    位置——这里固定取 EN（每个竞品都覆盖的市场，最具代表性），不是遍历全部
+    locale 各生成一份再拼接。
+    """
+    from src.analysis.daily_digest import peek_cached_digest
+
+    result = peek_cached_digest(conn, "EN", as_of_date)
+    if result and result.generated:
+        return {"source": "llm", "summary": result.daily_summary, "priority_focus": result.priority_focus}
+    return {"source": "fallback", "summary": None, "priority_focus": None}
+
+
 def build_dashboard_data(db_path: str) -> dict:
     conn = sqlite3.connect(db_path)
     conn.row_factory = sqlite3.Row
@@ -609,15 +834,37 @@ def build_dashboard_data(db_path: str) -> dict:
     as_of_date = _resolve_as_of_date(conn)
     generated_at = _resolve_generated_at(conn)
     article_index = _load_article_index(conn)
+    zmx_catalog_index = _load_zmx_catalog_index(conn)
+    counterpart_uids = {
+        art["zmx_counterpart_uids"][0]
+        for art in article_index.values()
+        if art.get("zmx_counterpart_uids")
+    }
+    zmx_counterpart_index = _load_zmx_counterpart_index(conn, counterpart_uids)
 
-    campaign_rows = build_category_section(conn, "campaign", as_of_date, article_index)
-    product_rows = build_category_section(conn, "product", as_of_date, article_index)
-    listing_only_rows = build_category_section(conn, "listing", as_of_date, article_index)
-    delisting_rows = build_category_section(conn, "delisting", as_of_date, article_index)
-    other_rows = build_category_section(conn, "other", as_of_date, article_index)
+    def _section(category: str, **kwargs) -> list[dict]:
+        return build_category_section(
+            conn, category, as_of_date, article_index,
+            zmx_catalog_index=zmx_catalog_index, zmx_counterpart_index=zmx_counterpart_index,
+            **kwargs,
+        )
+
+    campaign_rows = _merge_localized_rows(_section("campaign"))
+    campaign_all_rows = _merge_localized_rows(_section("campaign", latest_only=False))
+    product_rows = _merge_localized_rows(_section("product"))
+    listing_only_rows = _merge_localized_rows(_section("listing"))
+    delisting_rows = _merge_localized_rows(_section("delisting"))
+    other_rows = _merge_localized_rows(_section("other"))
     listing_rows = listing_only_rows + delisting_rows
 
+    # Phase⑤：Follow-up 是规则派生，不是 AI 产出（Phase②起 run.py 不再让 LLM
+    # 输出这个字段）——campaign/product 各自在自己的批次范围内判断 mechanism_type
+    # 出现频率，不跨类目混算。
+    _derive_follow_up(campaign_rows)
+    _derive_follow_up(product_rows)
+
     overview = build_overview(as_of_date, campaign_rows, product_rows, listing_only_rows, delisting_rows, other_rows)
+    daily_digest = build_daily_digest(conn, as_of_date)
 
     # 推送候选预览：附加在每个 category section 行上，跟 Phase 6 引擎无关，纯预览。
     for rows in (campaign_rows, product_rows, listing_rows):
@@ -628,6 +875,9 @@ def build_dashboard_data(db_path: str) -> dict:
     insights_mock = conn.execute("SELECT COUNT(*) FROM insights WHERE llm_tokens_used = -1").fetchone()[0]
     zoomex_total = conn.execute(
         f"SELECT COUNT(*) FROM announcements WHERE source = '{BASELINE_SOURCE}'"
+    ).fetchone()[0]
+    zmx_summary_product_total = conn.execute(
+        "SELECT COUNT(*) FROM zmx_summary WHERE category = 'product'"
     ).fetchone()[0]
 
     source_coverage = {}
@@ -646,6 +896,14 @@ def build_dashboard_data(db_path: str) -> dict:
             "active": n_total > 0,
         }
 
+    # analyzed/pending 覆盖两个类目（Phase②起 campaign 也走真实 Stage1/Stage3 分析，
+    # 不再只统计 product）；candidate_found/baseline_unmatched 两档随退休的旧版
+    # 词项重叠匹配一起下线，见 build_category_section 顶部注释。
+    comparison_coverage = {
+        status: sum(1 for row in campaign_rows + product_rows if row.get("comparison_status") == status)
+        for status in ("analyzed", "pending")
+    }
+
     data = {
         "meta": {
             "generated_at": generated_at,
@@ -654,16 +912,36 @@ def build_dashboard_data(db_path: str) -> dict:
             "insights_total": insights_total,
             "insights_mock": insights_mock,
             "zoomex_baseline_total": zoomex_total,
+            "zoomex_product_baseline_total": zmx_summary_product_total,
             "source_coverage": source_coverage,
         },
         "overview": overview,
+        "daily_digest": daily_digest,
         "trend": build_trend(conn),
         "campaign": campaign_rows,
+        "campaign_all": campaign_all_rows,
         "product": product_rows,
         "listing": listing_rows,
         "announcements": other_rows,
         "markets": build_markets(conn),
         "search_index": build_search_index(conn, article_index),
+        "quality": {
+            "product_comparison": {
+                "total_events": len(campaign_rows) + len(product_rows),
+                "zoomex_product_baseline_events": zmx_summary_product_total,
+                **comparison_coverage,
+                "definition": (
+                    "analyzed=covered by a real Stage1/Stage3 analysis run (diff_type reflects the "
+                    "LLM+catalog verdict, including 不适用 when evidence was inconclusive); "
+                    "pending=not yet reached by an analysis run, not a confirmed absence of difference"
+                ),
+            },
+            "known_gaps": [
+                "Campaign lifecycle fields depend on extracted start/end dates and are incomplete when source text omits them.",
+                "Product change history is announcement-based; no canonical product entity table exists yet.",
+                "KR has no configured collector, so KR market coverage is empty rather than estimated.",
+            ],
+        },
     }
     conn.close()
     return data

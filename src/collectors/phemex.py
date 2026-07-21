@@ -47,6 +47,27 @@ from src.parsers.phemex_web import parse_article_detail, parse_query_response
 logger = logging.getLogger(__name__)
 
 
+def _slug_from_url(url: Optional[str]) -> Optional[str]:
+    """从 `https://phemex.com/announcements/<slug>` 里取出 `<slug>`。
+
+    【2026-07-21 真实数据核实】主库当前 68 条 Phemex 行（EN 34 + FR 34）按 url 分组，
+    100% 两两配对、无一条落单——同一篇公告 EN/FR 的 `slug`（对应 `parse_query_response`
+    里的 `item["url"]`）逐字节相同，`article_id`（数值 `id`）却不同（如
+    "phemex-will-delist-koruusdt914" 这条 EN=135479/FR=135481）。这是本项目第一次
+    对 Phemex 跨语言归组问题给出的真实修复依据（此前一直只在 Dashboard 聚合层做
+    "group_id + 规范化标题" 兜底，见 CLAUDE.md「daily 增量分页上限 5→2」/「真实数据全流程
+    验证」两节），slug 比"标题相似度"更可靠——是源站自己生成、天然跨 locale 一致的
+    标识符，不需要任何模糊匹配。"""
+    if not url:
+        return None
+    marker = "/announcements/"
+    idx = url.find(marker)
+    if idx == -1:
+        return None
+    slug = url[idx + len(marker):].split("?")[0].split("#")[0].strip("/")
+    return slug or None
+
+
 class PhemexCollector(BaseCollector):
     source_name = "Phemex"
 
@@ -114,6 +135,15 @@ class PhemexCollector(BaseCollector):
     def normalize(self, item: RawItem) -> NormalizedAnnouncement:
         article_id = str(item.article_id)
         content_text = html_to_text(item.content) if item.content else ""
+        slug = _slug_from_url(item.url)
+        if slug is not None:
+            group_id = f"phemex_{slug}"
+        else:
+            logger.warning(
+                "Phemex 无法从 url 提取 slug，group_id 退回 article_id（跨语言归组会失效）：article_id=%s url=%s",
+                article_id, item.url,
+            )
+            group_id = f"phemex_{article_id}"
         return NormalizedAnnouncement(
             source=self.source_name,
             locale=self.locale,
@@ -125,6 +155,6 @@ class PhemexCollector(BaseCollector):
             update_time=item.update_time,
             category=None,  # Phase 3 之前不分类
             raw_category=self.category,  # news/activities/newsletter，非响应字段解析值
-            group_id=f"phemex_{article_id}",
+            group_id=group_id,
             source_endpoint=self.config.get("list_endpoint"),
         )

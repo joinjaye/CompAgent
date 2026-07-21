@@ -24,6 +24,7 @@ from dataclasses import dataclass, field
 from typing import Optional
 
 from src.analysis.config import LlmCredentials
+from src.analysis.cursor_agent import call_llm_cursor_agent
 from src.analysis.llm import call_llm, get_cached_response, set_cached_response
 from src.analysis.prompts import BuiltPrompt, build_daily_digest_prompt
 
@@ -115,6 +116,7 @@ def generate_daily_digest(
     batch_date: str,
     *,
     credentials: Optional[LlmCredentials] = None,
+    provider: str = "openai_http",
     model: str = "",
     temperature: float = 0.3,
     max_tokens: int = 800,
@@ -126,6 +128,9 @@ def generate_daily_digest(
     generated 恒为 False——用于"看逻辑对不对/看 prompt 长什么样"，不产出内容。
     dry_run=False：先查 llm_cache，命中则复用（tokens_used=0，跟 Phase 4 批次分析
     对 EN->FR/IDcache 复用的语义一致）；未命中才真正调用，需要传入 credentials。
+    provider="cursor_agent" 时 credentials 应为 CursorCredentials（走
+    call_llm_cursor_agent，不是 OpenAI 兼容协议），跟 run.py/zmx_catalog.py 的
+    provider 切换是同一个模式。
     """
     batches = load_locale_batches(conn, locale, batch_date)
     if not batches:
@@ -148,10 +153,15 @@ def generate_daily_digest(
     if credentials is None:
         raise ValueError("dry_run=False 且缓存未命中时必须传入 credentials")
 
-    raw_text, tokens_used = call_llm(
-        prompt.system, prompt.user, credentials=credentials, model=model,
-        temperature=temperature, max_tokens=max_tokens, timeout_s=timeout_s, max_retries=max_retries,
-    )
+    if provider == "cursor_agent":
+        raw_text, tokens_used = call_llm_cursor_agent(
+            prompt.system, prompt.user, api_key=credentials.api_key, model=credentials.model,
+        )
+    else:
+        raw_text, tokens_used = call_llm(
+            prompt.system, prompt.user, credentials=credentials, model=model,
+            temperature=temperature, max_tokens=max_tokens, timeout_s=timeout_s, max_retries=max_retries,
+        )
     set_cached_response(conn, cache_key, raw_text)
     summary, focus, issues = _validate_digest_response(raw_text)
     return DailyDigestResult(

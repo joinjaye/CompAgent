@@ -1,0 +1,158 @@
+# Zoomex 能力目录的机制/功能分类枚举（Phase①，见 CLAUDE.md「Zoomex Capability
+# Catalog」）。src/analysis/zmx_catalog.py 的提取 prompt 和 rollup 都读这个文件，
+# 不允许 LLM 自由生成新类型——遇到不匹配的一律落 "other" + raw_mechanism_label
+# 记录原始描述，供以后人工归并进正式枚举。
+#
+# campaign 是 semi_closed：这 ~18 个 key 不是凭空设计的，是对
+# data/competitor_intel.db 里 zmx_baseline 表已有的 63 个真实碎片化标签（LLM 此前
+# 自由生成的 mechanism_type，覆盖 Zoomex + 五家竞品共 566 条 campaign 公告）做的一次
+# 人工归并结果，每个 key 下面的 examples 是归并进这个桶的真实标题（不是编造的）。
+#
+# product 是 fixed：直接复用 src/dashboard/export_data.py 的 _product_category()
+# 已经在用的 11 个标签（Copy Trading / Card & Payment / Security / Earn / API / Bot /
+# Wallet / Convert / Institutional / Trading / Others），Title Case 大小写必须保持
+# 逐字节一致——docs/index.html 前端硬编码按这几个精确字符串做展示/筛选。
+# match_keywords 也是照抄 `_product_category()` 里的关键词规则，作为 Phase③ 时两边
+# 收敛到同一份来源的过渡（该函数届时会改成读这个文件，而不是维护第二份关键词表）。
+
+campaign:
+  method: semi_closed
+  categories:
+    - key: deposit_reward
+      name_zh: 入金/充值奖励
+      definition: 用户完成充值/首充/注册入金后获得奖励，门槛通常是金额阶梯
+      examples:
+        - "💎Deposit & Trade to Unlock $560 Bonus ⚽ Emiliano Martínez Signed Jersey + 🎿New Zealand helicopter skiing"
+        - "☄️ Your Welcome Bonus Awaits: Claim $40 SPACEX + $125 USDT Rewards"
+    - key: trading_volume_tier
+      name_zh: 交易量阶梯奖励
+      definition: 按交易量分档给予奖励/返佣，门槛是累计交易量而非充值金额
+      examples:
+        - "🎁 Claim Up to 1,500 USDT in Rewards | Exclusive Benefits for VIP Trial Card Users"
+    - key: zero_risk_new_user
+      name_zh: 新手零风险/亏损包赔
+      definition: 首单亏损包赔、零成本交易赛一类专门降低新用户交易风险感的活动
+      examples:
+        - "First Trade Protection｜Claim up to $100 Bonus"
+        - "⏰ 0-Cost Trading Competition — Early registration is open, claim a $20 reward!"
+    - key: lucky_draw
+      name_zh: 抽奖/盲盒/转盘
+      definition: 概率性抽奖机制（转盘、盲盒、问卷抽奖等），奖励不是确定发放
+      examples:
+        - "Grand Slam Trading Challenge | Trade to Win Wimbledon Tickets & Exclusive Rewards"
+        - "Doge Day Welcome Gift 🚀 Complete beginner tasks to get 42 DOGE + $42 bonus, and Draw Mystery Boxes!"
+        - "Your Feedback Matters! Join the User Survey & Share 60,000 USDT in Rewards 🎁"
+    - key: listing_airdrop
+      name_zh: 上币空投/上币任务
+      definition: 配合新代币上线的空投/交易任务活动，跟"上币公告"本身（listing 分类）不同，这是运营活动
+      examples:
+        - "🚀 Grab HYPE airdrops! Spot & futures double rewards, share 10,000 USDT bonus!"
+    - key: earn_yield_boost
+      name_zh: 理财收益加息
+      definition: 限时提高理财/活期产品年化收益率，吸引资金沉淀
+      examples:
+        - "🔥 New User Exclusive | USDT Earn: Up to 666% APR"
+        - "🔥 May New User Exclusive | USDT Wealth Management with up to 666% Annualized Return"
+    - key: prediction_event
+      name_zh: 预测竞猜活动
+      definition: 对赛事/行情结果的预测竞猜（如世界杯、涨跌预测），非交易本身
+      examples:
+        - "The Ultimate World Cup Football Spectacle Has Officially Begun | A $1,000,000 Prize Pool Awaits You!"
+        - "🔥World Cup Predictions | Unlock Match Tickets & Rewards"
+        - "🔥Zoomex Prediction Market Coming Soon: Join the Pre-Launch Prediction Event to Win Exclusive Rewards"
+    - key: fee_rebate
+      name_zh: 手续费返还/减免
+      definition: 限时 0 手续费或手续费返还，不涉及奖池发放
+      examples:
+        - "🎉 Limited-Time Perk | Trade Stock Contract Perpetuals with 0 Fees!"
+    - key: task_reward
+      name_zh: 产品体验/任务奖励
+      definition: 完成指定任务（回测、实盘、使用某功能）确定性领取奖励，非抽奖
+      examples:
+        - "【Strategy Center Launch Campaign】Backtest, Live Trade, and Share Results for a Chance to Win Rewards!"
+    - key: delisting_compensation
+      name_zh: 下架/终止交易补偿
+      definition: 产品下架、交易终止时的回购/补偿类运营公告（不是常规 delisting 分类的上下架公告本身）
+      examples:
+        - "Announcement on preSPAX Trading Termination and Platform Buyback Compensation"
+    - key: copy_trading_recruit
+      name_zh: 带单员招募
+      definition: 招募跟单交易的带单员/交易领袖，通常带奖池激励
+      examples:
+        - "🔥CopyTrading Lead Trader Recruitment Open | Share 1,000 USDT Pool"
+    - key: token_split_event
+      name_zh: 代币拆分/合并活动
+      definition: 代币拆分（split）或合并相关的活动公告，含拆分后恢复交易通知
+      examples:
+        - "[Pre-IPO] Announcement Regarding Completion of preSPAX Token Split and Resumption of Trading"
+    - key: vip_tier_reward
+      name_zh: VIP专属/升级奖励
+      definition: 面向 VIP 等级用户的专属权益或升级奖励，门槛是账户等级而非交易行为
+      examples:
+        - "🎁 Claim Up to 1,500 USDT in Rewards | Exclusive Benefits for VIP Trial Card Users"
+    - key: festival_theme_campaign
+      name_zh: 节日/主题嘉年华活动
+      definition: 节日（披萨节等）或综合多任务嘉年华类活动，通常打包多种小任务
+      examples:
+        - "🍕 Pizza Day Party! Sign up to claim a $50 trading voucher, unlock up to $150 trading vouchers + $50 BTC airdrop!"
+        - "The July Airdrop Carnival is LIVE! 🔥 Score Up to $770 + Join the Ultimate Football Feast Now! ⚽"
+    - key: grid_trading_contest
+      name_zh: 网格交易赛
+      definition: 专门围绕网格交易策略的比赛/挑战
+      examples:
+        - "Futures Grid Trading Challenge: Share a 60,000 USDT Prize Pool"
+    - key: new_user_welcome
+      name_zh: 新用户欢迎礼
+      definition: 面向新注册用户的一次性欢迎礼包，不强调充值/交易门槛
+      examples:
+        - "☄️ All-in-One Welcome Rewards: Claim $40 SPACEX, F1 Hass Cap and $145 USDT Reward"
+    - key: social_engagement
+      name_zh: 社媒互动活动
+      definition: AMA、社媒联动一类以互动/曝光为主的活动，奖励规模通常较小
+      examples:
+        - "Zoomex × TGR Haas F1 Team AMA｜Share 1,000 USDT"
+    - key: pre_launch_preview
+      name_zh: 新产品/新板块预告
+      definition: 新产品或新交易板块（如 Pre-IPO）上线前的预热/预告类公告
+      examples:
+        - "【Pre-IPO】preSPAX Officially Open for Trading!"
+    - key: other
+      name_zh: 其他
+      definition: 不属于以上任何类型；必须同时填写 raw_mechanism_label 保留 LLM 自己的原始描述
+
+product:
+  method: fixed
+  categories:
+    - key: copy_trading
+      name_en: Copy Trading
+      match_keywords: ["copy trading", "copy trade", "跟单"]
+    - key: card_payment
+      name_en: Card & Payment
+      match_keywords: [" card", "payment", "支付", "消费卡"]
+    - key: security
+      name_en: Security
+      match_keywords: ["proof of reserve", "merkle", "insurance", "custody", "储备金", "保险", "托管"]
+    - key: earn
+      name_en: Earn
+      match_keywords: ["earn", "staking", "apr", "apy", "理财", "质押"]
+    - key: api
+      name_en: API
+      match_keywords: [" api", "websocket"]
+    - key: bot
+      name_en: Bot
+      match_keywords: ["trading bot", "grid bot", "strategy trading", "机器人", "策略交易"]
+    - key: wallet
+      name_en: Wallet
+      match_keywords: ["wallet", "deposit", "withdraw", "钱包", "充提"]
+    - key: convert
+      name_en: Convert
+      match_keywords: ["convert", "swap", "兑换", "置换"]
+    - key: institutional
+      name_en: Institutional
+      match_keywords: ["institutional", "broker", "vip", "机构"]
+    - key: trading
+      name_en: Trading
+      match_keywords: ["perpetual", "futures", "leverage", "risk limit", "tick size", "trading", "交易", "合约", "杠杆"]
+    - key: other
+      name_en: Others
+      match_keywords: []

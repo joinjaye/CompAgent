@@ -1,6 +1,6 @@
 -- 竞品情报平台 SQLite schema（schema 版本 v3，见 CLAUDE.md「Phase 4 完成情况」；
--- zmx_baseline 表是之后纯新增的表，不改动任何既有表的列/约束，不需要走 migrate 脚本，
--- 见 CLAUDE.md「Zoomex 基线改造」小节）
+-- zmx_summary/zmx_catalog_entry 是纯新增的表，不改动任何既有表的列/约束，不需要走
+-- migrate 脚本，见 CLAUDE.md「Zoomex Capability Catalog」小节）
 -- 所有时间字段统一使用 UTC ISO8601 字符串（如 2026-07-13T02:30:00Z），不使用 SQLite 原生 DATETIME。
 -- SQLite 是唯一真相源；飞书多维表只是同步出去的业务视图。
 
@@ -118,32 +118,68 @@ CREATE TABLE IF NOT EXISTS llm_cache (
 );
 
 -- ============================================================
--- zmx_baseline（Zoomex 结构化基线，Phase 4 之后补丁新增）
--- 一行 = 一条 Zoomex 公告（campaign/product/listing）的结构化提取结果，供竞品批次
--- 分析的 zmx_comparison 环节按 category×locale 注入"类型覆盖"基线，取代原来的
--- TF-IDF 原文检索（src/analysis/zmx_index.py，已下线）。delisting 不建基线（跟
--- prompts.py 的 delisting 模板一致，没有 zmx_comparison 部分）。提取本身是独立
--- 维护步骤（python -m src.analysis.zmx_baseline），只处理近 90 天窗口内的 Zoomex
--- 公告，不做全量历史回填，见 CLAUDE.md 对应小节。
+-- zmx_summary / zmx_catalog_entry（Zoomex 能力目录，Phase① 新增，取代
+-- zmx_baseline——旧表连同其自由生成的 mechanism_type 标签一起下线，见
+-- CLAUDE.md「Zoomex Capability Catalog」）。
+--
+-- zmx_summary：一行 = 一条 Zoomex 公告（campaign/product，delisting/listing 不建
+-- 目录）的结构化提取结果。mechanism_type 现在是 config/zmx_mechanism_taxonomy.yaml
+-- 定义的封闭/半封闭枚举 key，不再是 LLM 自由生成的中文标签——这是修复标签碎片化
+-- 的根本手段。提取覆盖 Zoomex 全量历史，没有任何 lookback 窗口（旧表的 90 天窗口
+-- 是"无法断言缺失"问题的根因，这里结构性移除）。
+--
+-- zmx_catalog_entry：rollup 结果，一行 = 一个 (category, mechanism_type) 枚举 key
+-- 的目录条目，纯 SQL 聚合产生，不调用 LLM。覆盖枚举里定义的全部 key（不只是观察到
+-- 的），这样 exists_flag='no' 才能真正代表"Zoomex 没有这个能力"，不是"没检索到"。
 -- ============================================================
-CREATE TABLE IF NOT EXISTS zmx_baseline (
+CREATE TABLE IF NOT EXISTS zmx_summary (
     source_uid           TEXT PRIMARY KEY REFERENCES announcements (uid) ON DELETE CASCADE,
-    locale                TEXT NOT NULL,
-    category               TEXT NOT NULL CHECK (category IN ('campaign', 'product', 'listing')),
-    mechanism_type          TEXT NOT NULL,  -- LLM 自由生成的玩法类型标签（不是固定枚举）
-    title                    TEXT,
-    key_mechanics            TEXT,
-    reward_range             TEXT,
-    target_users             TEXT,
-    start_date               TEXT,          -- YYYY-MM-DD，可为 NULL
-    end_date                 TEXT,
-    content_hash             TEXT NOT NULL, -- 提取时对应的 announcements.content_hash，增量判断用
-    extraction_version       TEXT NOT NULL, -- 如 "zmx-extract-v1"，改提取 prompt 要递增
-    extracted_at             TEXT NOT NULL
+    group_id             TEXT,
+    category             TEXT NOT NULL CHECK (category IN ('campaign', 'product')),
+    locale               TEXT NOT NULL,
+    mechanism_type       TEXT NOT NULL,   -- 封闭/半封闭枚举 key；不匹配任何 key 时填 'other'
+    raw_mechanism_label  TEXT,            -- 仅 mechanism_type='other' 时填，保留 LLM 原始描述
+    core_summary         TEXT,
+    key_mechanics        TEXT,
+    reward_form          TEXT,
+    reward_amount        TEXT,
+    reward_token         TEXT,
+    target_users         TEXT,
+    entry_threshold      TEXT,
+    start_date           TEXT,            -- campaign
+    end_date             TEXT,            -- campaign
+    main_feature         TEXT,            -- product
+    supported_market     TEXT,            -- product，JSON 数组文本
+    supported_token      TEXT,            -- product，JSON 数组文本
+    supported_platform   TEXT,            -- product，JSON 数组文本
+    supported_user_tier  TEXT,            -- product，JSON 数组文本
+    content_hash         TEXT NOT NULL,   -- 提取时对应的 announcements.content_hash，增量判断用
+    is_locale_derived    BOOLEAN NOT NULL DEFAULT 0,
+    derived_from_uid     TEXT REFERENCES announcements (uid),
+    prompt_version       TEXT NOT NULL,   -- 如 "zmx-catalog-extract-v1"
+    llm_tokens_used      INTEGER,
+    created_at           TEXT NOT NULL,
+    updated_at           TEXT NOT NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_zmx_baseline_cat_locale
-    ON zmx_baseline (category, locale);
+CREATE INDEX IF NOT EXISTS idx_zmx_summary_cat_locale
+    ON zmx_summary (category, locale);
+CREATE INDEX IF NOT EXISTS idx_zmx_summary_mechanism
+    ON zmx_summary (category, mechanism_type);
+
+CREATE TABLE IF NOT EXISTS zmx_catalog_entry (
+    id              TEXT PRIMARY KEY,  -- SHA256(category || "_" || mechanism_type)
+    category        TEXT NOT NULL CHECK (category IN ('campaign', 'product')),
+    mechanism_type  TEXT NOT NULL,
+    exists_flag     TEXT NOT NULL CHECK (exists_flag IN ('yes', 'no', 'partial')),
+    capability_desc TEXT,
+    example_uids    TEXT NOT NULL DEFAULT '[]',  -- JSON 数组，2-3 个 zmx_summary.source_uid
+    typical_reward  TEXT,               -- campaign only
+    updated_at      TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_zmx_catalog_entry_cat
+    ON zmx_catalog_entry (category);
 
 -- ============================================================
 -- crawl_state（采集水位线）

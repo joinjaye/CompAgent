@@ -2,8 +2,8 @@
 set -euo pipefail
 
 # 每日生产链路（止于 Lark 同步/推送之前）：
-# collect -> group/classify/region -> ZMX baseline -> competitor analysis -> dashboard
-# 默认总 LLM 预算 5,000,000 token：基线 1,000,000 + 五家竞品各 800,000。
+# collect -> group/classify/region -> ZMX capability catalog -> competitor analysis -> dashboard
+# 默认总 LLM 预算 5,000,000 token：目录 1,000,000 + 五家竞品各 800,000。
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
@@ -42,13 +42,16 @@ cp "$DB_PATH" "data/backups/competitor_intel_pre_${BATCH_DATE}.db"
   --sources "$COMPETITORS"
 
 for locale in EN EN-Asia FR ID VN; do
-  "$PYTHON" -m src.analysis.zmx_baseline \
+  "$PYTHON" -m src.analysis.zmx_catalog extract \
     --db "$DB_PATH" \
     --locale "$locale" \
     --provider "$LLM_PROVIDER" \
     --max-calls 2 \
     --max-tokens "$BASELINE_LOCALE_BUDGET"
 done
+
+# rollup 不调用 LLM，纯 SQL 聚合，跑一次覆盖 campaign/product 两个类目即可
+"$PYTHON" -m src.analysis.zmx_catalog rollup --db "$DB_PATH"
 
 IFS=',' read -r -a SOURCES <<< "$COMPETITORS"
 for source in "${SOURCES[@]}"; do
