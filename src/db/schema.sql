@@ -1,6 +1,7 @@
--- 竞品情报平台 SQLite schema（schema 版本 v3，见 CLAUDE.md「Phase 4 完成情况」；
+-- 竞品情报平台 SQLite schema（schema 版本 v4，见 CLAUDE.md「Phase 4 完成情况」；
 -- zmx_summary/zmx_catalog_entry 是纯新增的表，不改动任何既有表的列/约束，不需要走
--- migrate 脚本，见 CLAUDE.md「Zoomex Capability Catalog」小节）
+-- migrate 脚本，见 CLAUDE.md「Zoomex Capability Catalog」小节。v3 -> v4：
+-- announcements 新增 duplicate_of 列，见 scripts/migrate_v4.py）
 -- 所有时间字段统一使用 UTC ISO8601 字符串（如 2026-07-13T02:30:00Z），不使用 SQLite 原生 DATETIME。
 -- SQLite 是唯一真相源；飞书多维表只是同步出去的业务视图。
 
@@ -40,7 +41,15 @@ CREATE TABLE IF NOT EXISTS announcements (
     is_region_exclusive  BOOLEAN NOT NULL DEFAULT 0,
     push_status          TEXT NOT NULL DEFAULT 'pending'
                          CHECK (push_status IN ('pending', 'pushed', 'skipped')),
-    source_endpoint      TEXT                -- 来源 API endpoint，便于溯源排障
+    source_endpoint      TEXT,               -- 来源 API endpoint，便于溯源排障
+    duplicate_of         TEXT REFERENCES announcements (uid)
+                                              -- 同源同 locale 下，跟另一条 article_id 不同但
+                                              -- 标题+正文完全一致的公告——指向被判定为"更早"的那条
+                                              -- 规范行的 uid。NULL 表示本行是规范行或未参与去重判断。
+                                              -- 只按「同标题+同正文」判重，不能只看 content_hash：
+                                              -- 见 scripts/migrate_v4.py / src/pipeline/dedup.py 顶部
+                                              -- 说明，源站本身存在不同事件复用模板正文、标题不同
+                                              -- 但 content_hash 相同的情况，不能被误判为重复。
 );
 
 CREATE INDEX IF NOT EXISTS idx_announcements_source_locale
@@ -53,6 +62,8 @@ CREATE INDEX IF NOT EXISTS idx_announcements_push_status
     ON announcements (push_status);
 CREATE INDEX IF NOT EXISTS idx_announcements_category
     ON announcements (category);
+CREATE INDEX IF NOT EXISTS idx_announcements_duplicate_of
+    ON announcements (duplicate_of);
 
 -- ============================================================
 -- content_history（变更历史）

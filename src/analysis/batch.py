@@ -2,7 +2,9 @@
 locale，跳过 LLM 调用）。
 
 分析单元是「批次」，不是单条公告：同一天同一 (source, category, locale) 的全部
-status IN (new, changed) 公告合并成一次分析，一行 insights。
+status IN (new, changed) 公告合并成一次分析，一行 insights。duplicate_of 不为
+NULL 的行（同源同 locale 下标题+正文完全一致的重复公告，见 src/pipeline/dedup.py）
+一律排除，不重复计入批次。
 """
 
 from __future__ import annotations
@@ -48,6 +50,7 @@ def list_batch_keys(
               AND date(fetched_at) = ?
               AND source IN ({placeholders})
               AND category IS NOT NULL AND category != 'other'
+              AND duplicate_of IS NULL
         """,
         (batch_date, *sources),
     ).fetchall()
@@ -65,6 +68,7 @@ def get_batch_uids(
         SELECT uid FROM announcements
         WHERE source = ? AND category = ? AND locale = ?
               AND status IN ('new', 'changed') AND date(fetched_at) = ?
+              AND duplicate_of IS NULL
         ORDER BY uid
         """,
         (source, category, locale, batch_date),
@@ -80,6 +84,7 @@ def get_batch_rows(
         SELECT * FROM announcements
         WHERE source = ? AND category = ? AND locale = ?
               AND status IN ('new', 'changed') AND date(fetched_at) = ?
+              AND duplicate_of IS NULL
         ORDER BY uid
         """,
         (source, category, locale, batch_date),

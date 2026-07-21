@@ -120,6 +120,7 @@ def list_pending_zoomex_rows(conn: sqlite3.Connection, *, category: str, locale:
         LEFT JOIN zmx_summary s ON s.source_uid = a.uid
         WHERE a.source = 'Zoomex' AND a.category = ? AND a.locale = ?
               AND a.content IS NOT NULL AND a.content != ''
+              AND a.duplicate_of IS NULL
               AND (s.source_uid IS NULL OR s.content_hash != a.content_hash)
         ORDER BY a.post_time DESC
         """,

@@ -127,7 +127,19 @@ class ZoomexCollector(BaseCollector):
         )
         detail = parse_detail_response(payload, self.lang_code)
         item.title = detail["title"] or item.title
-        item.content = parse_slate_content(detail["content"])
+        content = parse_slate_content(detail["content"])
+        if not content.strip():
+            # 2026-07-21 真实核查（curl getArticleById 逐条验证）：空正文有两种真实
+            # 情况，都不是解析 bug——(1) isRedirect=true 的"跳转型"文章，正文本来
+            # 就不在 content 字段里，真实内容在 redirectUrl 指向的落地页（该页是
+            # help.zoomex.com 同款纯客户端渲染 SPA 壳，538555 字节固定壳，抓不到
+            # 真实文案，见文件顶部 SPA 说明）；(2) Slate.js 内容本身只有一张图片、
+            # 没有文字节点（如新年祝福图）。两种情况都不允许把 content 存成空字符串
+            # 让它悄悄从下游分析/ZMX 目录里消失——退化到用标题兜底，好过完全没有
+            # 信号；不去抓 redirectUrl 落地页（SPA 抓不到真实内容，尝试了也白搭）。
+            item.content = item.title or ""
+        else:
+            item.content = content
         return item
 
     def normalize(self, item: RawItem) -> NormalizedAnnouncement:

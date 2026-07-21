@@ -271,3 +271,37 @@ def test_force_full_rerun_detects_manually_tampered_content_hash(db_path, monkey
         row = conn.execute("SELECT content_hash, status FROM announcements WHERE uid = ?", (uid,)).fetchone()
     assert row["status"] == "changed"
     assert row["content_hash"] != "tampered-hash"
+
+
+# ---------------------------------------------------------------- 空正文兜底 ----
+
+def test_fetch_detail_falls_back_to_title_when_content_is_empty(db_path, monkeypatch):
+    """真实核查（2026-07-21，curl getArticleById）发现两类正文为空的文章：isRedirect=true
+    的跳转型文章（真实内容在 redirectUrl 落地页，不在 content 字段里）、Slate.js 内容
+    只有图片没有文字节点的公告。两种都不能让 content 存成空字符串悄悄从下游分析里消失，
+    退化到用标题兜底。"""
+    fake = FakeHttp(articles=_default_articles(), page_size=2)
+
+    def empty_content_payload(article_id: int) -> dict:
+        article = fake.articles[article_id]
+        content = json.dumps(
+            [{"type": "paragraph", "children": [{"type": "image", "src": "https://x/y.png"}, {"text": ""}]}]
+        )
+        return {
+            "result": {
+                "article": {"id": article_id, "gmtCreatedAt": article["created"], "gmtUpdatedAt": article["updated"]},
+                "contents": [{"lang": "en-US", "title": article["title"], "content": content}],
+            }
+        }
+
+    fake._detail_payload = empty_content_payload  # type: ignore[method-assign]
+    monkeypatch.setattr("src.collectors.zoomex.fetch_json", fake)
+
+    collector = _collector()
+    with get_connection(db_path) as conn:
+        collector.run(conn)
+
+    uid = compute_uid("Zoomex", "EN", "101")
+    with get_connection(db_path) as conn:
+        row = conn.execute("SELECT content FROM announcements WHERE uid = ?", (uid,)).fetchone()
+    assert row["content"] == "Article 101"

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # 每日生产链路（止于 Lark 同步/推送之前）：
-# collect -> group/classify/region -> ZMX capability catalog -> competitor analysis -> dashboard
+# collect -> group/classify/region/dedup -> ZMX capability catalog -> competitor analysis -> dashboard
 # 默认总 LLM 预算 5,000,000 token：目录 1,000,000 + 五家竞品各 800,000。
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -40,6 +40,7 @@ cp "$DB_PATH" "data/backups/competitor_intel_pre_${BATCH_DATE}.db"
   --sources "${COMPETITORS},Zoomex"
 "$PYTHON" -m src.pipeline --db "$DB_PATH" region \
   --sources "$COMPETITORS"
+"$PYTHON" -m src.pipeline --db "$DB_PATH" dedup --apply
 
 for locale in EN EN-Asia FR ID VN; do
   "$PYTHON" -m src.analysis.zmx_catalog extract \

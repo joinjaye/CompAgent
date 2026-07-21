@@ -71,8 +71,29 @@ def test_all_top_level_keys_present(conn, db_path):
     _insert(conn, source="Bitunix", locale="EN", article_id="1", category="campaign")
     conn.commit()
     data = build_dashboard_data(str(db_path))
-    for key in ["meta", "overview", "daily_digest", "trend", "campaign", "product", "listing", "announcements", "markets", "search_index", "quality"]:
+    for key in [
+        "meta", "overview", "daily_digest", "trend", "campaign", "campaign_all",
+        "product", "product_all", "listing", "listing_all", "announcements",
+        "announcements_all", "markets", "search_index", "quality",
+    ]:
         assert key in data, key
+
+
+def test_all_sections_include_history_for_client_side_date_filters(conn, db_path):
+    product_uid = _insert(conn, source="Bitunix", locale="EN", article_id="p", category="product")
+    listing_uid = _insert(conn, source="Bitunix", locale="EN", article_id="l", category="listing")
+    conn.execute(
+        "UPDATE announcements SET fetched_at='2026-07-14T01:00:00Z' WHERE uid IN (?, ?)",
+        (product_uid, listing_uid),
+    )
+    _insert(conn, source="Weex", locale="EN", article_id="today", category="campaign")
+    conn.commit()
+
+    data = build_dashboard_data(str(db_path))
+    assert data["product"] == []
+    assert {row["uid"] for row in data["product_all"]} == {product_uid}
+    assert data["listing"] == []
+    assert {row["uid"] for row in data["listing_all"]} == {listing_uid}
 
 
 def test_search_index_rows_have_only_specified_fields_no_content_leak(conn, db_path):

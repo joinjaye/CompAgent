@@ -40,7 +40,7 @@ def conn():
         """
         CREATE TABLE announcements (
             uid TEXT PRIMARY KEY, group_id TEXT, source TEXT, locale TEXT,
-            category TEXT, status TEXT, fetched_at TEXT
+            category TEXT, status TEXT, fetched_at TEXT, duplicate_of TEXT
         )
         """
     )

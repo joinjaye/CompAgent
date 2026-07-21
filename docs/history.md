@@ -4323,3 +4323,20 @@ locale（每个竞品都覆盖的市场）代表全局。前端加 `todaysInsigh
   逐 locale 的展示位。
 - **`docs/data/dashboard.json` 本次未提交/覆盖**：本次所有真实导出验证都在 scratch
   db 上进行，没有对主库跑 `python -m src.dashboard` 重新生成正式的导出文件。
+## Dashboard PDF 缺口本地优化（2026-07-21）
+
+用户要求忽略线上旧版本，只优化本地尚未实现部分。本轮只做 PDF 一期要求中能由现有
+SQLite/insights 真实支撑的能力，不触发 LLM、不发布 GitHub Pages：
+
+- 全历史结构化事件导出补齐 `product_all`、`listing_all`、`announcements_all`；前端
+  顶栏加入 From/To 发布时间范围和“最新批次”恢复操作。
+- Campaign 日期范围支持生命周期相交；新增独立 Campaign Update 表、奖励有无和市场
+  筛选，详情增加现有参与机制、奖励、公告时间。
+- Product KPI 改成 PDF 要求的 New、Updated、Affected Exchange、Affected Category；
+  单表内用明确分隔行形成 New Product / Product Update 两区，并严格使用 PDF 定义的
+  update type 顺序。
+- 仍明确不做：没有 canonical entity 的 Product Change History、没有真实缓存结果的
+  页面级 AI Insight，以及数据库当前没有的奖励形式/金额/币种拆分字段。
+
+验证：Dashboard 28 passed；Chromium 1440/375px 均 0 page error、0 页面级横向溢出，
+日期范围切换、Campaign Update、Product 分区与筛选器均完成交互检查。
