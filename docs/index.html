@@ -104,6 +104,19 @@ a { color: inherit; }
 .stat-delta { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
 .chip-diffs { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
 .chip-diffs .tag { font-size: 10px; padding: 2px 7px; }
+.date-control { display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:12px; }
+.date-input { color:var(--text-primary); background:var(--surface-1); border:1px solid var(--border); border-radius:6px; padding:5px 8px; }
+.insight-card { margin:0 1.5rem; padding:1rem 1.1rem; background:linear-gradient(135deg, rgba(91,157,238,.12), var(--surface-1)); border:1px solid rgba(91,157,238,.28); border-radius:var(--radius); color:var(--text-secondary); font-size:13px; line-height:1.7; }
+.trend-card { margin:0 1.5rem; padding:1rem; background:var(--surface-1); border:1px solid var(--border); border-radius:var(--radius); }
+.trend-bars { height:180px; display:flex; align-items:flex-end; gap:8px; border-bottom:1px solid var(--border); }
+.trend-day { min-width:38px; flex:1; height:100%; display:flex; align-items:flex-end; justify-content:center; gap:2px; position:relative; }
+.trend-bar { width:22%; min-height:2px; border-radius:3px 3px 0 0; }
+.trend-bar.campaign { background:var(--hue-campaign); }.trend-bar.product { background:var(--hue-product); }.trend-bar.listing { background:var(--hue-listing); }
+.trend-labels { display:flex; gap:8px; margin-top:7px; color:var(--text-muted); font-size:10px; }.trend-labels span { flex:1; text-align:center; min-width:38px; }
+.trend-legend { display:flex; gap:16px; margin-bottom:10px; font-size:11px; color:var(--text-secondary); }
+.legend-dot { width:7px; height:7px; display:inline-block; border-radius:50%; margin-right:5px; }
+.summary-table td strong { font-size:16px; }
+.overview-actions { display:flex; align-items:center; justify-content:space-between; padding:.5rem 1.5rem 0; flex-wrap:wrap; gap:8px; }
 
 /* ---------- activity ranking (reused on Overview) ---------- */
 .rank-card { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); margin: 0 1.5rem; box-shadow: var(--shadow-card); overflow: hidden; }
@@ -301,7 +314,7 @@ const DIFF_SORT_ORDER = { missing: 0, diff: 1, mixed: 2, same: 3, na: 3 };
 const SEARCH_PAGE_SIZE = 50;
 
 let DATA = null;
-let state = { tab: 'overview' };
+let state = { tab: 'overview', trendDays: 7 };
 let campaignState = { source: 'all' };
 let productState = { source: 'all' };
 let listingState = { source: 'all' };
@@ -480,7 +493,7 @@ function computeActivityRanking() {
 }
 
 function chipCard(key, label, chip) {
-  const total = chip.count_new + chip.count_changed;
+  const total = chip.today ?? (chip.count_new + chip.count_changed);
   const diffs = Object.entries(chip.diff_breakdown).filter(([, n]) => n > 0);
   return `
     <div class="stat-card">
@@ -492,16 +505,54 @@ function chipCard(key, label, chip) {
   `;
 }
 
+function insightText(insight) {
+  if (!insight || !insight.significant) return 'No Significant Changes Today';
+  const parts = [];
+  const leaders = insight.leaders || {};
+  if (leaders.new_campaigns) parts.push(`${leaders.new_campaigns.source} 新增活动最多（${leaders.new_campaigns.count}）`);
+  if (leaders.new_products) parts.push(`${leaders.new_products.source} 新增产品最多（${leaders.new_products.count}）`);
+  if (leaders.reward_changes) parts.push(`${leaders.reward_changes.source} 奖励变化最多（${leaders.reward_changes.count}）`);
+  const total = Object.values(DATA.overview.chips).reduce((n, c) => n + (c.today || 0), 0);
+  parts.push(`今日共识别 ${total} 条去重后的新增或更新情报，建议优先查看 P1–P3 活动变化。`);
+  return parts.join('。') + '。';
+}
+
+function trendMarkup(days) {
+  const dates = DATA.trend.dates || [];
+  const start = Math.max(0, dates.length - days);
+  const shown = dates.slice(start);
+  const campaign = (DATA.trend.series.campaign || []).slice(start);
+  const product = (DATA.trend.series.product || []).slice(start);
+  const listing = (DATA.trend.series.listing || []).slice(start);
+  const max = Math.max(1, ...campaign, ...product, ...listing);
+  return `
+    <div class="trend-legend">
+      <span><i class="legend-dot" style="background:var(--hue-campaign)"></i>Campaign</span>
+      <span><i class="legend-dot" style="background:var(--hue-product)"></i>Product</span>
+      <span><i class="legend-dot" style="background:var(--hue-listing)"></i>Listing</span>
+    </div>
+    <div class="trend-bars">${shown.map((d, i) => `
+      <div class="trend-day" title="${esc(d)} · Campaign ${campaign[i] || 0} / Product ${product[i] || 0} / Listing ${listing[i] || 0}">
+        <i class="trend-bar campaign" style="height:${Math.max(2, 100 * (campaign[i] || 0) / max)}%"></i>
+        <i class="trend-bar product" style="height:${Math.max(2, 100 * (product[i] || 0) / max)}%"></i>
+        <i class="trend-bar listing" style="height:${Math.max(2, 100 * (listing[i] || 0) / max)}%"></i>
+      </div>`).join('')}</div>
+    <div class="trend-labels">${shown.map(d => `<span>${esc(d.slice(5))}</span>`).join('')}</div>`;
+}
+
 function renderOverviewPane() {
   const ov = DATA.overview;
   const ranking = computeActivityRanking();
   const maxRank = Math.max(1, ...ranking.map(r => r.count));
 
   return `
-    <div class="quick-jump">
-      <button class="quick-jump-btn" data-jump="campaign">→ Campaign</button>
-      <button class="quick-jump-btn" data-jump="product">→ Product</button>
-      <button class="quick-jump-btn" data-jump="listing">→ Listing</button>
+    <div class="overview-actions">
+      <div class="quick-jump">
+        <button class="quick-jump-btn" data-jump="campaign">→ Campaign</button>
+        <button class="quick-jump-btn" data-jump="product">→ Product</button>
+        <button class="quick-jump-btn" data-jump="listing">→ Listing</button>
+      </div>
+      <label class="date-control">Date <input class="date-input" type="date" value="${esc(ov.batch_date)}" min="${esc(DATA.search_index.date_min || ov.batch_date)}" max="${esc(DATA.search_index.date_max || ov.batch_date)}" id="overviewDate"></label>
     </div>
 
     <div class="section-label">最新一批概览 · ${esc(ov.batch_date)}</div>
@@ -512,24 +563,38 @@ function renderOverviewPane() {
       ${chipCard('announcement', '公告 Announcement（下架+其他）', ov.chips.announcement)}
     </div>
 
-    <div class="section-label">今日重点 · priority 高</div>
-    <div class="detail-list">
+    <div class="section-label">Daily Highlights · 按业务价值排序 / 每个竞品 Top 5</div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Priority</th><th>Exchange</th><th>Category</th><th>Title</th><th>Summary</th><th>Publish Time</th><th>Detail</th></tr></thead>
+        <tbody>
       ${ov.highlights.length ? ov.highlights.map(h => `
-        <div class="highlight-card ${h.diff_tag === 'missing' ? 'accent-missing' : ''}">
-          <div class="hl-source">${esc(h.source)}</div>
-          <div class="hl-body">
-            <div class="hl-title">${h.url ? `<a href="${esc(h.url)}" target="_blank" rel="noopener">${esc(h.title)}</a>` : esc(h.title)}</div>
-            ${h.one_line_summary ? `<div class="hl-summary">${esc(h.one_line_summary)}</div>` : ''}
-            <div class="hl-meta">
-              <span class="tag tag-${h.diff_tag}">${esc(DIFF_LABEL[h.diff_tag] || h.diff_tag)}</span>
-              <span class="tag tag-${h.category}">${esc(CATEGORY_LABEL[h.category] || h.category)}</span>
-              ${mockBadge(h.is_mock)}
-              <span class="hl-time">${esc(h.time)}</span>
-            </div>
-          </div>
-        </div>
-      `).join('') : `<div class="table-empty">最新一批没有 priority=高 的重点</div>`}
+        <tr><td><strong>${esc(h.priority)}</strong></td><td><span class="source-pill">${esc(h.source)}</span></td>
+        <td><span class="tag tag-${h.category}">${esc(CATEGORY_LABEL[h.category] || h.category)}</span></td>
+        <td class="td-title">${esc(h.title)} ${mockBadge(h.is_mock)}</td><td>${esc(h.one_line_summary || '—')}</td>
+        <td class="td-time">${esc(h.time)}</td><td>${h.url ? `<a href="${esc(h.url)}" target="_blank" rel="noopener">View Detail ↗</a>` : '—'}</td></tr>
+      `).join('') : `<tr><td colspan="7" class="table-empty">最新一批没有值得重新进入 Highlights 的变化</td></tr>`}
+        </tbody>
+      </table>
     </div>
+
+    <div class="section-label">Daily Summary · 多语言按 group 去重</div>
+    <div class="table-wrap"><table class="data-table summary-table">
+      <thead><tr><th>Module</th><th>Today</th><th>New</th><th>Updated</th></tr></thead>
+      <tbody>${[
+        ['Campaign', ov.chips.campaign], ['Product', ov.chips.product],
+        ['Listing', ov.chips.listing], ['Announcement', ov.chips.announcement]
+      ].map(([name, c]) => `<tr><td>${name}</td><td><strong>${c.today}</strong></td><td>${c.count_new}</td><td>${c.count_changed}</td></tr>`).join('')}</tbody>
+    </table></div>
+
+    <div class="section-label">7 / 30 Days Trend · 仅统计新增</div>
+    <div class="trend-card">
+      <div class="filter-group" style="margin-bottom:10px"><button class="filter-btn ${state.trendDays === 7 ? 'active' : ''}" data-trend-days="7">7 Days</button><button class="filter-btn ${state.trendDays === 30 ? 'active' : ''}" data-trend-days="30">30 Days</button></div>
+      <div id="trendChart">${trendMarkup(state.trendDays)}</div>
+    </div>
+
+    <div class="section-label">Today's Insight</div>
+    <div class="insight-card">${esc(insightText(ov.insight))}</div>
 
     <div class="section-label">今日采集量 · 按竞品</div>
     <div class="rank-card">
@@ -547,6 +612,17 @@ function renderOverviewPane() {
 function wireOverviewPane() {
   document.querySelectorAll('[data-jump]').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.jump));
+  });
+  document.querySelectorAll('[data-trend-days]').forEach(btn => btn.addEventListener('click', () => {
+    state.trendDays = Number(btn.dataset.trendDays);
+    renderActivePane();
+  }));
+  document.getElementById('overviewDate').addEventListener('change', e => {
+    if (e.target.value !== DATA.overview.batch_date) {
+      searchState.range = 'all';
+      searchState.query = '';
+      switchTab('search');
+    }
   });
 }
 
@@ -591,7 +667,15 @@ function categoryStateFor(category) {
 function renderCategoryPane(category) {
   const rows = DATA[category] || [];
   const label = category === 'campaign' ? 'Campaign' : 'Product';
+  const newCount = rows.filter(r => r.status === 'new').length;
+  const updatedCount = rows.filter(r => r.status === 'changed').length;
   return `
+    <div class="overview-grid" style="margin-top:1rem">
+      <div class="stat-card"><div class="stat-label">New ${esc(label)}</div><div class="stat-value accent">${newCount}</div></div>
+      <div class="stat-card"><div class="stat-label">Updated ${esc(label)}</div><div class="stat-value warn">${updatedCount}</div></div>
+      <div class="stat-card"><div class="stat-label">High Priority</div><div class="stat-value">${rows.filter(r => r.priority === '高').length}</div></div>
+      <div class="stat-card"><div class="stat-label">ZMX Gap</div><div class="stat-value danger">${rows.filter(r => r.diff_tag === 'missing').length}</div></div>
+    </div>
     <div class="filter-bar">
       <div class="section-label" style="padding:0">${esc(label)} · 最新一批（${esc(DATA.overview.batch_date)}）共 ${rows.length} 条</div>
       <div class="filter-group" id="${category}SourceFilter">
@@ -599,7 +683,12 @@ function renderCategoryPane(category) {
         ${SOURCES.map(s => `<button class="filter-btn" data-src="${s}">${s}</button>`).join('')}
       </div>
     </div>
-    <div class="detail-list" id="${category}Body"></div>
+    <div class="table-wrap"><table class="data-table">
+      <thead>${category === 'campaign'
+        ? '<tr><th>Exchange</th><th>Activity Name</th><th>Campaign Type</th><th>Reward</th><th>Start</th><th>End</th><th>Market</th><th>AI Analysis</th><th>ZMX / Action</th><th>Detail</th></tr>'
+        : '<tr><th>Exchange</th><th>Product / Update</th><th>Status</th><th>Market</th><th>AI Analysis</th><th>Zoomex Difference</th><th>Follow-up</th><th>Detail</th></tr>'}
+      </thead><tbody id="${category}Body"></tbody>
+    </table></div>
   `;
 }
 
@@ -608,18 +697,26 @@ function renderCategoryBody(category) {
   const st = categoryStateFor(category);
   const filtered = st.source === 'all' ? rows : rows.filter(r => r.source === st.source);
   const sorted = sortByPriorityThenDiff(filtered);
-  const expandedByDefault = category === 'campaign'; // Campaign 最详细，默认展开；Product 默认收起
   const body = document.getElementById(`${category}Body`);
   body.innerHTML = sorted.length
-    ? sorted.map(r => detailCard(r, expandedByDefault)).join('')
-    : `<div class="table-empty">无匹配数据</div>`;
-  body.querySelectorAll('[data-toggle]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const el = btn.previousElementSibling;
-      const collapsed = el.classList.toggle('clamped');
-      btn.textContent = collapsed ? '展开全文 ▾' : '收起 ▴';
-    });
-  });
+    ? sorted.map(r => category === 'campaign' ? `
+      <tr>
+        <td><span class="source-pill">${esc(r.source)}</span><br><small>${esc(r.locale)}</small></td>
+        <td class="td-title">${esc(r.title)}<br><span class="status-chip ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span></td>
+        <td>${esc(r.mechanism_type || '—')}</td><td>${esc(r.reward_range || '—')}</td>
+        <td>${esc(r.start_date || '—')}</td><td>${esc(r.end_date || '—')}</td><td>${esc(r.target_users || r.locale || '—')}</td>
+        <td>${esc(r.description || '待分析')}</td>
+        <td><span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || '待分析')}</span>${r.follow_up ? `<br>${esc(r.follow_up)}` : ''}</td>
+        <td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">View Detail ↗</a>` : '—'}</td>
+      </tr>` : `
+      <tr>
+        <td><span class="source-pill">${esc(r.source)}</span><br><small>${esc(r.locale)}</small></td>
+        <td class="td-title">${esc(r.title)}</td><td><span class="status-chip ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span></td>
+        <td>${esc(r.target_users || r.locale || '—')}</td><td>${esc(r.feature || r.description || '待分析')}</td>
+        <td><span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || '待分析')}</span></td>
+        <td>${esc(r.follow_up || '—')}</td><td>${r.url ? `<a href="${esc(r.url)}" target="_blank" rel="noopener">View Detail ↗</a>` : '—'}</td>
+      </tr>`).join('')
+    : `<tr><td colspan="${category === 'campaign' ? 10 : 8}" class="table-empty">无匹配数据</td></tr>`;
 }
 
 function wireCategoryPane(category) {
@@ -705,6 +802,7 @@ function wireListingPane() {
 
 const MARKET_TABS = [
   { key: 'EN', label: 'EN', locales: ['EN'] },
+  { key: 'KR', label: 'KR', locales: ['KR'] },
   { key: 'FR', label: 'FR', locales: ['FR'] },
   { key: 'SEA', label: 'SEA (VN+ID)', locales: ['VN', 'ID'] },
 ];
@@ -835,6 +933,7 @@ function renderSearchPane() {
       </div>
     </div>
     <div class="search-summary" id="searchSummary"></div>
+    <div style="padding:0 1.5rem"><button class="filter-btn" id="downloadCsv">下载当前结果 CSV</button></div>
     <div class="table-wrap" style="margin-top:8px">
       <table class="data-table">
         <thead><tr><th style="width:90px">来源</th><th style="width:64px">地区</th><th>标题</th><th style="width:110px">分类</th><th class="td-time" style="width:88px">日期</th><th style="width:110px">差异</th><th style="width:70px">优先级</th><th style="width:76px">状态</th></tr></thead>
@@ -908,6 +1007,17 @@ function wireSearchPane() {
       searchState.page = 1;
       renderSearchTable();
     }, 200);
+  });
+  document.getElementById('downloadCsv').addEventListener('click', () => {
+    const fields = ['source','locale','category','title','post_time','status','diff_type','priority','url'];
+    const quote = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
+    const csv = [fields.join(','), ...searchFilteredRows().map(r => fields.map(f => quote(r[f])).join(','))].join('\n');
+    const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `competitor-intelligence-${DATA.meta.batch_date}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
   });
   renderSearchTable();
 }

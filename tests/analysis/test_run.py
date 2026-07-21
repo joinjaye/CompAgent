@@ -210,3 +210,26 @@ def test_locale_with_region_exclusive_entry_does_not_derive(conn, fake_credentia
     assert call_count["n"] == 2  # EN + FR 都要真正调用（FR 有独占条目，不能复用）
     assert report.derived == 0
     assert report.analyzed == 2
+
+
+def test_token_cap_stops_before_next_uncached_batch(conn, fake_credentials, monkeypatch):
+    _insert(conn, source="Bitunix", locale="EN", article_id="1", group_id="g1", category="campaign")
+    _insert(conn, source="Weex", locale="EN", article_id="1", group_id="g2", category="campaign")
+    conn.commit()
+    calls = {"n": 0}
+
+    def fake_call_llm(*a, **k):
+        calls["n"] += 1
+        return FAKE_LLM_JSON, 10
+
+    monkeypatch.setattr("src.analysis.run.call_llm", fake_call_llm)
+
+    from src.analysis.run import run
+    report = run(
+        conn, batch_date=BATCH_DATE, sources=("Bitunix", "Weex"),
+        dry_run=False, max_tokens=5,
+    )
+
+    assert calls["n"] == 1
+    assert report.llm_calls == 1
+    assert report.skipped_token_cap == 1

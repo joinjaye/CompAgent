@@ -168,6 +168,7 @@ class RunReport:
     validation_failed: int = 0
     total_tokens: int = 0
     skipped_call_cap: int = 0
+    skipped_token_cap: int = 0
     batches: list[str] = field(default_factory=list)
 
 
@@ -179,6 +180,7 @@ def run(
     dry_run: bool = False,
     provider: Optional[str] = None,
     max_calls: Optional[int] = None,
+    max_tokens: Optional[int] = None,
 ) -> RunReport:
     """provider/max_calls 显式传参时覆盖 config/analysis.yaml 的 llm.provider /
     llm.max_calls_per_run（CLI --provider/--max-calls 用这个覆盖来做一次性试跑，不用
@@ -190,6 +192,9 @@ def run(
     llm_cfg = cfg.get("llm", {})
     provider = provider or llm_cfg.get("provider", "openai_http")
     max_calls_per_run = max_calls if max_calls is not None else llm_cfg.get("max_calls_per_run")
+    max_tokens_per_run = (
+        max_tokens if max_tokens is not None else llm_cfg.get("max_tokens_per_run")
+    )
 
     zmx_cfg = cfg.get("zmx_baseline", {})
     trunc_cfg = cfg.get("content_truncation", {})
@@ -282,7 +287,17 @@ def run(
             for h in zmx_hits
         ]
         context_hash = hashlib.sha256(
-            json.dumps(baseline_payload, ensure_ascii=False, sort_keys=True).encode("utf-8")
+            json.dumps(
+                {
+                    "baseline": baseline_payload,
+                    # source/locale/date 和所有模板文字都已包含在最终 prompt 中。
+                    # 只 hash baseline 会让不同竞品的相同正文错误共用响应。
+                    "system": prompt.system,
+                    "user": prompt.user,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            ).encode("utf-8")
         ).hexdigest()
         cache_key = compute_cache_key(
             content_hashes,
@@ -303,6 +318,14 @@ def run(
             )
             report.skipped_call_cap += 1
             report.batches.append(f"{key.source}/{key.category}/{key.locale} (skipped: call cap reached)")
+            continue
+        elif max_tokens_per_run is not None and report.total_tokens >= max_tokens_per_run:
+            logger.warning(
+                "达到 max_tokens_per_run=%s，跳过 %s/%s/%s（下次重跑会重新尝试）",
+                max_tokens_per_run, key.source, key.category, key.locale,
+            )
+            report.skipped_token_cap += 1
+            report.batches.append(f"{key.source}/{key.category}/{key.locale} (skipped: token cap reached)")
             continue
         else:
             if provider == "cursor_agent":
@@ -359,6 +382,8 @@ def main() -> None:
     parser.add_argument("--max-calls", type=int,
                          help="覆盖 config/analysis.yaml 的 llm.max_calls_per_run，"
                               "达到这个调用次数后跳过剩余批次（不算失败，留到下次重跑）")
+    parser.add_argument("--max-tokens", type=int,
+                        help="本进程累计 token 熔断；达到后不再发起新调用")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -369,13 +394,14 @@ def main() -> None:
         categories = tuple(args.category.split(",")) if args.category else None
         report = run(
             conn, batch_date=args.date, sources=sources, categories=categories, dry_run=args.dry_run,
-            provider=args.provider, max_calls=args.max_calls,
+            provider=args.provider, max_calls=args.max_calls, max_tokens=args.max_tokens,
         )
         if not args.dry_run:
             conn.commit()
         print(f"分析批次数：analyzed={report.analyzed} derived={report.derived} "
               f"cache_hits={report.cache_hits} llm_calls={report.llm_calls} "
               f"skipped_call_cap={report.skipped_call_cap} "
+              f"skipped_token_cap={report.skipped_token_cap} "
               f"validation_failed={report.validation_failed} total_tokens={report.total_tokens}")
         for b in report.batches:
             print(f"  - {b}")

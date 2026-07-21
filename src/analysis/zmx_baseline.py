@@ -30,6 +30,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import logging
 import re
@@ -349,7 +350,19 @@ def run_extraction(
                 continue
 
             content_hashes = [r["content_hash"] for r in batch_rows]
-            cache_key = compute_cache_key(content_hashes, extraction_version)
+            prompt_context_hash = hashlib.sha256(
+                json.dumps(
+                    {"system": prompt.system, "user": prompt.user},
+                    ensure_ascii=False,
+                    sort_keys=True,
+                ).encode("utf-8")
+            ).hexdigest()
+            cache_key = compute_cache_key(
+                content_hashes,
+                extraction_version,
+                model=credentials.model,
+                context_hash=prompt_context_hash,
+            )
             cached = get_cached_response(conn, cache_key)
             if cached is not None:
                 raw_text = cached

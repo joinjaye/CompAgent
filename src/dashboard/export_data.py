@@ -42,7 +42,7 @@ import re
 import sqlite3
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
 
@@ -82,6 +82,34 @@ _DESCRIPTIVE_FIELD_BY_CATEGORY = {
 OVERVIEW_HIGHLIGHTS_CAP = 12
 
 
+def _dedupe_business_rows(rows: list[dict]) -> list[dict]:
+    """Dashboard 业务计数去重。
+
+    group_id 仍是主键；但 Phemex 等源的同一公告会在不同 locale 分配不同 article_id，
+    从而产生不同 group_id。对这种情况再用 source + 规范化标题兜底，避免同标题 EN/FR
+    在 Daily Summary / Highlights 重复出现。标题为空时不启用兜底，避免误合并。
+    """
+    seen_groups: set[str] = set()
+    seen_title_locales: dict[tuple[str, str], set[str]] = {}
+    result = []
+    for row in rows:
+        group_id = row.get("group_id") or row["uid"]
+        normalized_title = re.sub(r"\s+", " ", (row.get("title") or "").strip()).casefold()
+        title_key = (row["source"], normalized_title) if normalized_title else None
+        title_is_cross_locale_duplicate = (
+            title_key is not None
+            and title_key in seen_title_locales
+            and row.get("locale") not in seen_title_locales[title_key]
+        )
+        if group_id in seen_groups or title_is_cross_locale_duplicate:
+            continue
+        seen_groups.add(group_id)
+        if title_key is not None:
+            seen_title_locales.setdefault(title_key, set()).add(row.get("locale"))
+        result.append(row)
+    return result
+
+
 def _dict_rows(cur: sqlite3.Cursor) -> list[dict]:
     return [dict(r) for r in cur.fetchall()]
 
@@ -92,7 +120,7 @@ def _clean_title(title: Optional[str]) -> str:
     实体解码用于展示，不改变语义，避免看板上把 "&" 显示成 "&amp;"。"""
     if not title:
         return "(无标题)"
-    return html.unescape(title)
+    return html.unescape(re.sub(r"<[^>]+>", "", title)).strip() or "(无标题)"
 
 
 def _format_time(iso_ts: Optional[str]) -> str:
@@ -114,6 +142,51 @@ def _priority_sort_key(priority: Optional[str]) -> int:
 
 _PERP_RE = re.compile(r"\b(perpetual|perp|futures?|contract)\b", re.IGNORECASE)
 _SPOT_RE = re.compile(r"\bspot\b", re.IGNORECASE)
+_AMOUNT_RE = re.compile(
+    r"(?:[$€]\s?[\d,.]+(?:\s?(?:K|M))?|[\d,.]+\s?(?:USDT|USDC|BTC|ETH|WXT|STABLE|EDGE))",
+    re.IGNORECASE,
+)
+
+
+def _campaign_type(title: Optional[str], mechanics: Optional[str]) -> Optional[str]:
+    text = f"{title or ''} {mechanics or ''}".casefold()
+    rules = (
+        ("邀请/推荐", ("invite", "referral", "推荐", "邀请")),
+        ("交易竞赛", ("trading competition", "leaderboard", "交易赛", "交易竞赛")),
+        ("入金激励", ("deposit", "入金", "充值")),
+        ("空投/Launch", ("airdrop", "we-launch", "launchpool", "空投")),
+        ("预测活动", ("predict", "prediction", "bull or bear", "预测")),
+        ("积分活动", ("points", "积分")),
+    )
+    for label, keywords in rules:
+        if any(keyword in text for keyword in keywords):
+            return label
+    return None
+
+
+def _reward_summary(mechanics: Optional[str]) -> Optional[str]:
+    """从 LLM 已提取的 mechanics 中摘取明确金额，不读取原文、不新增语义判断。"""
+    if not mechanics:
+        return None
+    values = []
+    for match in _AMOUNT_RE.findall(mechanics):
+        value = re.sub(r"\s+", " ", match.strip())
+        if value not in values:
+            values.append(value)
+    return " / ".join(values[:3]) or None
+
+
+def _split_time_window(value: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    if not value:
+        return None, None
+    parts = re.split(r"\s*(?:~|→|至)\s*", value, maxsplit=1)
+    if len(parts) != 2:
+        return None, None
+    def clean(part: str) -> Optional[str]:
+        part = part.strip()
+        return None if not part or part.casefold() in {"null", "none", "unknown", "?"} else part
+
+    return clean(parts[0]), clean(parts[1])
 
 
 def _listing_kind_from_title(title: Optional[str], category: str) -> Optional[str]:
@@ -189,6 +262,15 @@ def _load_article_index(conn: sqlite3.Connection) -> dict[str, dict]:
                 "change_kind": a.get("change_kind"),
                 "listing_kind": a.get("listing_kind"),
                 "description": a.get(desc_field) if desc_field else None,
+                "mechanism_type": a.get("mechanism_type"),
+                "reward_range": a.get("reward_range"),
+                "target_users": a.get("target_users"),
+                "time_window": a.get("time_window"),
+                "start_date": a.get("start_date"),
+                "end_date": a.get("end_date"),
+                "feature": a.get("feature") or a.get("feature_description"),
+                "token_symbol": a.get("token_symbol"),
+                "launch_time": a.get("launch_time"),
                 "is_mock": is_mock,
                 "is_locale_derived": is_locale_derived,
             }
@@ -231,7 +313,8 @@ def build_category_section(
     """
     rows = _dict_rows(
         conn.execute(
-            f"""SELECT uid, source, locale, title, post_time, status, url, is_region_exclusive
+            f"""SELECT uid, group_id, source, locale, title, post_time, update_time, status,
+                       url, is_region_exclusive
                 FROM announcements
                 WHERE source != '{BASELINE_SOURCE}' AND category = ?
                   AND date(fetched_at) = ? AND status IN ('new', 'changed')
@@ -244,17 +327,33 @@ def build_category_section(
         # Listing/Delisting 自本版起不做任何 LLM 分析或 ZMX 比较；即使数据库里
         # 留有旧版本 insight，也不得继续展示过期的 priority/diff/follow_up。
         art = {} if category in ("listing", "delisting") else article_index.get(r["uid"], {})
+        start_date, end_date = _split_time_window(art.get("time_window"))
+        description = art.get("description")
         out.append({
             "uid": r["uid"],
+            "group_id": r["group_id"],
             "source": r["source"],
             "locale": r["locale"],
             "category": category,
             "title": _clean_title(r["title"]),
             "post_time": r["post_time"],
+            "update_time": r["update_time"],
             "status": r["status"],
             "url": r["url"],
             "is_region_exclusive": bool(r["is_region_exclusive"]),
-            "description": art.get("description"),
+            "description": description,
+            "mechanism_type": art.get("mechanism_type") or (
+                _campaign_type(r["title"], description) if category == "campaign" else None
+            ),
+            "reward_range": art.get("reward_range") or (
+                _reward_summary(description) if category == "campaign" else None
+            ),
+            "target_users": art.get("target_users"),
+            "start_date": art.get("start_date") or start_date,
+            "end_date": art.get("end_date") or end_date,
+            "feature": art.get("feature"),
+            "token_symbol": art.get("token_symbol"),
+            "launch_time": art.get("launch_time"),
             "diff_type": art.get("diff_type"),
             "diff_tag": DIFF_TYPE_TAG.get(art.get("diff_type") or "", "na"),
             "priority": art.get("priority"),
@@ -282,17 +381,21 @@ def build_overview(
     delisting_rows: list[dict],
     other_rows: list[dict],
 ) -> dict:
-    """4 个 chip（Campaign / Product / Listing / Announcement=delisting+other）+
-    跨品类 highlights（priority=高，按优先级/差异类型排序，供 Stage 3 前端直接复用
-    同一套排序规则）。"""
+    """构建去重后的 Daily Summary、按业务价值排序的 Highlights 和 Daily Insight。"""
 
     def chip_from_rows(rows: list[dict]) -> dict:
-        count_new = sum(1 for r in rows if r["status"] == "new")
-        count_changed = sum(1 for r in rows if r["status"] == "changed")
+        values = _dedupe_business_rows(rows)
+        count_new = sum(1 for r in values if r["status"] == "new")
+        count_changed = sum(1 for r in values if r["status"] == "changed")
         diff_breakdown = {"missing": 0, "diff": 0, "same": 0, "mixed": 0, "na": 0}
-        for r in rows:
+        for r in values:
             diff_breakdown[r["diff_tag"]] = diff_breakdown.get(r["diff_tag"], 0) + 1
-        return {"count_new": count_new, "count_changed": count_changed, "diff_breakdown": diff_breakdown}
+        return {
+            "today": len(values),
+            "count_new": count_new,
+            "count_changed": count_changed,
+            "diff_breakdown": diff_breakdown,
+        }
 
     chips = {
         "campaign": chip_from_rows(campaign_rows),
@@ -301,13 +404,56 @@ def build_overview(
         "announcement": chip_from_rows(delisting_rows + other_rows),
     }
 
-    all_rows = campaign_rows + product_rows + listing_only_rows + delisting_rows
-    highlights_pool = [r for r in all_rows if r["priority"] == "高"]
-    highlights_pool.sort(key=lambda r: (r["is_mock"], _diff_sort_key(r["diff_type"])))
+    def business_priority(r: dict) -> str:
+        # 首次抓到的历史补录仍保持 status=new，但不能伪装成“今天新活动”进入 P1。
+        # 30 天只用于展示层降噪，不回写事实层状态。
+        try:
+            published = datetime.fromisoformat((r.get("post_time") or "").replace("Z", "+00:00"))
+            as_of = datetime.fromisoformat(f"{as_of_date}T00:00:00+00:00")
+            is_stale_backfill = published < as_of - timedelta(days=30)
+        except ValueError:
+            is_stale_backfill = False
+        if r["status"] == "new" and is_stale_backfill:
+            return "P7"
+        if r["category"] == "campaign":
+            if r["status"] == "new":
+                return "P1"
+            if r.get("change_kind") == "rule":
+                return "P2"
+            if r.get("change_kind") == "reward":
+                return "P3"
+        if r["category"] == "product":
+            title = (r.get("title") or "").casefold()
+            update_markers = (
+                "update", "upgrade", "adjust", "remove", "reminder", "maintenance",
+                "更新", "升级", "调整", "移除", "维护",
+            )
+            # status=new 只表示首次抓到；标题明确为调整/升级时仍应归 P5，而不是误称新产品。
+            return "P5" if r["status"] == "changed" or any(x in title for x in update_markers) else "P4"
+        if r["category"] in ("listing", "delisting"):
+            return "P6"
+        return "P7"
+
+    all_rows = campaign_rows + product_rows + listing_only_rows + delisting_rows + other_rows
+    # 多语言去重后，每个竞品最多 Top 5；排序只看业务价值，不按发布时间。
+    highlights_pool = _dedupe_business_rows(all_rows)
+    for r in highlights_pool:
+        r["business_priority"] = business_priority(r)
+    highlights_pool.sort(
+        key=lambda r: (int(r["business_priority"][1:]), r["is_mock"], _diff_sort_key(r["diff_type"]))
+    )
+    per_source: dict[str, int] = {}
+    selected = []
+    for r in highlights_pool:
+        if per_source.get(r["source"], 0) >= 5:
+            continue
+        selected.append(r)
+        per_source[r["source"]] = per_source.get(r["source"], 0) + 1
     highlights = [
         {
             "source": r["source"],
             "category": r["category"],
+            "priority": r["business_priority"],
             "title": r["title"],
             "one_line_summary": (r["description"] or r["follow_up"] or "")[:160],
             "diff_type": r["diff_type"],
@@ -316,9 +462,40 @@ def build_overview(
             "url": r["url"],
             "is_mock": r["is_mock"],
         }
-        for r in highlights_pool[:OVERVIEW_HIGHLIGHTS_CAP]
+        for r in selected
     ]
-    return {"batch_date": as_of_date, "chips": chips, "highlights": highlights}
+    campaign_new_by_source: dict[str, int] = {}
+    product_new_by_source: dict[str, int] = {}
+    reward_changes_by_source: dict[str, int] = {}
+    for r in highlights_pool:
+        if r["category"] == "campaign" and r["status"] == "new":
+            campaign_new_by_source[r["source"]] = campaign_new_by_source.get(r["source"], 0) + 1
+        if r["category"] == "product" and r["status"] == "new":
+            product_new_by_source[r["source"]] = product_new_by_source.get(r["source"], 0) + 1
+        if r.get("change_kind") == "reward":
+            reward_changes_by_source[r["source"]] = reward_changes_by_source.get(r["source"], 0) + 1
+
+    def leader(values: dict[str, int]) -> Optional[dict]:
+        if not values:
+            return None
+        source, count = max(values.items(), key=lambda item: (item[1], item[0]))
+        return {"source": source, "count": count}
+
+    leaders = {
+        "new_campaigns": leader(campaign_new_by_source),
+        "new_products": leader(product_new_by_source),
+        "reward_changes": leader(reward_changes_by_source),
+    }
+    total_changes = sum(c["today"] for c in chips.values())
+    return {
+        "batch_date": as_of_date,
+        "chips": chips,
+        "highlights": highlights,
+        "insight": {
+            "significant": total_changes > 0,
+            "leaders": leaders,
+        },
+    }
 
 
 def build_trend(conn: sqlite3.Connection) -> dict:
@@ -328,9 +505,11 @@ def build_trend(conn: sqlite3.Connection) -> dict:
     placeholders = ",".join("?" * len(CATEGORIES))
     rows = _dict_rows(
         conn.execute(
-            f"""SELECT date(fetched_at) as d, category, COUNT(*) as n
+            f"""SELECT date(fetched_at) as d, category,
+                       COUNT(DISTINCT COALESCE(group_id, uid)) as n
                 FROM announcements
                 WHERE source != '{BASELINE_SOURCE}' AND category IN ({placeholders})
+                  AND status = 'new'
                 GROUP BY d, category
                 ORDER BY d""",
             CATEGORIES,
@@ -482,6 +661,7 @@ def build_dashboard_data(db_path: str) -> dict:
         "campaign": campaign_rows,
         "product": product_rows,
         "listing": listing_rows,
+        "announcements": other_rows,
         "markets": build_markets(conn),
         "search_index": build_search_index(conn, article_index),
     }

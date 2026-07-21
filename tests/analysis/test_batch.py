@@ -104,6 +104,16 @@ def test_can_derive_from_en_not_satisfied_with_region_exclusive_entry(conn):
     assert result is None
 
 
+def test_can_derive_from_en_not_satisfied_when_locale_is_only_subset(conn):
+    _insert_ann(conn, "u_en1", "g1", "Bitunix", "EN", "campaign", "new")
+    _insert_ann(conn, "u_en2", "g2", "Bitunix", "EN", "campaign", "new")
+    _insert_ann(conn, "u_fr1", "g1", "Bitunix", "FR", "campaign", "new")
+    _insert_insight(conn, "Bitunix", "campaign", "EN", "2026-07-14", ["u_en1", "u_en2"])
+    conn.commit()
+
+    assert can_derive_from_en(conn, "Bitunix", "campaign", "FR", "2026-07-14") is None
+
+
 def test_can_derive_from_en_returns_none_when_no_current_uids(conn):
     _insert_insight(conn, "Bitunix", "campaign", "EN", "2026-07-14", ["u_en1"])
     conn.commit()

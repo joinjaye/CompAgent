@@ -109,9 +109,8 @@ def can_derive_from_en(
     复用条件（同时满足）：
     1. locale != 'EN'
     2. 当日同 source × category × EN 的 insights 行已存在
-    3. 当前 locale 批次内所有公告的 group_id，都能在 EN 批次的 related_uids 对应的
-       group_id 集合里找到（即没有 locale 独占条目——存在独占条目就必须走 LLM，
-       只把独占条目 + 同 locale 的 Zoomex 基线传进去分析）
+    3. 当前 locale 与 EN 批次的 group_id 集合完全相同。仅做子集判断会让少文章的
+       locale 复用包含额外文章的 EN summary，导致看板条数和结论互相矛盾。
     """
     if locale == "EN":
         return None
@@ -132,6 +131,6 @@ def can_derive_from_en(
     en_related_uids: list[str] = json.loads(en_insight["related_uids"] or "[]")
     en_group_ids = _group_ids_for_uids(conn, en_related_uids)
 
-    if current_group_ids <= en_group_ids:
+    if current_group_ids == en_group_ids:
         return en_insight["id"]
     return None

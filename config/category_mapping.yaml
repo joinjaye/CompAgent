@@ -48,7 +48,10 @@ weex:      # category_id=18540264809497（"Latest Announcements"）下的全部 
   "18540506359065": campaign    # Futures events
   "33143373088665": campaign    # Spot events
   "18540491393305": campaign    # Reward distribution
-  "18540289930137": other       # Latest updates
+  "18540289930137": other       # Latest updates —— 混合分区（vote-to-list/质押新品/
+    # 杠杆调整/系统维护都混在一起），第一层维持 other 不变；product 类内容改由
+    # src/pipeline/category.py 的 WEEX_LATEST_UPDATES_PRODUCT_FALLBACK 专属兜底层
+    # 在第二层拉出来，见 CLAUDE.md「Weex 补充 section 采集」
   # 【Phase 2.7 新增】category_id=44507081559193「Listings/Delistings」下的全部 4 个
   # section，真实请求 GET .../categories/44507081559193/sections.json 反查确认 id，
   # 真实采集当天 total=3199（4 个 section 合计）。之前完全没被采集（详见 CLAUDE.md

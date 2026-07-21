@@ -10,6 +10,14 @@ raw_category 的原始值字符串，不是人类可读名称（Phase 2.6 订正
 
 raw_category 有值但不在映射表 key 集合里 —— 视为「源站新增了分区」，显式标成
 unmapped_native，不静默落到关键词层（那样会掩盖一个需要人工补映射的信号）。
+
+第二层内部还有两种"兜底"子层，均只在 KEYWORD_RULES 全不命中时才检查，互不影响优先级：
+- LISTING_FALLBACK_KEYWORDS：全源共用，专为 Zoomex menu_id=26 设计（历史遗留的已知
+  风险：没有按 source 限定，理论上任何源命中这几个短语都会被拉成 listing）。
+- WEEX_LATEST_UPDATES_PRODUCT_FALLBACK：2026-07-20 新增，按 (source, raw_category)
+  精确限定，只在 source="weex" 且 raw_category="18540289930137"（"Latest updates"
+  混合 section，见 CLAUDE.md「Weex 补充 section 采集」）时生效，不会影响其它源或
+  Weex 其它 section 的 other 判定——刻意比 LISTING_FALLBACK_KEYWORDS 收紧的设计。
 """
 
 from __future__ import annotations
@@ -54,6 +62,35 @@ LISTING_FALLBACK_KEYWORDS: list[str] = [
     "launching soon",
 ]
 
+# 【2026-07-20 新增】Weex sectionId=18540289930137（"Latest updates"）专属兜底层，
+# 只在 classify_by_keyword() 的 source/raw_category 参数精确匹配这个 (source,
+# raw_category) 组合时才会被检查——不是塞进 KEYWORD_RULES/LISTING_FALLBACK_KEYWORDS
+# 那种全源共用的列表，避免这批词在其它源/其它 Weex section 里误触发。
+#
+# 真实抽样这个 section 全部 251 条标题（2026-07-20 抓取）：KEYWORD_RULES（listing/
+# delisting）全不命中的 243 条里，人工核对发现约 80 条是明确的 product 内容——质押
+# 新品上线（"WEEX is about to Launch X Staking!"）、期货杠杆/保证金调整
+# （"WEEX Futures Adjusts Leverage for..."）、App 版本更新公告、跟单交易新增交易对、
+# 手续费/最小下单量调整等。这份关键词列表就是从这批真实标题里提炼的，未命中的其余
+# 163 条（含约 39 条真实 campaign 内容——领奖/抽奖/WXT 销毁播报，本次有意不处理，
+# 留给以后单独加 campaign 层）里没有被误伤的样本。
+WEEX_LATEST_UPDATES_PRODUCT_FALLBACK: list[str] = [
+    r"\bstaking\b",
+    r"\bleverage\b",
+    r"copy trading",
+    r"\bapp\b \d",  # "WEEX App 3.4.2 Update Announcement"
+    r"mandatory update for weex app",
+    r"officially launch",
+    r"launches the new",
+    r"\bintegrates\b",
+    r"minimum order size",
+    r"platform token",
+    r"new experience",
+    r"auto earn",
+    r"maker fee",
+    r"spot pro system",
+]
+
 VALID_CATEGORIES = {"campaign", "product", "listing", "delisting", "other"}
 
 
@@ -64,12 +101,21 @@ class ClassificationResult:
     reason: str
 
 
-def classify_by_keyword(title: Optional[str]) -> Optional[str]:
+def classify_by_keyword(
+    title: Optional[str],
+    source: Optional[str] = None,
+    raw_category: Optional[str] = None,
+) -> Optional[str]:
     """"delisting" 逐字节包含 "listing"（de-listing），纯子串匹配会导致任何下架
     标题在检查到 listing 分类的 "list" 关键词时被提前误判成 listing——用词边界
     （\\b）匹配而不是子串包含来避免这个问题：`\\blist\\b` 不会命中 "delisting"
     内部（"delist" 和 "ing" 之间没有单词边界）。中文关键词（如 "下架"）没有空格
     分词，`\\b` 在连续中文文本里几乎不产生边界，因此中文关键词仍用子串包含。
+
+    `source`/`raw_category` 是可选参数，默认 None（不传时行为跟只传 title 完全
+    一致）——只有 WEEX_LATEST_UPDATES_PRODUCT_FALLBACK 这个精确限定的兜底层需要
+    用它们判断是否命中作用范围，LISTING_FALLBACK_KEYWORDS 等全源共用的兜底层不
+    受这两个参数影响。
     """
     if not title:
         return None
@@ -85,6 +131,10 @@ def classify_by_keyword(title: Optional[str]) -> Optional[str]:
     for kw in LISTING_FALLBACK_KEYWORDS:
         if re.search(r"\b" + re.escape(kw) + r"\b", lowered) is not None:
             return "listing"
+    if source is not None and source.lower() == "weex" and raw_category == "18540289930137":
+        for pattern in WEEX_LATEST_UPDATES_PRODUCT_FALLBACK:
+            if re.search(pattern, lowered) is not None:
+                return "product"
     return None
 
 
@@ -108,7 +158,7 @@ def classify_row(
         layer1_category = source_map[raw_category]
         if layer1_category != "other":
             return ClassificationResult(layer1_category, "native", f"raw_category={raw_category} -> {layer1_category}")
-        kw = classify_by_keyword(title)
+        kw = classify_by_keyword(title, source, raw_category)
         if kw:
             return ClassificationResult(
                 kw, "keyword", f"raw_category={raw_category} -> other，标题关键词命中 -> {kw}"
@@ -116,7 +166,7 @@ def classify_row(
         return ClassificationResult("other", "native_other", f"raw_category={raw_category} -> other，无关键词可细分")
 
     # source_map 为 None（整源无 per-item 映射，如 lbank）或 raw_category 为 NULL
-    kw = classify_by_keyword(title)
+    kw = classify_by_keyword(title, source, raw_category)
     if kw:
         return ClassificationResult(kw, "keyword", f"raw_category=NULL，标题关键词命中 -> {kw}")
     return ClassificationResult(None, "llm_pending", "无原生映射、无关键词命中，需要第三层 LLM 兜底")

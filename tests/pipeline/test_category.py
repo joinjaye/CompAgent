@@ -18,6 +18,7 @@ MAPPING = {
     },
     "weex": {
         "200": "delisting",
+        "18540289930137": "other",  # "Latest updates" section，贴近真实 category_mapping.yaml
     },
     "lbank": None,  # 整源无 per-item raw_category
 }
@@ -107,6 +108,55 @@ def test_raw_category_none_for_mapped_source_falls_to_keyword():
     result = classify_row("Bitunix", None, "New listing: ABCUSDT", MAPPING)
     assert result.category == "listing"
     assert result.layer == "keyword"
+
+
+# --------------------------------------------- Weex "Latest updates" product fallback ----
+
+def test_weex_latest_updates_product_fallback_staking():
+    result = classify_row("Weex", "18540289930137", "WEEX is about to Launch SOL Staking!", MAPPING)
+    assert result.category == "product"
+    assert result.layer == "keyword"
+
+
+def test_weex_latest_updates_product_fallback_leverage():
+    result = classify_row(
+        "Weex", "18540289930137", "WEEX Futures Adjusts Leverage for Multiple Trading Pairs", MAPPING
+    )
+    assert result.category == "product"
+    assert result.layer == "keyword"
+
+
+def test_weex_latest_updates_maintenance_title_stays_other():
+    # 真实基建类通知，不应该被这个兜底层拉走
+    result = classify_row(
+        "Weex", "18540289930137", "Server Upgrade Announcement – Morning of December 9, 2025", MAPPING
+    )
+    assert result.category == "other"
+    assert result.layer == "native_other"
+
+
+def test_weex_product_fallback_scoped_to_this_section_only():
+    # 同样的标题换一个不是 18540289930137 的 raw_category（映射到 delisting，非
+    # other，第一层直接命中，不会走到关键词层，用来证明兜底层没有被误接到别的
+    # section 上）
+    result = classify_row("Weex", "200", "WEEX is about to Launch SOL Staking!", MAPPING)
+    assert result.category == "delisting"
+    assert result.layer == "native"
+
+
+def test_weex_product_fallback_does_not_leak_to_other_sources():
+    # 同样的标题、同样触发关键词层的条件（raw_category 映射到 other），换成
+    # Bitunix 的 raw_category=102（映射到 other）——不应该被 Weex 专属兜底层命中
+    result = classify_row("Bitunix", "102", "WEEX is about to Launch SOL Staking!", MAPPING)
+    assert result.category == "other"
+    assert result.layer == "native_other"
+
+
+def test_classify_by_keyword_weex_fallback_requires_exact_scope():
+    assert classify_by_keyword("Launch SOL Staking!", source="Weex", raw_category="18540289930137") == "product"
+    assert classify_by_keyword("Launch SOL Staking!", source="Bitunix", raw_category="18540289930137") is None
+    assert classify_by_keyword("Launch SOL Staking!", source="Weex", raw_category="999") is None
+    assert classify_by_keyword("Launch SOL Staking!") is None
 
 
 # ---------------------------------------------------------------- dry_run / apply (DB) ----

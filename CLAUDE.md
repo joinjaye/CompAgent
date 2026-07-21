@@ -3926,10 +3926,9 @@ Dashboard 忽略旧 listing insight、标题规则识别 perp、EN-Asia placehol
 - **Lbank**（`www.lbank.com/new-popular-events`）：跟已删除的旧版
   `lbank_web.py` 同一种 Next.js RSC flight 流机制（`self.__next_f.push(...)`），
   不是常规采集器现在用的 `notice/latestList` JSON API。固定 8 条精选列表，
-  `?page=2` 返回内容跟不带参数完全相同，非真分页。**详情页
-  （`routeUrl`）真实请求确认没有 SSR 出任何正文**，只有 meta description，
-  正文靠未逆向的客户端请求——所以这个端口 content 只能用列表页的
-  `title`+`subtitle`，跟常规 Lbank collector"不发详情请求"的既有简化设计一致。
+  `?page=2` 返回内容跟不带参数完全相同，非真分页。详情页（`routeUrl`）本身的
+  SSR HTML 没有正文，只有 meta description，但**真正的正文可以拿到**——见下方
+  「Lbank 活动详情正文补充」一节，不再是只有 title+subtitle 的兜底状态。
 - **Weex**（`www.weex.com/rewards`）：标准 Next.js `__NEXT_DATA__`
   （`props.pageProps.myPopular[]`），不是 flight 流，比 Bitunix/Lbank 都简单。
   固定精选列表（18 EN / 11 FR），非真分页。**这是四个端口里唯一一个详情页真的
@@ -4053,10 +4052,272 @@ session 内尚未执行完（用户中途打断要求先更新本文档），下
 
 - **BingX 的活动中心目前只能拿到 page=1（10/21 条，EN）**，见上文「分页现状」，
   不是遗漏，是真实测试过的浏览器交互限制。
-- **Lbank 的活动端口 content 只有 title+subtitle**，没有更深正文可用（详情页
-  没有 SSR 出任何内容），是源端真实限制，不是解析 bug。
 - **Weex 的 `activityType` → 详情页子路径映射只登记了 3 个已验证值**
   （7→promo/23→roll/5→draw），遇到新的未登记类型会跳过详情请求、只用列表页
   摘要兜底，不会崩溃，但也不会强行猜一个子路径去发请求。
 - **本次范围内没有跑 Phase 3 pipeline（`classify`/`region`）、没有跑 Phase 4
   分析、没有动看板/推送**，按用户要求，这些留给用户后续单独触发。
+
+## Lbank 活动详情正文补充（2026-07-20）
+
+上一节把 Lbank 活动端口的 content 记成"只有 title+subtitle，详情页没有 SSR 出
+正文"，用户要求不要止步于此——"拿到 url 再去访问获取"。用 Playwright 重新抓包
+一个真实活动详情页（`www.lbank.com/event-new/10002315-tendies-brian-listing`）
+的全部 XHR/fetch 请求，确实找到了承载正文的两跳真实接口，不是猜的：
+
+1. `POST https://www.lbank.com/lbk-api/huli-bazaar-center/atlasActivity/
+   loadingPage`，body `{"activityCode": "<code>"}`（`code` 就是列表接口已经给
+   出的字段，`routeUrl` 里的 `pointmall/` 前缀不影响，真实测试过），
+   `ex-language` 头控制语言。响应 `data.ruleInfo`：`content` 字段有时候直接是
+   规则正文文本，为 `null` 时看 `contentId`（指向另一个静态文件的 URL）。
+   **这一跳不需要签名**——Playwright 里挂着的 `ex-signature`/`ex-device-id`
+   等头是可选的，真实测试过纯 `curl -X POST` 不带任何这些头，直接返回 200 +
+   完整数据，跟 BingX 那种强制签名的 `qq-os.com` 网关是两回事，不需要走浏览器
+   驱动这条路。
+2. `contentId` 真实观察到两种形态：`https://jiz.lbk.world/content/{...}.stxt`
+   （绝对 URL，`jiz.lbk.world` 有 Cloudflare bot 挑战，纯 curl 请求会被拦
+   "Attention Required! | Cloudflare"）或 `/static-backend-doc/content/
+   {...}.stxt`（相对路径）。同一份内容在 `www.lbank.com/static-backend-doc/
+   content/{...}.stxt` 这个同源代理路径下真实测试可以直接拿到（无挑战，多个
+   不同 activityCode/不同 locale 样本都验证过），`resolve_rule_content_url()`
+   统一从 `contentId` 里截取 `content/` 往后的部分，重新拼到这个同源前缀下，
+   规避掉不稳定又被墙的 `jiz.lbk.world`。真实拿到的正文是完整格式化 HTML
+   （标题/编号列表/加粗，如 "🌟Eligibility & Participation" "1.This campaign
+   will run from July 17, 2026..."），换 `ex-language: vi-VN` 后 `contentId`
+   指向另一个真实的越南语 `.stxt` 文件，验证过语言切换生效。
+
+### 改动
+
+- `src/parsers/lbank_events.py` 新增 `resolve_rule_content_url()` +
+  `parse_activity_detail()`（解析 `loadingPage` 响应，返回
+  `{title, sub_title, rule_content, rule_content_url}`，两个 rule 字段最多
+  一个非 None）。
+- `src/collectors/lbank_events.py` 新增 `fetch_detail()` 覆写（原来 Lbank
+  events 也是走 `BaseCollector` 默认恒等实现，现在有真实详情可拿，不能再是
+  no-op）：POST `detail_endpoint` 拿 `ruleInfo`，`content` 为空则再 GET 一次
+  `rule_content_url`，两跳任何一步失败（网络错误/解析失败）都记警告、正文
+  退回列表页 `subtitle`，不会让整条采集失败。`RawItem.extra` 新增 `code`
+  字段（列表页已有，之前没往下传，这次补上）供 `fetch_detail` 用。
+  `needs_detail`/`force_full` 语义不变（默认恒 True，每条都发详情请求）。
+- `config/sources.yaml` 三个 Lbank locale 的 `campaign_endpoint` 块新增
+  `detail_endpoint: "https://www.lbank.com/lbk-api/huli-bazaar-center/
+  atlasActivity/loadingPage"`（三个 locale 共用同一个 URL，语言靠请求头区分，
+  不是 URL 参数）。
+
+### 验证
+
+新增真实 fixture：`tests/fixtures/lbank_events_loadingpage_EN.json`（真实
+`loadingPage` 响应）+ `lbank_events_rule_content_EN.stxt`（真实规则正文静态
+文件）。`tests/parsers/test_lbank_events.py` 新增 6 个用例（`resolve_rule_
+content_url` 的绝对/相对路径两种形态、`parse_activity_detail` 用真实 fixture
++ 合成的 inline-content 分支 + 非 200/解析失败分支）；
+`tests/collectors/test_lbank_events_collector.py` 重写覆盖 `fetch_detail`
+两跳请求（真实 mock 验证了请求 URL/body/header 拼接正确）、无 `code` 时不请求、
+`loadingPage` 请求失败时优雅退回列表摘要。全部离线单测通过，**本次改动的真实
+端到端网络验收（`python -m src.collectors --source lbank --category
+new_popular_events`，确认 content 里真的出现完整规则正文）尚未执行**——用户
+中途要求先更新本文档，下一步继续跑并把结果补充到这里。
+
+## Phase 4 staged-v1 优化基础层（2026-07-20）
+
+根据“两类 LLM 调用、三层缓存/处理”的优化方案，新增
+`src/analysis/staged.py` 与 `prompts.py` 的 staged-v1 Prompt builder：
+
+- `preprocess_article()`：正文拆成 lead/money/date/rule/table/closing，changed
+  生成 added/removed 句级 diff，并用正则预抽日期、金额、百分比、市场类型。
+- 单篇事实抽取 Prompt 只返回批次整数 `i`，不返回 UID/title，不做 ZMX 判断。
+- 业务判断 Prompt 只读取结构化 facts 和每篇自己的候选，不读取公告原文。
+- extraction/comparison 缓存键分别纳入 namespace、schema/prompt version、
+  provider、model；comparison 另包含逐篇候选摘要。
+- `recall_candidates()` 做确定性结构化词项召回，每篇最多 Top K，零重叠不强塞。
+- `calculate_priority()` 用 event/gap/impact/confidence/novelty/urgency 程序算分；
+  `render_action()` 将 owner/deadline/action/deliverable 组装为可执行文案。
+
+当前这些是已验证的基础组件；现有 `src.analysis.run` 仍维持 v3 单阶段生产链路，
+尚未切换到 staged-v1 编排，避免在没有真实 provider 回归前直接改变生产调用次数。
+新增 6 个测试，全量 `362 passed`。
+
+## Dashboard 业务信息架构升级（2026-07-20）
+
+`docs/index.html` 与 `src/dashboard/export_data.py` 已按
+Competitor Intelligence Dashboard 重构，一级导航保持
+Overview / Campaign / Product / Listing / Markets / Search：
+
+- Overview 新增业务日期控件、Daily Highlights（P1–P7 固定业务价值顺序、每个竞品
+  Top 5、无正文）、Daily Summary、7/30 Days Trend、Today's Insight 和 Quick Jump。
+- Summary 与 Trend 使用 `group_id` 做多语言去重；Trend 只统计 `status=new`，不把
+  重复抓取或内容更新算作新增。
+- Campaign / Product 从详情卡改为多维表格，展开活动类型、奖励、起止时间、市场、
+  AI 分析、ZMX 差异和跟进建议；字段只取 SQLite/insights 的真实结果，缺失显示 `—`
+  或“待分析”。
+- Listing 保持紧凑表格；Markets 支持 EN / KR / FR / SEA（VN+ID），KR 当前没有采集源，
+  因此诚实显示空数据；Search 支持全局过滤、分页和当前结果 CSV 下载。
+- 导出 schema 新增顶层 `announcements`，并为业务行补充 `group_id/update_time` 及
+  insights 中已有的活动/产品结构化字段；已用生产库重新生成
+  `docs/data/dashboard.json`。
+
+验证：Dashboard 专项 `14 passed`（包含 Playwright 页面/截图用例）。全量测试
+`363 passed, 1 failed`；唯一失败是本次之前工作区中未提交的 LBank Events 改动：
+`test_fetch_list_maps_fields_and_sends_lang_header` 仍期望 content 含“活动周期”，当前
+collector 实际只返回英文 subtitle。该失败与 Dashboard 改动无关，未在本次越界修改。
+
+## 2026-07-20 真实日更全流程验收（止于 Lark 前）
+
+已按生产日更顺序真实执行：
+
+1. 全部 6 个 source 增量采集（从数据库最后成功日 2026-07-15 用 7 天 lookback 衔接）。
+2. 全源 group-check、分类、竞品地区独占标记。
+3. 新增 Zoomex campaign 基线结构化提取。
+4. 五家竞品 campaign/product 批次分析；listing/delisting/other 零 LLM。
+5. Dashboard JSON 导出、Playwright 真实页面验收。
+
+本次没有调用 `feishu_bitable` / `feishu_bot`；`sync_log.max(synced_at)` 仍为
+`2026-07-15T11:17:07Z`，证明停在 Lark 同步/推送之前。
+
+### 实际结果
+
+- 新入库（相对执行前备份）336 行；当日有效 `status IN (new,changed)`：
+  campaign 59 行/28 group、product 21/10、listing 90/38、delisting 22/9、
+  other 108/70。
+- 当日 insights 19 个：15 个真实分析批次、4 个严格等集 locale 复用批次；
+  覆盖 80 篇 campaign/product 文章，validation failed 为 0。
+- 80 篇逐条分析全部带 priority、priority_reason、action_type、owner、follow_up；
+  action_type 分布：benchmark 33、monitor 20、manual_verify 19、no_action 5、
+  product_evaluation 2、campaign_design 1。
+- 差异判断：ZMX玩法不同 33、不适用 47。零“ZMX缺失”是 Prompt 的保守证据门禁结果：
+  未召回候选不能直接断言缺失。这提高可信度，但也说明当前 ZMX 基线召回对“缺口确认”
+  的覆盖仍不足。
+- 竞品分析已知实际 token 332,586；基线已知 51,828。Cursor bridge 异常阶段的两次
+  成功调用与一次失败调用没有持久化 usage，按额外 100,000 token 保守计提，总预算按
+  484,414 token 管理，约占 5,000,000 上限的 9.7%。
+
+### 本轮发现并已修复
+
+- BingX 新版 `__NUXT_DATA__` 普通二维数组导致 parser 对 list 做 set membership 报错；
+  加入类型守卫后 EN/VN 常规公告各补入 19 条。
+- locale 分析原使用 group 子集判断，导致少文章的 FR/ID/VN 复用包含额外文章的 EN
+  Summary；改为 group 集合完全一致，删除并重算 6 个失真派生批次。
+- LLM cache key 原先未包含完整 Prompt/source/locale；不同竞品相同正文存在错误命中
+  风险。竞品分析与 ZMX 提取均改为纳入完整 Prompt hash、model 和上下文。
+- 竞品分析 CLI 新增 `--max-tokens` 熔断；新增可执行脚本
+  `scripts/run_daily_pre_lark.sh`，总预算最多 500 万，显式处理全部来源，最终只导出
+  Dashboard。
+- Phemex 跨语言 article_id/group_id 不同，Dashboard 改用
+  `group_id + (source,规范化标题,跨 locale)` 双重去重；相同 locale 的同名文章不误合并。
+- 首次抓到的历史补录不再直接按“新活动”升为 P1：发布时间超过 30 天时展示层降为 P7；
+  product 标题明确是 update/adjust/upgrade/remove 时按 P5，不误标为 P4 新产品。
+- Campaign 表将 v3 Prompt 已有的 mechanics/time_window 确定性投影为活动类型、
+  关键金额、起止日期；标题展示移除残留 HTML 标签。
+
+### 仍需继续优化
+
+- BingX Activity Center 只能拿第一页：EN 10/21、VN 10/12；常规公告已完整补齐，但活动
+  中心不是全量。
+- Phemex 的跨语言归组问题只在 Dashboard 聚合层兜底，底层 group_id 仍应按标题/时间
+  相似度重建，否则 region-exclusive 会高估。
+- Cursor SDK 单 bridge 第三次调用可能退出；每日脚本把单进程限制为 2 次并分轮运行，
+  但 SDK usage 仍需要独立审计表，避免异常时 token 无法回溯。
+- `不适用` 同时混合“确实不可比”和“基线未召回、需人工复核”两种业务语义；下一版应
+  拆成独立标签，否则 Dashboard 看不出是无需关注还是证据不足。
+- staged-v1 仍未接入生产编排。本轮实际 v3 已把 80 篇压缩为 15 次真实竞品调用并复用
+  4 批，成本可控；下一步 staged 的核心价值应放在跨日事实缓存和更精确的逐篇 ZMX
+  召回，而不是单纯增加调用层数。
+
+最终验证：`384 passed`，`git diff --check` 通过。
+
+## Weex 补充 section 采集：sectionId=18540289930137（"Latest updates"）+ 专属 product 兜底分类层（2026-07-20）
+
+用户指定核实 `https://www.weex.com/help/sections/18540289930137`，目的是补齐
+product/listing/delisting 三类分析所需的数据。**本节范围明确不含**：主库
+`data/competitor_intel.db`（Weex 目前为空，见更早「Weex 路径问题」session）的完整
+回填、Phase 3 pipeline 重跑、campaign 兜底层——均按用户明确的范围决定搁置。
+
+### 发现过程（真实请求，非猜测）
+
+真实请求确认这个 section（`name="Latest updates"`）隶属
+`categoryId=18540264809497`，也就是 `config/sources.yaml` 里已经在采集的
+`weex.categories.latest_announcements`（category 级聚合端点）。但同一次请求也确认
+该 category 下还混着至少 "Futures events"/"Spot events"/"Rewards"/"TradFi" 等
+5+ 个 section 一起翻页，而 daily 增量固定只翻前 2 页（`max_pages=2 × page_size=65
+= 130 条/天`，跨全部 5+ 个 section 的聚合窗口）。这个 section 自己真实
+`totalCount=252`（EN，4 页）/ `207`（FR，4 页）——单独一个 section 的体量已经接近
+聚合窗口的 2 倍，日常增量对它必然严重稀释，跟 Phase 2.7 当年把 `p2p_announcement`
+从 "P2P Trading" category 拆成专属 section 端点是同一类问题、同一种解法。
+
+### 改动 1：`config/sources.yaml` —— 新增 section 级端点（纯配置，零代码改动）
+
+`WeexCollector`/`weex_web.py` 早已是通用的 category/section 级 Next.js flight 流
+解析器（`_categorized_collector_builder` 只认 `categories.<key>.endpoint`，不关心
+是 category 还是 section URL），`p2p_announcement` 已经验证过这个模式，所以本次
+不改任何 collector/parser 代码，只在 `weex.EN`/`weex.FR` 的 `categories` 块下各加
+一个 `latest_updates` key（`https://www.weex.com/{en,fr}/help/sections/
+18540289930137`）。跟聚合端点写入同一个 `source`，`article_id` 天然同一空间，
+`upsert_announcement` 自动去重，不产生重复行（两个端点抓到同一篇文章时，后者会
+落成 `unchanged`）。`category_mapping.yaml` 的 `"18540289930137": other` 映射不变
+——第一层维持 other，产品向细分放在第二层（见改动 2）。
+
+### 改动 2：`src/pipeline/category.py` —— 新增 Weex 专属 product 兜底层
+
+真实抽样这个 section 全部 251 条标题（EN，2026-07-20 抓取），过一遍现有
+`classify_by_keyword` 后 243 条落入 other（listing/delisting 关键词只命中
+5+3=8 条）。人工分析这 243 条：约 80 条是明确的 product 内容（质押新品上线
+"WEEX is about to Launch X Staking!"、期货杠杆/保证金调整 "WEEX Futures Adjusts
+Leverage for..."、App 版本更新、跟单交易新增交易对、手续费/最小下单量调整等）；
+约 39 条是 campaign 内容（领奖/抽奖/WXT 销毁播报/VIP 特权，本次有意不处理）；
+其余约 123 条是真实的基建/安全/系统维护类通知，本来就应该留在 other。
+
+新增 `WEEX_LATEST_UPDATES_PRODUCT_FALLBACK`（14 条正则关键词，从上述真实标题提炼），
+跟现有的 `LISTING_FALLBACK_KEYWORDS`（全源共用，专为 Zoomex menu_id=26 设计，没有
+按 source 限定，是已记录过的历史遗留风险）不同，这次刻意收紧成**按
+(source, raw_category) 精确限定**：只在 `source.lower()=="weex"` 且
+`raw_category=="18540289930137"` 时生效，不影响任何其它源或 Weex 其它 section 的
+`other` 判定。`classify_by_keyword()` 签名新增 `source`/`raw_category` 两个可选
+参数（默认 None，不传时行为跟改动前逐字节一致，现有测试不受影响）；`classify_row()`
+的两处调用点透传这两个参数。
+
+### 验证记录（2026-07-20，scratch db，未碰主库）
+
+```
+python -m src.db init --db-path data/verify_weex_latest_updates.db
+python -m src.collectors --source weex --locale EN --category latest_updates --db-path data/verify_weex_latest_updates.db
+# new=130 changed=0 unchanged=0 failed=0（max_pages=2 × page_size=65 精确命中上限）
+python -m src.collectors --source weex --locale FR --category latest_updates --db-path data/verify_weex_latest_updates.db
+# new=129 changed=0 unchanged=0 failed=1（一次真实 502 Bad Gateway，重试 3 次仍失败，
+# 属真实网络瞬时故障，不是代码 bug；失败的这一条不落库，不影响其它 129 条）
+```
+
+落库抽查：EN/FR 均无重复 `article_id`、无残留 HTML 标签、无空正文，
+`raw_category` 100% 等于 `18540289930137`。
+
+```
+python -m src.pipeline --db data/verify_weex_latest_updates.db classify --dry-run --sources Weex
+# 共扫描 130 行（EN）：native_other 94 (72.3%) / keyword 36 (27.7%)
+```
+
+对 keyword 层结果按 category 拆分核对：`product` 30 条（全部人工核对确认是真实
+质押新品/杠杆调整内容）、`listing` 4 条、`delisting` 2 条（这两组是既有的
+LISTING_FALLBACK_KEYWORDS/KEYWORD_RULES 命中，本次未改动）、其余 94 条仍留
+`other`（抽查样本含真实 campaign 奖励公告和网络硬分叉维护通知，均正确保留 other，
+没有被新兜底层误伤）。
+
+`pytest`：`tests/pipeline/test_category.py` 新增 6 个用例（product 兜底命中、真实
+维护类标题仍保留 other、限定范围验证——换 raw_category/换 source 均不触发），全量
+`379 passed`（含改动前已存在于工作区的未提交改动，见上一节 LBank Events 记录，
+该项此次已随代码通过，不再是已知失败）。
+
+### 已知限制（如实记录，未处理）
+
+- **`WEEX_LATEST_UPDATES_PRODUCT_FALLBACK` 只用 EN 真实标题验证过**：FR 标题
+  （法语措辞）没有对应关键词，未做法语版本的关键词补充——这个 section 的 FR 内容
+  目前几乎全部落在 `other`（跟 EN 一样会先过一遍 KEYWORD_RULES，但 product 兜底层
+  的关键词是纯英文短语），如果以后需要 FR 也能被拉进 product，需要另外抽样法语
+  标题补一版关键词，本次未做。
+- **campaign 内容（约 39/243）本次有意不处理**，仍归 other，用户已确认留给以后
+  单独加一层。
+- **主库 `data/competitor_intel.db` 未受本次改动影响**：Weex 在主库里仍是 0 行
+  （「Weex 路径问题」历史遗留，本次未涉及），本次验证全程在
+  `data/verify_weex_latest_updates.db`（scratch db，已 gitignore）上进行；下次
+  用户要真正把这个 section 的数据并入主库，直接对主库重跑同样的采集命令即可，
+  不需要改任何代码。
+- **本次未跑 Phase 3 `classify --apply`/`region`**（只跑了 `--dry-run` 验证兜底层
+  行为），也未跑 Phase 4 分析——按用户确认的范围，留给以后单独触发。

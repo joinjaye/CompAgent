@@ -60,7 +60,7 @@ def test_all_top_level_keys_present(conn, db_path):
     _insert(conn, source="Bitunix", locale="EN", article_id="1", category="campaign")
     conn.commit()
     data = build_dashboard_data(str(db_path))
-    for key in ["meta", "overview", "trend", "campaign", "product", "listing", "markets", "search_index"]:
+    for key in ["meta", "overview", "trend", "campaign", "product", "listing", "announcements", "markets", "search_index"]:
         assert key in data, key
 
 
@@ -178,7 +178,7 @@ def test_overview_chip_diff_breakdown_counts_per_article_diff_type(conn, db_path
     assert chip["diff_breakdown"]["same"] == 1
 
 
-def test_overview_highlights_only_priority_high_sorted_by_diff_severity(conn, db_path):
+def test_overview_highlights_use_business_priority_not_llm_priority(conn, db_path):
     uid_missing = _insert(conn, source="Bitunix", locale="EN", article_id="1", category="campaign")
     uid_same = _insert(conn, source="Bitunix", locale="EN", article_id="2", category="product")
     uid_low_priority = _insert(conn, source="Bitunix", locale="EN", article_id="3", category="listing")
@@ -193,8 +193,78 @@ def test_overview_highlights_only_priority_high_sorted_by_diff_severity(conn, db
 
     data = build_dashboard_data(str(db_path))
     highlights = data["overview"]["highlights"]
-    # 只有 priority=高 的两条进入 highlights，低优先级那条被排除
-    assert len(highlights) == 2
-    # ZMX缺失 排在 ZMX已有 前面（diff_type 严重度排序）
-    assert highlights[0]["diff_tag"] == "missing"
-    assert highlights[1]["diff_tag"] == "same"
+    assert len(highlights) == 3
+    # 新活动=P1，新产品=P4，Listing=P6；不受 LLM 高/中/低影响。
+    assert [h["priority"] for h in highlights] == ["P1", "P4", "P6"]
+
+
+def test_stale_first_seen_campaign_is_not_promoted_as_p1(conn, db_path):
+    uid = _insert(
+        conn, source="Bitunix", locale="EN", article_id="old", category="campaign",
+        title="<p>Historical Campaign</p>",
+    )
+    conn.execute(
+        "UPDATE announcements SET post_time='2024-01-01T00:00:00Z' WHERE uid=?", (uid,)
+    )
+    conn.commit()
+    highlight = build_dashboard_data(str(db_path))["overview"]["highlights"][0]
+    assert highlight["priority"] == "P7"
+    assert highlight["title"] == "Historical Campaign"
+
+
+def test_first_seen_product_update_uses_p5_not_p4(conn, db_path):
+    _insert(
+        conn, source="Bitunix", locale="EN", article_id="update", category="product",
+        title="Bitunix to Adjust Risk Limits",
+    )
+    conn.commit()
+    highlight = build_dashboard_data(str(db_path))["overview"]["highlights"][0]
+    assert highlight["priority"] == "P5"
+
+
+def test_overview_summary_deduplicates_multilingual_group(conn, db_path):
+    _insert(
+        conn, source="Bitunix", locale="EN", article_id="en", category="campaign",
+        group_id="same-campaign",
+    )
+    _insert(
+        conn, source="Bitunix", locale="FR", article_id="fr", category="campaign",
+        group_id="same-campaign",
+    )
+    conn.commit()
+    chip = build_dashboard_data(str(db_path))["overview"]["chips"]["campaign"]
+    assert chip["today"] == 1
+    assert chip["count_new"] == 1
+
+
+def test_overview_summary_deduplicates_same_title_when_source_group_ids_differ(conn, db_path):
+    _insert(
+        conn, source="Phemex", locale="EN", article_id="en", category="campaign",
+        group_id="phemex-en", title="Same Campaign",
+    )
+    _insert(
+        conn, source="Phemex", locale="FR", article_id="fr", category="campaign",
+        group_id="phemex-fr", title="Same Campaign",
+    )
+    conn.commit()
+    data = build_dashboard_data(str(db_path))
+    assert data["overview"]["chips"]["campaign"]["today"] == 1
+    assert len(data["overview"]["highlights"]) == 1
+
+
+def test_trend_counts_only_new_and_deduplicates_group(conn, db_path):
+    _insert(
+        conn, source="Bitunix", locale="EN", article_id="en", category="campaign",
+        group_id="same-campaign", status_hint="new",
+    )
+    _insert(
+        conn, source="Bitunix", locale="FR", article_id="fr", category="campaign",
+        group_id="same-campaign", status_hint="new",
+    )
+    _insert(
+        conn, source="Weex", locale="EN", article_id="changed", category="campaign",
+        status_hint="changed",
+    )
+    conn.commit()
+    trend = build_dashboard_data(str(db_path))["trend"]
+    assert trend["series"]["campaign"] == [1]

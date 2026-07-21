@@ -63,7 +63,9 @@ def _resolve_all(raw: list[Any]) -> list[Any]:
 def _normalize(value: Any) -> Any:
     """解引用之后的收尾清洗：去掉 Reactive 包装、把 null-prototype 编码转成 dict。"""
     if isinstance(value, list):
-        if len(value) == 2 and value[0] in _REACTIVE_TAGS:
+        # 新版 BingX __NUXT_DATA__ 会把普通二维数组放进 reactive 对象中；
+        # 第一项此时本身可能是 list，不能直接拿去做 set membership。
+        if len(value) == 2 and isinstance(value[0], str) and value[0] in _REACTIVE_TAGS:
             return _normalize(value[1])
         if value and value[0] == "null" and len(value) % 2 == 1:
             pairs = value[1:]

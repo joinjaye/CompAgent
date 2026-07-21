@@ -12,11 +12,28 @@ Next.js RSC flight 流机制（`self.__next_f.push([1,"..."])`），不是常规
   （`id` 数值跨 locale 一致）。
 - 固定 8 条精选活动，`?page=2` 返回跟 `?page=1`（或不带参数）完全相同的 8 条——
   不是真分页，是一个固定的"最新最热"精选列表。
-- 每条活动的详情页（`routeUrl`）真实请求确认**没有 SSR 出任何正文**，只有 meta
-  description，正文靠后续未逆向的客户端请求获取——所以本文件只解析列表页字段，
-  没有对应的详情页解析函数。
 - 拼接后的 flight 流本身就是合法 JSON（不是 Phemex 那种宽松 JS 对象字面量），
   `"list":[...]` 数组可以直接按 key 定位、`json.loads` 解析。
+
+【2026-07-20 补充，详情正文】列表页/详情页（`routeUrl`）的 SSR HTML 都没有真实
+正文，用 Playwright 抓包活动详情页找到了真正承载正文的两个请求：
+- `POST https://www.lbank.com/lbk-api/huli-bazaar-center/atlasActivity/
+  loadingPage`，body `{"activityCode": "<code>"}`（`code` 就是列表接口给的
+  `code` 字段，"pointmall/" 这类 routeUrl 前缀不影响，真实测试过），header
+  `ex-language: <en-US|vi-VN|id>` 控制语言。**不需要签名**（跟 BingX 的
+  `qq-os.com` 网关不同，Playwright 里挂着的 `ex-signature`/`ex-device-id` 等
+  请求头是可选的，真实测试过纯 curl 不带这些头也返回 200 + 完整数据）。响应里
+  `data.ruleInfo` 是规则正文的落脚点：`content` 字段本身有时候是 null，这时候
+  真正的正文在 `contentId`（指向一个静态文本文件的 URL）。
+- `contentId` 的域名不稳定（真实观察到两种形式：`https://jiz.lbk.world/
+  content/{...}.stxt` 或 `/static-backend-doc/content/{...}.stxt`），
+  `jiz.lbk.world` 这个域名有 Cloudflare bot 挑战，纯 curl 请求会被拦
+  （`Attention Required! | Cloudflare`）；但同一份内容在
+  `www.lbank.com/static-backend-doc/content/{...}.stxt` 这个同源代理路径下
+  可以直接拿到（无挑战、无需登录），真实测试过对不同 activityCode/不同 locale
+  的多个样本都成立。`resolve_rule_content_url()` 统一从 `contentId` 里截取
+  `content/...` 往后的部分，重新拼到 `www.lbank.com/static-backend-doc/` 前缀
+  下，规避掉不稳定的域名。
 """
 
 from __future__ import annotations
@@ -95,3 +112,44 @@ def parse_event_list(html: str) -> list[dict[str, Any]]:
             }
         )
     return result
+
+
+def resolve_rule_content_url(content_id: Optional[str]) -> Optional[str]:
+    """`ruleInfo.contentId` -> 走 www.lbank.com 同源代理的静态文件 URL，规避
+    `jiz.lbk.world` 域名的 Cloudflare 挑战（见本文件顶部说明）。`content_id`
+    可能是完整 URL 也可能已经是 `/static-backend-doc/...` 相对路径，统一从
+    `content/` 出现的位置截取，找不到这个片段（响应结构变了）时返回 None。
+    """
+    if not content_id:
+        return None
+    idx = content_id.find("content/")
+    if idx == -1:
+        return None
+    return f"https://www.lbank.com/static-backend-doc/{content_id[idx:]}"
+
+
+def parse_activity_detail(payload: dict[str, Any]) -> Optional[dict[str, Any]]:
+    """`atlasActivity/loadingPage` 响应 -> `{title, sub_title, rule_content,
+    rule_content_url}`。`rule_content`：`ruleInfo.content` 字段本身有文本时直接
+    给出（省一次静态文件请求）；`rule_content_url`：`content` 为空时，从
+    `contentId` 解析出的可直接请求的 URL，调用方（collector）负责再发一次请求
+    拿到真实 HTML 正文。两者最多一个非 None。解析不到 `data` 字典（响应结构变了/
+    `code != 200`）时返回 None。
+    """
+    if not isinstance(payload, dict) or payload.get("code") != 200:
+        return None
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        return None
+
+    head_info = data.get("headInfo") or {}
+    title_info = head_info.get("titleInfo") or {}
+    rule_info = data.get("ruleInfo") or {}
+    rule_content = rule_info.get("content")
+
+    return {
+        "title": title_info.get("title"),
+        "sub_title": title_info.get("subTitle"),
+        "rule_content": rule_content if rule_content else None,
+        "rule_content_url": resolve_rule_content_url(rule_info.get("contentId")) if not rule_content else None,
+    }

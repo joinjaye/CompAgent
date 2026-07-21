@@ -201,6 +201,18 @@ sources:
     # 不能用其所在的「P2P Trading」category 聚合页（会混入另外 3 个纯 FAQ section，
     # 同 Phase 2.7 结论）。
     #
+    # 【2026-07-20 新增，见 CLAUDE.md「Weex 补充 section 采集」】用户指定核实
+    # www.weex.com/help/sections/18540289930137——真实请求确认这个 section
+    # （name="Latest updates"）隶属 category_id=18540264809497，也就是已经在采集
+    # 的 latest_announcements 聚合端点下面。但真实请求同时确认该 category 下至少
+    # 还有 "Futures events"/"Spot events"/"Rewards"/"TradFi" 等 5+ 个 section 混在
+    # 一起翻页，而 daily 增量固定只翻前 2 页（130 条/天，跨全部 section 的聚合
+    # 窗口）；这一个 section 自己就有 252 条（EN，4 页）/ 207 条（FR，4 页）——
+    # 单独一个 section 的体量已经接近聚合窗口的 2 倍，日常增量必然被严重稀释，
+    # 跟当年把 p2p_announcement 从 "P2P Trading" 拆成专属 section 端点是同一类
+    # 问题。改为额外加一个专属 section 端点（跟聚合端点并集写入同一个 source，
+    # article_id 天然同一空间，upsert_announcement 自动去重，不会产生重复行）。
+    #
     # robots.txt（www.weex.com/robots.txt）明确 Disallow 了两篇文章
     # （/help/articles/f8gmpz85kfw6teot9f9xpa09、/help/articles/gqv1v2r402ocvucwvllzz0mj），
     # collector 遇到这两个 article_id 会跳过不抓（见 weex.py DISALLOWED_ARTICLE_IDS）；
@@ -217,6 +229,8 @@ sources:
           endpoint: "https://www.weex.com/en/help/categories/44507081559193"
         p2p_announcement:
           endpoint: "https://www.weex.com/en/help/sections/49365180202777"
+        latest_updates:
+          endpoint: "https://www.weex.com/en/help/sections/18540289930137"
       method: GET
       headers: {}   # 匿名可访问，无需鉴权头；仅用普通浏览器 User-Agent 测试过
       pagination: {type: query_page, page_size: 65, max_pages: 2}   # daily 增量默认只
@@ -259,6 +273,8 @@ sources:
           endpoint: "https://www.weex.com/fr/help/categories/44507081559193"
         p2p_announcement:
           endpoint: "https://www.weex.com/fr/help/sections/49365180202777"
+        latest_updates:
+          endpoint: "https://www.weex.com/fr/help/sections/18540289930137"
       method: GET
       headers: {}
       pagination: {type: query_page, page_size: 65, max_pages: 2}
@@ -711,10 +727,15 @@ sources:
       # 活动落地页（www.lbank.com/new-popular-events）上很多活动内容根本不在
       # 公告流里出现过。跟已删除的旧版 lbank_web.py 一样走 Next.js RSC flight 流
       # （不是 latestList 这套 JSON API），固定 8 条精选列表，?page=2 返回内容
-      # 与不带参数完全相同，非真分页。详情页没有 SSR 出任何正文，只能用列表页的
-      # title+subtitle，解析细节见 src/parsers/lbank_events.py 顶部注释。
+      # 与不带参数完全相同，非真分页。
+      # 【2026-07-20 补充详情正文】列表页/routeUrl 详情页都没有 SSR 出正文，用
+      # Playwright 抓包活动详情页找到真正的正文来源：POST detail_endpoint（body
+      # {"activityCode": code}，ex-language 头控制语言，不需要签名）拿到
+      # ruleInfo.content 或需要再请求一次的 ruleInfo.contentId，解析细节见
+      # src/parsers/lbank_events.py 顶部注释。
       campaign_endpoint:
         endpoint: "https://www.lbank.com/new-popular-events"
+        detail_endpoint: "https://www.lbank.com/lbk-api/huli-bazaar-center/atlasActivity/loadingPage"
         pagination: {type: none, note: "固定精选列表，?page=2 返回内容与不带参数完全相同，非真分页"}
         rate_limit_ms: 500
         strategy: full_scan
@@ -754,6 +775,7 @@ sources:
         category: category_code   # 2026-07-15 由 columnId 改为 category_code，见 EN 块注释
       campaign_endpoint:
         endpoint: "https://www.lbank.com/vi-VN/new-popular-events"
+        detail_endpoint: "https://www.lbank.com/lbk-api/huli-bazaar-center/atlasActivity/loadingPage"
         pagination: {type: none, note: "同 EN，固定精选列表，真实核对过越南语译文"}
         rate_limit_ms: 500
         strategy: full_scan
@@ -793,6 +815,7 @@ sources:
         category: category_code   # 2026-07-15 由 columnId 改为 category_code，见 EN 块注释
       campaign_endpoint:
         endpoint: "https://www.lbank.com/id/new-popular-events"
+        detail_endpoint: "https://www.lbank.com/lbk-api/huli-bazaar-center/atlasActivity/loadingPage"
         pagination: {type: none, note: "同 EN，固定精选列表，真实核对过印尼语译文"}
         rate_limit_ms: 500
         strategy: full_scan
