@@ -15,11 +15,20 @@ import pytest
 from src.analysis.daily_digest import compute_digest_cache_key
 from src.analysis.llm import set_cached_response
 from src.analysis.run import upsert_insight
-from src.dashboard.export_data import _derive_follow_up, build_daily_digest, build_dashboard_data
+from src.dashboard.export_data import (
+    _derive_follow_up,
+    _format_zmx_reward,
+    build_daily_digest,
+    build_dashboard_data,
+)
 from src.db.connection import get_connection
 from src.db.operations import upsert_announcement
 
 BATCH_DATE = "2026-07-15"
+
+
+def test_format_zmx_reward_accepts_numeric_amount():
+    assert _format_zmx_reward(100, "USDT", "coupon") == "100 USDT（coupon）"
 
 
 @pytest.fixture()

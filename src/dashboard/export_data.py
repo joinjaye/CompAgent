@@ -258,11 +258,12 @@ def _resolve_generated_at(conn: sqlite3.Connection) -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
-def _format_zmx_reward(amount: Optional[str], token: Optional[str], form: Optional[str]) -> Optional[str]:
-    joined = " ".join(p for p in (amount, token) if p) or None
-    if joined and form:
-        return f"{joined}（{form}）"
-    return joined or form
+def _format_zmx_reward(amount: object, token: object, form: object) -> Optional[str]:
+    joined = " ".join(str(p) for p in (amount, token) if p is not None and p != "") or None
+    form_text = str(form) if form is not None and form != "" else None
+    if joined and form_text:
+        return f"{joined}（{form_text}）"
+    return joined or form_text
 
 
 def _load_article_index(conn: sqlite3.Connection) -> dict[str, dict]:
