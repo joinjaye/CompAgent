@@ -283,7 +283,7 @@ def test_send_image_via_bot_failure_raises(monkeypatch):
 # ============================================================
 
 
-def test_build_daily_card_contains_three_summaries_and_four_links():
+def test_build_daily_card_contains_two_summaries_image_then_four_links():
     digest = SimpleNamespace(
         daily_summary="综合总结两句话。整体变化清晰。",
         campaign_summary="活动总结两句话。奖励保持稳定。",
@@ -300,7 +300,8 @@ def test_build_daily_card_contains_three_summaries_and_four_links():
         "2026-07-22", digest, env, "http://127.0.0.1:8765", overview_image_key="img_overview",
     )
     payload = json.dumps(card, ensure_ascii=False)
-    assert "综合总结两句话" in payload
+    assert "综合总结两句话" not in payload
+    assert "综合变化" not in payload
     assert "活动总结两句话" in payload
     assert "产品总结两句话" in payload
     assert "base_campaign?table=tbl_campaign" in payload
@@ -310,7 +311,15 @@ def test_build_daily_card_contains_three_summaries_and_four_links():
     assert "img_overview" in payload
     image_index = next(i for i, element in enumerate(card["elements"]) if element.get("tag") == "img")
     action_indexes = [i for i, element in enumerate(card["elements"]) if element.get("tag") == "action"]
-    assert image_index > max(action_indexes)
+    assert image_index < min(action_indexes)
+    summary_columns = [element for element in card["elements"] if element.get("tag") == "column_set"]
+    assert len(summary_columns) == 2
+    assert len(action_indexes) == 1
+    footer_action = card["elements"][action_indexes[0]]
+    assert footer_action["layout"] == "flow"
+    assert [button["text"]["content"] for button in footer_action["actions"]] == [
+        "Campaign", "Product", "Listing", "Dashboard",
+    ]
     assert card["header"]["template"] == "blue"
 
 

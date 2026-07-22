@@ -1,7 +1,8 @@
-"""飞书群日报：由应用机器人发送一张“文本在上、Overview 图片在下”的交互卡片。
+"""飞书群日报：由应用机器人发送一张“Campaign/Product 摘要、Overview 图片、
+业务入口”顺序的交互卡片。
 
-业务日报只发送到 EN 群。卡片正文来自当天已缓存的 Overview、Campaign、Product
-三份 LLM Summary，并提供三张多维表和公开看板入口。截图前由
+业务日报只发送到 EN 群。卡片正文只推送当天已缓存的 Campaign、Product 两份 LLM
+Summary（Overview 综合变化不在文本区重复展示），并提供三张多维表和公开看板入口。截图前由
 `capture_overview()` 显式点击顶部“最新批次”，再由应用上传取得 `image_key` 并嵌入
 同一张卡片。
 
@@ -321,8 +322,8 @@ def build_daily_card(
     *,
     overview_image_key: Optional[str] = None,
 ) -> dict:
-    """构建移动端优先的飞书交互卡片。只读取已经生成并缓存的三份 Summary，
-    推送阶段不重新调用 LLM。"""
+    """构建移动端优先的飞书交互卡片。只读取已经生成并缓存的 Campaign、Product
+    Summary，推送阶段不重新调用 LLM。按钮统一置于 Overview 图片之后。"""
     base_url = env.get("FEISHU_BITABLE_BASE_URL", "https://zoomex.larksuite.com/base")
     links = {
         "Campaign 表": env.get("FEISHU_CAMPAIGN_TABLE_URL") or _table_url(
@@ -337,46 +338,51 @@ def build_daily_card(
         "打开可视化看板": env.get("DASHBOARD_PUBLIC_URL") or dashboard_url,
     }
     summaries = [
-        ("综合变化", getattr(digest, "daily_summary", None)),
-        ("Campaign Insight", getattr(digest, "campaign_summary", None)),
-        ("Product Insight", getattr(digest, "product_summary", None)),
+        ("CAMPAIGN", "活动策略观察", "blue", getattr(digest, "campaign_summary", None)),
+        ("PRODUCT", "产品能力观察", "green", getattr(digest, "product_summary", None)),
     ]
     elements: list[dict] = [
         {
             "tag": "div",
             "text": {
                 "tag": "lark_md",
-                "content": f"**最新批次 · {batch_date}**  |  时间基准：UTC\n以下结论来自本批次已完成的 LLM 汇总分析。",
+                "content": f"**最新批次 · {batch_date}**  |  UTC\n以下为本批次 Campaign 与 Product 的 AI 汇总观察。",
             },
         }
     ]
-    for title, summary in summaries:
+    for kicker, title, color, summary in summaries:
         elements.extend([
-            {"tag": "hr"},
             {
-                "tag": "div",
-                "text": {
-                    "tag": "lark_md",
-                    "content": f"**{title}**\n{summary or 'No Significant Changes Today'}",
-                },
+                "tag": "column_set",
+                "flex_mode": "none",
+                "background_style": "grey",
+                "columns": [{
+                    "tag": "column",
+                    "width": "weighted",
+                    "weight": 1,
+                    "elements": [{
+                        "tag": "div",
+                        "text": {
+                            "tag": "lark_md",
+                            "content": (
+                                f"<font color='{color}'>**{kicker}**</font>  |  **{title}**\n"
+                                f"{summary or 'No Significant Changes Today'}"
+                            ),
+                        },
+                    }],
+                }],
             },
         ])
-    table_buttons = [
-        {"tag": "button", "text": {"tag": "plain_text", "content": label}, "url": url, "type": "default"}
-        for label, url in list(links.items())[:3] if url
+    footer_buttons = [
+        {"tag": "button", "text": {"tag": "plain_text", "content": label}, "url": url, "type": button_type}
+        for label, url, button_type in (
+            ("Campaign", links["Campaign 表"], "default"),
+            ("Product", links["Product 表"], "default"),
+            ("Listing", links["Listing & Delisting 表"], "default"),
+            ("Dashboard", links["打开可视化看板"], "primary"),
+        )
+        if url
     ]
-    if table_buttons:
-        elements.extend([{"tag": "hr"}, {"tag": "action", "actions": table_buttons}])
-    if links["打开可视化看板"]:
-        elements.append({
-            "tag": "action",
-            "actions": [{
-                "tag": "button",
-                "text": {"tag": "plain_text", "content": "打开可视化看板"},
-                "url": links["打开可视化看板"],
-                "type": "primary",
-            }],
-        })
     if overview_image_key:
         elements.extend([
             {"tag": "hr"},
@@ -390,8 +396,11 @@ def build_daily_card(
         ])
     elements.append({
         "tag": "note",
-        "elements": [{"tag": "plain_text", "content": "下方 Overview 截图同样锁定“最新批次”；详情与原文请通过表格或看板查看。"}],
+        "elements": [{"tag": "plain_text", "content": "Overview 截图锁定“最新批次”；详情与原文请通过下方入口查看。"}],
     })
+    if footer_buttons:
+        elements.append({"tag": "hr"})
+        elements.append({"tag": "action", "layout": "flow", "actions": footer_buttons})
     return {
         "config": {"wide_screen_mode": True, "enable_forward": True},
         "header": {
@@ -473,7 +482,7 @@ def push_dashboard_screenshots(
                     report.skipped += 1
                 msg = (
                     f"{locale}: [dry-run] 会上传 {screenshots.get(locale, '截图未生成')}，"
-                    f"并由应用机器人向 {chat_name or '未配置群'} 发送一张包含三份 Summary、四个入口和 Overview 图片的卡片"
+                    f"并由应用机器人向 {chat_name or '未配置群'} 发送一张包含 Campaign/Product Summary、Overview 图片和四个入口的卡片"
                 )
                 logger.info(msg)
                 report.details.append(msg)
@@ -537,7 +546,7 @@ def push_dashboard_screenshots(
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="由应用机器人把三份 LLM Summary 与 Overview 截图合并推送到 EN 飞书群")
+    parser = argparse.ArgumentParser(description="由应用机器人把 Campaign/Product Summary 与 Overview 截图合并推送到 EN 飞书群")
     parser.add_argument("--dashboard-url", required=True, help="docs/index.html 的可访问 URL（本地 http.server 或线上 GitHub Pages）")
     parser.add_argument("--db-path", default=str(DEFAULT_DB_PATH))
     parser.add_argument("--batch-date", default=None, help="默认 UTC 今天，用于 sync_log 的 record_id")
