@@ -116,6 +116,27 @@ def test_build_collectors_without_category_filter_returns_all_categories():
     assert len(collectors) == 2
 
 
+def test_build_collectors_source_filter_is_case_insensitive():
+    sources = {
+        "weex": {
+            "EN": {
+                **SHARED_CFG,
+                "categories": {
+                    "latest_announcements": {
+                        "endpoint": "https://weexsupport.zendesk.com/articles.json"
+                    },
+                },
+            }
+        }
+    }
+
+    collectors = _build_collectors(
+        sources, source_filter="Weex", locale_filter="EN", category_filter=None,
+    )
+
+    assert len(collectors) == 1
+
+
 # ---------------------------------------------------------- campaign_endpoint ----
 
 def test_bitunix_builder_without_campaign_endpoint_unchanged():
