@@ -28,18 +28,7 @@ jobs:
       DASHBOARD_OUT: docs/data/dashboard.json
       SCREENSHOT_DIR: data/daily_screenshots
       LLM_PROVIDER: cursor_agent
-      CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
-      CURSOR_MODEL: ${{ vars.CURSOR_MODEL }}
-      FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
-      FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
-      FEISHU_CAMPAIGN_APP_TOKEN: ${{ secrets.FEISHU_CAMPAIGN_APP_TOKEN }}
-      FEISHU_CAMPAIGN_TABLE_ID: ${{ secrets.FEISHU_CAMPAIGN_TABLE_ID }}
-      FEISHU_PRODUCT_APP_TOKEN: ${{ secrets.FEISHU_PRODUCT_APP_TOKEN }}
-      FEISHU_PRODUCT_TABLE_ID: ${{ secrets.FEISHU_PRODUCT_TABLE_ID }}
-      FEISHU_LISTING_APP_TOKEN: ${{ secrets.FEISHU_LISTING_APP_TOKEN }}
-      FEISHU_LISTING_TABLE_ID: ${{ secrets.FEISHU_LISTING_TABLE_ID }}
-      FEISHU_BITABLE_BASE_URL: https://zoomex.larksuite.com/base
-      DASHBOARD_PUBLIC_URL: https://joinjaye.github.io/CompAgent/
+      ENV_FILE: ${{ secrets.ENV_FILE }}
 
     steps:
       - name: Check out repository
@@ -75,26 +64,44 @@ jobs:
             competitor-db-
 
       - name: Initialize database when cache is empty
-        run: .venv/bin/python -m src.db init --db-path "$DB_PATH"
-
-      - name: Prepare runtime configuration
-        run: cp config/.env.example .env
-
-      - name: Validate required secrets
         shell: bash
         run: |
-          required=(
-            CURSOR_API_KEY FEISHU_APP_ID FEISHU_APP_SECRET
-            FEISHU_CAMPAIGN_APP_TOKEN FEISHU_CAMPAIGN_TABLE_ID
-            FEISHU_PRODUCT_APP_TOKEN FEISHU_PRODUCT_TABLE_ID
-            FEISHU_LISTING_APP_TOKEN FEISHU_LISTING_TABLE_ID
-          )
-          for name in "${required[@]}"; do
-            if [[ -z "${!name:-}" ]]; then
-              echo "Missing required GitHub Actions secret: $name" >&2
-              exit 1
+          if [[ ! -s "$DB_PATH" ]]; then
+            seed="data/backups/competitor_intel_pre_2026-07-21.db"
+            if [[ -s "$seed" ]]; then
+              cp "$seed" "$DB_PATH"
+              echo "Initialized database from tracked historical baseline."
             fi
-          done
+          fi
+          .venv/bin/python -m src.db init --db-path "$DB_PATH"
+
+      - name: Prepare runtime configuration
+        shell: bash
+        run: |
+          if [[ -z "$ENV_FILE" ]]; then
+            echo "Missing required GitHub Actions secret: ENV_FILE" >&2
+            exit 1
+          fi
+          printf '%s\n' "$ENV_FILE" > .env
+          chmod 600 .env
+
+      - name: Validate required secrets
+        run: |
+          .venv/bin/python - <<'PY'
+          from src.sinks.feishu_bot import load_env
+
+          required = (
+              "CURSOR_API_KEY", "FEISHU_APP_ID", "FEISHU_APP_SECRET",
+              "FEISHU_CAMPAIGN_APP_TOKEN", "FEISHU_CAMPAIGN_TABLE_ID",
+              "FEISHU_PRODUCT_APP_TOKEN", "FEISHU_PRODUCT_TABLE_ID",
+              "FEISHU_LISTING_APP_TOKEN", "FEISHU_LISTING_TABLE_ID",
+          )
+          env = load_env()
+          missing = [name for name in required if not env.get(name)]
+          if missing:
+              raise SystemExit("ENV_FILE is missing required names: " + ", ".join(missing))
+          print("ENV_FILE contains all required configuration names.")
+          PY
 
       - name: Run complete daily pipeline
         run: scripts/run_daily.sh
