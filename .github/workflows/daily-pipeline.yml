@@ -73,6 +73,9 @@ jobs:
               echo "Initialized database from tracked historical baseline."
             fi
           fi
+          # The tracked baseline predates schema v4. Migrate before init_db creates
+          # v4 indexes, otherwise SQLite cannot index the missing duplicate_of column.
+          .venv/bin/python scripts/migrate_v4.py "$DB_PATH"
           .venv/bin/python -m src.db init --db-path "$DB_PATH"
 
       - name: Prepare runtime configuration
