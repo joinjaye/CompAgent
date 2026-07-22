@@ -17,12 +17,14 @@ from __future__ import annotations
 import argparse
 import logging
 import sys
+import time
 from pathlib import Path
 from typing import Any, Callable, Optional
 
 import yaml
 
 from src.collectors.base import BaseCollector, RunStats
+from src.collectors.http import rate_limit_seconds
 from src.collectors.bingx import BingXCollector
 from src.collectors.bingx_events import BingXEventsCollector
 from src.collectors.bitunix import BitunixCollector
@@ -250,6 +252,9 @@ def main() -> None:
                 "完成 %s：new=%d changed=%d unchanged=%d failed=%d skipped_by_date=%d",
                 label, stats.new, stats.changed, stats.unchanged, stats.failed, stats.skipped_by_date,
             )
+            # 多分类源会连续创建多个 collector；在分类之间同样遵守源配置的请求间隔，
+            # 避免 LBank 等接口在翻页间隔之外仍因分类切换过快触发 429。
+            time.sleep(rate_limit_seconds(collector.config))
 
     print(
         f"{'source':<10} {'locale':<8} {'new':<6} {'changed':<8} {'unchanged':<10} "
