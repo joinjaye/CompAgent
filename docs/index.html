@@ -119,6 +119,10 @@ a { color: inherit; }
 .stat-delta { font-size: 11px; color: var(--text-muted); margin-top: 5px; }
 .chip-diffs { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 8px; }
 .chip-diffs .tag { font-size: 10px; padding: 2px 7px; }
+.overview-summary-grid .stat-card {
+  display:flex; flex-direction:column; justify-content:center; text-align:left;
+}
+.overview-summary-grid .stat-card-link { text-align:left; }
 .date-control { display:flex; align-items:center; gap:8px; color:var(--text-muted); font-size:12px; }
 .date-input { color:var(--text-primary); background:var(--surface-1); border:1px solid var(--border); border-radius:6px; padding:5px 8px; }
 .insight-card { margin:0 1.5rem; padding:1rem 1.1rem; background:linear-gradient(135deg, rgba(91,157,238,.12), var(--surface-1)); border:1px solid rgba(91,157,238,.28); border-radius:var(--radius); color:var(--text-secondary); font-size:13px; line-height:1.7; }
@@ -329,10 +333,18 @@ a { color: inherit; }
 .search-input::placeholder { color: var(--text-muted); }
 .search-summary { padding: 0 1.5rem; font-size: 12px; color: var(--text-muted); }
 .search-summary strong { color: var(--text-primary); }
-.pagination { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 12px 1rem; font-size: 12px; color: var(--text-secondary); }
-.page-btn { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary); border-radius: var(--radius-sm); padding: 5px 12px; font-size: 12px; transition: all 0.12s var(--ease); }
+.pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 12px 1.5rem; font-size: 12px; color: var(--text-secondary); }
+.page-btn { min-height: 36px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary); border-radius: var(--radius-sm); padding: 7px 14px; font-size: 12px; transition: all 0.12s var(--ease); }
 .page-btn:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text-primary); }
 .page-btn:disabled { opacity: 0.35; cursor: default; }
+.search-query-row { padding-top: 2px; }
+.search-query-row .search-input { width: min(100%, 520px); flex: 0 1 520px; }
+.table-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 1.5rem; margin-top:4px; }
+.table-toolbar .search-summary { padding:0; }
+@media (max-width:640px) {
+  .table-toolbar { padding:0 1rem; align-items:flex-start; flex-direction:column; }
+  .pagination { padding-left:1rem; padding-right:1rem; }
+}
 
 .loading, .load-error { padding: 4rem 1.25rem; text-align: center; color: var(--text-muted); font-size: 13px; }
 
@@ -458,6 +470,75 @@ a { color:#7eacff; }
   .global-controls .date-input { width:100%; min-width:0; }
 }
 
+/* ---------- business guide sidebar ---------- */
+.guide-trigger { display:inline-flex; align-items:center; gap:7px; min-height:36px; padding:0 12px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:var(--text-secondary); font-size:12px; font-weight:650; white-space:nowrap; }
+.guide-trigger:hover { color:var(--text-primary); border-color:var(--border-strong); }
+.guide-trigger svg { width:15px; height:15px; fill:none; stroke:currentColor; stroke-width:1.8; }
+.guide-backdrop { position:fixed; inset:0; z-index:80; background:rgba(2,8,18,.66); opacity:0; visibility:hidden; transition:opacity .2s var(--ease),visibility .2s var(--ease); }
+.guide-sidebar { position:fixed; z-index:90; top:0; right:0; width:min(440px,92vw); height:100dvh; display:flex; flex-direction:column; background:#0b1727; border-left:1px solid var(--border-strong); box-shadow:-24px 0 64px rgba(0,0,0,.36); transform:translateX(100%); transition:transform .22s var(--ease); }
+.guide-open .guide-backdrop { opacity:1; visibility:visible; }
+.guide-open .guide-sidebar { transform:translateX(0); }
+body.guide-open { overflow:hidden; }
+.guide-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:22px 22px 16px; border-bottom:1px solid var(--border); }
+.guide-kicker { color:var(--hue-campaign); font-size:10px; font-weight:750; letter-spacing:.1em; text-transform:uppercase; }
+.guide-title { margin-top:5px; font-size:19px; line-height:1.3; }
+.guide-subtitle { margin-top:5px; color:var(--text-muted); font-size:11.5px; line-height:1.55; }
+.guide-close { flex:0 0 38px; width:38px; height:38px; border:1px solid var(--border); border-radius:9px; background:var(--surface-2); color:var(--text-secondary); font-size:21px; line-height:1; }
+.guide-close:hover { color:var(--text-primary); border-color:var(--border-strong); }
+.guide-content { overflow:auto; padding:18px 22px 32px; }
+.guide-section+.guide-section { margin-top:24px; }
+.guide-section-title { margin-bottom:11px; color:var(--text-primary); font-size:12px; font-weight:750; letter-spacing:.035em; }
+.guide-flow { position:relative; display:grid; gap:0; }
+.guide-flow:before { content:""; position:absolute; top:14px; bottom:14px; left:13px; width:1px; background:linear-gradient(var(--hue-campaign),var(--hue-product)); }
+.guide-step { position:relative; display:grid; grid-template-columns:28px 1fr; gap:10px; min-height:46px; }
+.guide-step-num { z-index:1; width:27px; height:27px; display:grid; place-items:center; border:1px solid #315278; border-radius:50%; background:#10243b; color:#9dc1ff; font:700 10px var(--font-mono); }
+.guide-step strong { display:block; padding-top:3px; font-size:12px; }
+.guide-step span { display:block; margin-top:2px; color:var(--text-muted); font-size:11px; line-height:1.45; }
+.guide-rule-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.guide-rule { padding:11px; border:1px solid var(--border); border-radius:9px; background:var(--surface-1); }
+.guide-rule strong { display:block; color:#cbd9eb; font-size:11px; }
+.guide-rule span { display:block; margin-top:4px; color:var(--text-muted); font-size:10.5px; line-height:1.5; }
+.guide-source-map { padding:11px; border:1px solid var(--border); border-radius:10px; background:var(--surface-1); }
+.guide-source-inputs { display:grid; grid-template-columns:1fr 22px 1fr; gap:6px; align-items:center; }
+.guide-source-node { min-height:48px; display:flex; flex-direction:column; justify-content:center; padding:8px 9px; border:1px solid #315278; border-radius:8px; background:#10243b; }
+.guide-source-node strong { color:#cbd9eb; font-size:10.5px; }
+.guide-source-node span { margin-top:2px; color:var(--text-muted); font-size:9.5px; line-height:1.4; }
+.guide-source-plus { color:var(--hue-campaign); font:700 16px var(--font-mono); text-align:center; }
+.guide-source-merge { position:relative; margin:9px 0; color:#9dc1ff; font-size:9.5px; text-align:center; }
+.guide-source-merge:before,.guide-source-merge:after { content:""; display:inline-block; width:24px; height:1px; margin:0 7px 3px; background:#315278; }
+.guide-source-result { padding:9px; border:1px solid rgba(79,140,255,.35); border-radius:8px; background:rgba(79,140,255,.09); color:#b9d0fb; font-size:10.5px; text-align:center; }
+.guide-source-result strong { color:#dce9ff; }
+.guide-route-label { margin:11px 0 7px; color:var(--text-muted); font-size:9.5px; }
+.guide-route-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+.guide-route { padding:8px; border:1px solid var(--border); border-radius:7px; background:#0d1b2d; }
+.guide-route strong { display:block; color:var(--text-secondary); font-size:9.5px; line-height:1.35; }
+.guide-route span { display:block; margin-top:3px; color:var(--text-muted); font-size:9px; line-height:1.35; }
+.guide-diff-list { display:grid; gap:7px; }
+.guide-diff { display:grid; grid-template-columns:8px 124px 1fr; gap:9px; align-items:start; padding:9px 10px; border:1px solid var(--border); border-radius:9px; background:var(--surface-1); }
+.guide-diff i { width:8px; height:8px; margin-top:4px; border-radius:50%; background:var(--diff-color); box-shadow:0 0 0 3px color-mix(in srgb,var(--diff-color) 16%,transparent); }
+.guide-diff strong { color:var(--text-secondary); font-size:10.5px; line-height:1.45; }
+.guide-diff span { color:var(--text-muted); font-size:10.5px; line-height:1.45; }
+.priority-lanes { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.priority-lane { padding:11px; border:1px solid var(--border); border-radius:9px; background:var(--surface-1); }
+.priority-lane-title { color:var(--text-secondary); font-size:10.5px; font-weight:700; }
+.priority-lane-sub { margin:3px 0 9px; color:var(--text-muted); font-size:9.5px; }
+.priority-track { display:flex; gap:3px; height:9px; }
+.priority-track i { flex:1; border-radius:3px; background:var(--track-color); opacity:calc(1 - var(--fade,0)); }
+.priority-key { display:flex; justify-content:space-between; margin-top:6px; color:var(--text-muted); font:9px var(--font-mono); }
+.guide-warning { padding:12px 13px; border:1px solid rgba(243,173,61,.3); border-radius:9px; background:rgba(243,173,61,.07); color:#c5b691; font-size:11px; line-height:1.65; }
+.guide-warning strong { color:#f6cb6b; }
+.guide-priority-action { display:grid; grid-template-columns:72px 1fr; gap:10px; align-items:start; }
+.guide-priority-action+.guide-priority-action { margin-top:10px; padding-top:10px; border-top:1px solid rgba(243,173,61,.18); }
+.guide-priority-action b { color:#f6cb6b; font-size:10.5px; }
+.guide-priority-action span { color:#c5b691; }
+.guide-checks { margin:8px 0 0; padding-left:17px; color:var(--text-muted); font-size:10.5px; line-height:1.65; }
+@media(max-width:640px){
+  .guide-trigger { flex:1; justify-content:center; }
+  .guide-sidebar { width:100vw; }
+  .guide-head { padding:18px 16px 14px; }
+  .guide-content { padding:16px 16px 28px; }
+}
+
 /* ---------- Detail drill-down (Campaign/Product row expand) ---------- */
 .row-expand-toggle {
   background:none; border:none; padding:0; color:inherit; font:inherit; text-align:left;
@@ -477,6 +558,51 @@ tr.detail-row td { background:var(--surface-2); padding:14px 16px; }
 <div id="app">
   <div class="loading" id="loadingMsg">加载看板数据…</div>
 </div>
+<div class="guide-backdrop" id="guideBackdrop" hidden></div>
+<aside class="guide-sidebar" id="businessGuide" aria-hidden="true" aria-labelledby="guideTitle">
+  <div class="guide-head">
+    <div><div class="guide-kicker">Dashboard Guide</div><h2 class="guide-title" id="guideTitle">看板口径与使用指南</h2><p class="guide-subtitle">快速理解数字、标签和结论，以及何时需要回到原公告复核。</p></div>
+    <button class="guide-close" id="guideClose" type="button" aria-label="关闭使用指南">×</button>
+  </div>
+  <div class="guide-content">
+    <section class="guide-section"><h3 class="guide-section-title">每天建议这样看</h3><div class="guide-flow">
+      <div class="guide-step"><b class="guide-step-num">01</b><div><strong>恢复“最新批次”</strong><span>先清除自定义日期，确认查看最近一次成功采集。</span></div></div>
+      <div class="guide-step"><b class="guide-step-num">02</b><div><strong>Overview 判断变化重心</strong><span>先看 AI Insight、四类数量和 Highlights。</span></div></div>
+      <div class="guide-step"><b class="guide-step-num">03</b><div><strong>深入 Campaign / Product</strong><span>优先检查“未检索到同类”、机制不同及高优先级。</span></div></div>
+      <div class="guide-step"><b class="guide-step-num">04</b><div><strong>展开证据</strong><span>核对竞品原文、ZMX 对照案例与差异理由。</span></div></div>
+      <div class="guide-step"><b class="guide-step-num">05</b><div><strong>按任务补充查看</strong><span>Listing 看事实分布；Markets 看区域；Search 查历史。</span></div></div>
+    </div></section>
+    <section class="guide-section"><h3 class="guide-section-title">数据来源与分类</h3>
+      <div class="guide-source-map">
+        <div class="guide-source-inputs"><div class="guide-source-node"><strong>专门活动入口</strong><span>竞品活动中心、奖励页等</span></div><div class="guide-source-plus">＋</div><div class="guide-source-node"><strong>Announcement</strong><span>竞品公告中心公开内容</span></div></div>
+        <div class="guide-source-merge">识别活动 · 合并去重</div>
+        <div class="guide-source-result"><strong>Campaign</strong> = 两个入口中的活动并集</div>
+        <div class="guide-route-label">Announcement 其余内容继续按类别识别：</div>
+        <div class="guide-route-grid"><div class="guide-route"><strong>Product</strong><span>识别为产品能力或规则变化</span></div><div class="guide-route"><strong>Listing & Delisting</strong><span>识别为上币或下架事实</span></div><div class="guide-route"><strong>Announcement（其他）</strong><span>排除以上类别后的其余公告</span></div></div>
+      </div>
+      <div class="guide-rule-grid" style="margin-top:8px">
+        <div class="guide-rule"><strong>采集发现 ≠ 当天发布</strong><span>New 表示系统首次发现，需同时查看公告发布日期。</span></div>
+        <div class="guide-rule"><strong>跨语言按事件去重</strong><span>主表合并为一行，各语言原文链接仍保留在详情中。</span></div>
+        <div class="guide-rule"><strong>ZMX 是对比基线</strong><span>不计入五家竞品统计，只用于 Campaign / Product 比较。</span></div>
+        <div class="guide-rule"><strong>Listing 只整理事实</strong><span>不做 ZMX 对比、AI 总结或高/中/低优先级。</span></div>
+      </div>
+    </section>
+    <section class="guide-section"><h3 class="guide-section-title">ZMX 差异标签</h3><div class="guide-diff-list">
+      <div class="guide-diff" style="--diff-color:var(--status-critical)"><i></i><strong>未检索到同类</strong><span>未在 ZMX 基线内容中形成匹配。</span></div>
+      <div class="guide-diff" style="--diff-color:var(--status-warning)"><i></i><strong>已有同类 · 机制不同</strong><span>已有可比案例，但奖励、门槛或规则有实质差异。</span></div>
+      <div class="guide-diff" style="--diff-color:var(--status-good)"><i></i><strong>已有同类型 · 粗粒度</strong><span>只确认大类做过，实际内容可能存在差异。</span></div>
+      <div class="guide-diff" style="--diff-color:var(--text-muted)"><i></i><strong>未进行对比</strong><span>对应类型不进行比较分析。</span></div>
+    </div></section>
+    <section class="guide-section"><h3 class="guide-section-title">两套优先级</h3><div class="priority-lanes">
+      <div class="priority-lane"><div class="priority-lane-title">高 / 中 / 低</div><div class="priority-lane-sub">建议关注程度</div><div class="priority-track" style="--track-color:var(--status-critical)"><i></i><i style="--fade:.28"></i><i style="--fade:.58"></i></div><div class="priority-key"><span>高</span><span>中</span><span>低</span></div></div>
+      <div class="priority-lane"><div class="priority-lane-title">P1 → P7</div><div class="priority-lane-sub">排序顺序</div><div class="priority-track" style="--track-color:var(--hue-campaign)"><i></i><i style="--fade:.1"></i><i style="--fade:.2"></i><i style="--fade:.3"></i><i style="--fade:.4"></i><i style="--fade:.5"></i><i style="--fade:.6"></i></div><div class="priority-key"><span>P1</span><span>P7</span></div></div>
+    </div></section>
+    <section class="guide-section"><div class="guide-warning">
+      <div class="guide-priority-action"><b>高 / 中 / 低</b><span><strong>由固定评分公式加总，不由模型直接定档。</strong><br>事件类型（最高 30）＋ ZMX 差异（最高 30）＋业务影响（最高 20）＋原文与抽取置信度（−10～10）＋新颖度（最高 6）＋紧迫度（最高 6）。总分 ≥70 为高，40～69 为中，＜40 为低。</span></div>
+      <div class="guide-priority-action"><b>P1 → P7</b><span><strong>由内容类别和变化类型直接归档。</strong><br>P1 新活动；P2 活动规则变化；P3 奖励变化及其他活动更新；P4 新产品；P5 产品更新；P6 上币或下架；P7 其他公告及发布早于批次 30 天以上的历史补录。同级按发布时间倒序，Highlights 每个平台最多 2 条，最终取前 5 条。</span></div>
+    </div><ul class="guide-checks"><li>趋势统计的是系统发现量，不等于官方当天发文量。</li><li>地区独占首先是公告覆盖事实，不等于功能权限独占。</li><li>最终决策仍需复核原文及业务约束。</li></ul></section>
+  </div>
+</aside>
 
 <script>
 const DATA_URL = './data/dashboard.json';
@@ -501,18 +627,30 @@ const PRIORITY_ORDER = { '高': 0, '中': 1, '低': 2 };
 const DIFF_SORT_ORDER = { missing: 0, diff: 1, broad: 2, na: 3 };
 const LISTING_TOKEN_CATEGORIES = ['AI', 'Meme', 'Layer2', 'DeFi', 'GameFi', 'RWA', 'DePIN', 'Other'];
 const EXCHANGE_CHART_COLORS = { Bitunix:'#4f8cff', Weex:'#2dd4a7', BingX:'#a78bfa', Phemex:'#fb8b5a', Lbank:'#f3ad3d' };
-const SEARCH_PAGE_SIZE = 50;
+const TABLE_PAGE_SIZE = 20;
 
 let DATA = null;
 let state = {
   tab: 'overview', trendDays: 7, trendSeries: {campaign:true, product:true, listing:true}, globalSource: 'all', globalMarket: 'all',
   dateFrom: '', dateTo: '',
 };
-let campaignState = { source: 'all', limit: 10, type: 'all', status: 'all', reward: 'all', market: 'all', diffType: 'all', keyword: '', expanded: new Set() };
-let productState = { source: 'all', limit: 10, category: 'all', status: 'all', market: 'all', diffType: 'all', keyword: '', expanded: new Set() };
-let listingState = { source: 'all', type: 'all', status: 'all', category: 'all', locale: 'all', keyword: '', expanded: new Set() };
+let campaignState = { source: 'all', page: 1, updatesPage: 1, type: 'all', status: 'all', reward: 'all', market: 'all', diffType: 'all', keyword: '', expanded: new Set() };
+let productState = { source: 'all', page: 1, category: 'all', status: 'all', market: 'all', diffType: 'all', keyword: '', expanded: new Set() };
+let listingState = { source: 'all', type: 'all', status: 'all', category: 'all', locale: 'all', keyword: '', page: 1, expanded: new Set() };
 let marketsState = { market: 'EN', category: 'all', expanded: new Set() };
-let searchState = { locale: 'all', source: 'all', category: 'all', diffType: 'all', range: 'all', query: '', page: 1 };
+let searchState = {
+  locales: new Set(), sources: new Set(), categories: new Set(), diffTypes: new Set(), ranges: new Set(),
+  query: '', page: 1,
+};
+
+function paginationMarkup(id, page, totalRows) {
+  const totalPages = Math.max(1, Math.ceil(totalRows / TABLE_PAGE_SIZE));
+  return `<div class="pagination" id="${id}" aria-label="分页导航">
+    <span>共 ${totalRows} 条 · 第 ${page} / ${totalPages} 页</span>
+    <button class="page-btn" type="button" data-page-action="prev" ${page <= 1 ? 'disabled' : ''} aria-label="上一页">← 上一页</button>
+    <button class="page-btn" type="button" data-page-action="next" ${page >= totalPages ? 'disabled' : ''} aria-label="下一页">下一页 →</button>
+  </div>`;
+}
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -610,23 +748,6 @@ function variantLinks(row) {
   const variants = row.localized_variants || [{ locale: row.locale, title: row.title, url: row.url }];
   return `<div class="variant-links">${variants.map(v => v.url ? `<a class="variant-link" href="${esc(v.url)}" target="_blank" rel="noopener noreferrer">${esc(v.locale)} source ↗</a>` : '').join('')}</div>`;
 }
-// Phase③起 Zoomex 对照来自 zmx_catalog_entry（目录 exists_flag）+ zmx_summary
-// （zmx_counterpart 具体示例），campaign/product 共用同一套字段——不再是旧版
-// 只有 product 才有的、基于全量历史词项重叠的 comparison_status
-// in (candidate_found, baseline_unmatched)/zmx_candidates 机制（已retired，见
-// export_data.py build_category_section 顶部注释）。
-function zmxComparisonBox(row) {
-  if (row.comparison_status !== 'analyzed') {
-    return `<div class="comparison-box"><strong>尚未分析</strong><small>该条尚未被任何一次竞品分析运行覆盖，不是"确认无差异"。</small></div>`;
-  }
-  const label = esc(DIFF_LABEL[row.diff_tag] || row.diff_type || '不适用');
-  const detail = esc(row.diff_detail || (row.diff_tag === 'missing' ? '' : row.zmx_capability_desc) || '');
-  const counterpart = row.zmx_counterpart;
-  const evidenceUrl = counterpart?.url || (row.diff_tag === 'broad' ? row.zmx_capability_url : null);
-  const cls = row.diff_tag === 'broad' ? 'matched' : row.diff_tag === 'missing' ? 'unmatched' : '';
-  return `<div class="comparison-box ${cls}"><strong>${label}</strong>${detail ? `<small>${detail}</small>` : ''}${evidenceUrl ? `<div class="variant-links"><a class="variant-link" href="${esc(evidenceUrl)}" target="_blank" rel="noopener noreferrer">Open Zoomex evidence ↗</a></div>` : ''}</div>`;
-}
-
 async function loadData() {
   try {
     const res = await fetch(DATA_URL, { cache: 'no-store' });
@@ -729,6 +850,7 @@ function render() {
           <button class="filter-btn ${!state.dateFrom && !state.dateTo ? 'active' : ''}" id="latestSnapshot" type="button" aria-label="恢复最新采集批次">最新批次</button>
           <select class="global-select" id="globalSource" aria-label="全局平台筛选"><option value="all">All exchanges</option>${SOURCES.map(s => `<option value="${s}" ${state.globalSource === s ? 'selected' : ''}>${s}</option>`).join('')}</select>
           <select class="global-select" id="globalMarket" aria-label="全局市场筛选"><option value="all">All markets</option>${Object.keys(LOCALE_LABEL).map(l => `<option value="${l}" ${state.globalMarket === l ? 'selected' : ''}>${l}</option>`).join('')}</select>
+          <button class="guide-trigger" id="guideOpen" type="button" aria-controls="businessGuide" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4.75h11.5A2.5 2.5 0 0 1 19 7.25v12H7.5A2.5 2.5 0 0 1 5 16.75v-12Z"/><path d="M7.5 19.25A2.5 2.5 0 0 1 5 16.75a2.5 2.5 0 0 1 2.5-2.5H19M9 8h6"/></svg>使用指南</button>
         </div>
       </div>
     </div>
@@ -762,8 +884,34 @@ function render() {
     state.dateFrom = ''; state.dateTo = '';
     render();
   });
+  wireBusinessGuide();
   document.querySelector(`[data-tab="${state.tab}"]`)?.classList.add('active');
   renderActivePane();
+}
+
+function wireBusinessGuide() {
+  const openButton=document.getElementById('guideOpen');
+  const closeButton=document.getElementById('guideClose');
+  const sidebar=document.getElementById('businessGuide');
+  const backdrop=document.getElementById('guideBackdrop');
+  const open=()=>{
+    backdrop.hidden=false;
+    requestAnimationFrame(()=>document.body.classList.add('guide-open'));
+    sidebar.setAttribute('aria-hidden','false');
+    openButton.setAttribute('aria-expanded','true');
+    closeButton.focus();
+  };
+  const close=()=>{
+    document.body.classList.remove('guide-open');
+    sidebar.setAttribute('aria-hidden','true');
+    openButton.setAttribute('aria-expanded','false');
+    setTimeout(()=>{if(!document.body.classList.contains('guide-open'))backdrop.hidden=true;},220);
+    openButton.focus();
+  };
+  openButton.onclick=open;
+  closeButton.onclick=close;
+  backdrop.onclick=close;
+  document.onkeydown=e=>{if(e.key==='Escape'&&document.body.classList.contains('guide-open'))close();};
 }
 
 function switchTab(tab) {
@@ -1021,8 +1169,11 @@ function renderOverviewPane() {
   const ov = overviewForFilters();
 
   return `
+    <div class="section-label">Insight · 当前范围竞品整体变化</div>
+    ${todaysInsightMarkup(ov)}
+
     <div class="section-label">最新一批概览 · ${esc(ov.batch_date)} <span class="freshness">● Updated ${esc(formatDate(DATA.meta.generated_at))}</span></div>
-    <div class="overview-grid">
+    <div class="overview-grid overview-summary-grid">
       ${chipCard('campaign', '活动 Campaign', ov.chips.campaign)}
       ${chipCard('product', '产品 Product', ov.chips.product)}
       ${chipCard('listing', 'Listing & Delisting', ov.chips.listing)}
@@ -1044,25 +1195,13 @@ function renderOverviewPane() {
       </table>
     </div>
 
-    <div class="section-label">Daily Summary · 多语言按 group 去重</div>
-    <div class="table-wrap"><table class="data-table summary-table">
-      <thead><tr><th>Module</th><th>Today</th><th>New</th><th>Updated</th></tr></thead>
-      <tbody>${[
-        ['Campaign', ov.chips.campaign], ['Product', ov.chips.product],
-        ['Listing', ov.chips.listing], ['Announcement', ov.chips.announcement]
-      ].map(([name, c]) => `<tr><td>${name}</td><td><strong>${c.today}</strong></td><td>${c.count_new}</td><td>${c.count_changed}</td></tr>`).join('')}</tbody>
-    </table></div>
+    <div class="section-label">去重公告结构 · 按平台与分类</div>
+    ${platformStackMarkup()}
 
     <div class="section-label">7 / 30 Days Trend · 统计新增 + 内容变更，排除重复抓取</div>
     <div class="trend-card">
       <div id="trendChart">${trendMarkup(state.trendDays)}</div>
     </div>
-
-    <div class="section-label">Insight · 当前范围竞品整体变化</div>
-    ${todaysInsightMarkup(ov)}
-
-    <div class="section-label">去重公告结构 · 按平台与分类</div>
-    ${platformStackMarkup()}
   `;
 }
 
@@ -1218,18 +1357,21 @@ function renderCampaignUpdates(rows) {
   const updates = rows.filter(r => campaignUpdateType(r));
   if (!updates.length) return `
     <div class="section-label">Campaign Update</div>
-    <div class="empty-panel">当前筛选范围内没有已识别的规则、奖励、时间、语言、币种或状态变化。</div>`;
+    <div class="empty-panel">当前筛选范围内没有已识别的存量活动变化。</div>`;
+  const totalPages=Math.max(1,Math.ceil(updates.length/TABLE_PAGE_SIZE));
+  campaignState.updatesPage=Math.min(campaignState.updatesPage,totalPages);
+  const visible=ruleSort(updates, 'campaign').slice((campaignState.updatesPage-1)*TABLE_PAGE_SIZE,campaignState.updatesPage*TABLE_PAGE_SIZE);
   return `
     <div class="section-label">Campaign Update · 已识别变化 ${updates.length}</div>
     <div class="table-wrap"><table class="data-table compact-table">
       <thead><tr><th>Change</th><th>Exchange</th><th>Campaign</th><th>Markets</th><th>Publish Date</th><th>Source</th></tr></thead>
-      <tbody>${ruleSort(updates, 'campaign').map(r => `<tr>
+      <tbody>${visible.map(r => `<tr>
         <td><span class="tag tag-diff">${esc(campaignUpdateType(r))}</span></td>
         <td><span class="source-pill">${esc(r.source)}</span></td>
         <td class="td-title">${esc(r.title)}</td><td>${marketChips(r)}</td>
         <td>${formatDate(r.post_time)}</td><td>${sourceLink(r)}</td>
       </tr>`).join('')}</tbody>
-    </table></div>`;
+    </table></div>${paginationMarkup('campaignUpdatesPagination',campaignState.updatesPage,updates.length)}`;
 }
 
 function categoryInsightFiltersActive(category) {
@@ -1299,13 +1441,13 @@ function renderCategoryPane(category) {
     ? ['New', 'Updated', 'Ongoing', 'Upcoming', 'Ended', 'Date unknown']
     : [...new Set(rows.map(r => r.update_kind).filter(Boolean))].sort();
   return `
+    <div id="${category}Insight">${categoryInsightMarkup(category, rows)}</div>
     <div class="overview-grid" style="margin-top:1rem">
       <div class="stat-card"><div class="stat-label">New ${esc(label)}</div><div class="stat-value accent">${newCount}</div></div>
       <div class="stat-card"><div class="stat-label">Updated ${esc(label)}</div><div class="stat-value warn">${updatedCount}</div></div>
       <div class="stat-card"><div class="stat-label">${category === 'product' ? 'Affected Exchange' : 'Ongoing Campaign'}</div><div class="stat-value">${category === 'product' ? new Set(rows.map(r => r.source)).size : ongoingCount}</div></div>
       <div class="stat-card"><div class="stat-label">${category === 'product' ? 'Affected Category' : 'Ending Soon · ≤3 days'}</div><div class="stat-value warn">${category === 'product' ? new Set(rows.map(r => r.product_category || 'Others')).size : endingSoonCount}</div></div>
     </div>
-    ${category === 'product' ? `<div class="section-label">Product coverage · 本期变化涉及的能力</div><div class="product-coverage">${Object.entries(rows.reduce((acc,r) => (acc[r.product_category || 'Others']=(acc[r.product_category || 'Others']||0)+1,acc),{})).map(([name,n]) => `<span class="coverage-chip">${esc(name)}<strong>${n}</strong></span>`).join('')}</div>` : ''}
     <div class="filter-bar">
       <div class="section-label" style="padding:0">${esc(label)} · ${category === 'campaign' ? `全部活动 ${rows.length} 条；最新批次变化 ${latestRows.length} 条` : `最新一批（${esc(DATA.overview.batch_date)}）共 ${rows.length} 条`}</div>
       <div class="filter-group" id="${category}SourceFilter">
@@ -1332,7 +1474,6 @@ function renderCategoryPane(category) {
         <input type="text" class="search-input" id="${category}KeywordFilter" placeholder="搜索标题…" style="max-width:220px">
       </div>
     </div>
-    <div id="${category}Insight">${categoryInsightMarkup(category, rows)}</div>
     ${category === 'campaign' ? renderCampaignUpdates(rows) : ''}
     <div class="section-label">${category === 'campaign' ? 'Campaign List' : 'New Product / Product Update'}</div>
     <div class="table-wrap"><table class="data-table">
@@ -1341,6 +1482,7 @@ function renderCategoryPane(category) {
         : '<tr><th>Exchange</th><th>Product / Update</th><th>Category</th><th>Change Type</th><th>Markets</th><th>AI Summary</th><th>Zoomex Comparison</th><th>Sources</th></tr>'}
       </thead><tbody id="${category}Body"></tbody>
     </table></div>
+    <div id="${category}Pagination"></div>
   `;
 }
 
@@ -1367,9 +1509,11 @@ function renderCategoryBody(category) {
   }
   const sorted = ruleSort(filtered, category);
   document.getElementById(`${category}Insight`).innerHTML=categoryInsightMarkup(category, sorted);
-  const visible = sorted.slice(0, st.limit);
+  const totalPages=Math.max(1,Math.ceil(sorted.length/TABLE_PAGE_SIZE));
+  st.page=Math.min(st.page,totalPages);
+  const start=(st.page-1)*TABLE_PAGE_SIZE;
+  const visible = sorted.slice(start, start+TABLE_PAGE_SIZE);
   const body = document.getElementById(`${category}Body`);
-  document.getElementById(`${category}LoadMore`)?.remove();
   let previousProductSection = null;
   body.innerHTML = sorted.length
     ? visible.map(r => {
@@ -1393,15 +1537,19 @@ function renderCategoryBody(category) {
         <td class="td-title"><button class="row-expand-toggle" data-expand="${esc(r.uid)}">${expanded ? '▾' : '▸'} ${esc(r.title)}</button><br><span class="status-chip ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span></td>
         <td><span class="tag tag-product">${esc(r.product_category || 'Others')}</span></td><td>${esc(r.update_kind || '—')}</td>
         <td>${marketChips(r)}</td><td><div class="cell-copy">${esc(r.feature || r.description || '待分析')}</div></td>
-        <td>${zmxComparisonBox(r)}</td><td>${variantLinks(r)}</td>
+        <td><span class="tag tag-${r.diff_tag || 'na'}">${esc(DIFF_LABEL[r.diff_tag] || '未进行对比')}</span></td><td>${variantLinks(r)}</td>
       </tr>`;
         return divider + summaryRow + (expanded ? renderDetailPanelRow(r, category) : '');
       }).join('')
     : `<tr><td colspan="${category === 'campaign' ? 9 : 8}" class="table-empty">无匹配数据</td></tr>`;
-  if (sorted.length > visible.length) {
-    body.insertAdjacentHTML('afterend', `<tbody id="${category}LoadMore"><tr><td colspan="${category === 'campaign' ? 9 : 8}" class="table-footer"><div class="table-footer-inner"><span>当前展示 ${visible.length} / ${sorted.length}</span><button class="filter-btn" data-load-more="${category}">Load More</button></div></td></tr></tbody>`);
-    document.querySelector(`[data-load-more="${category}"]`).addEventListener('click', () => { st.limit += 10; renderCategoryBody(category); });
-  }
+  const pager=document.getElementById(`${category}Pagination`);
+  pager.outerHTML=paginationMarkup(`${category}Pagination`,st.page,sorted.length);
+  document.getElementById(`${category}Pagination`).addEventListener('click',e=>{
+    const action=e.target.closest('[data-page-action]')?.dataset.pageAction;
+    if(!action)return;
+    st.page+=action==='next'?1:-1;
+    renderCategoryBody(category);
+  });
   body.querySelectorAll('[data-expand]').forEach(btn => btn.addEventListener('click', () => {
     const uid = btn.dataset.expand;
     if (st.expanded.has(uid)) st.expanded.delete(uid); else st.expanded.add(uid);
@@ -1411,7 +1559,7 @@ function renderCategoryBody(category) {
 
 function wireCategoryPane(category) {
   const st = categoryStateFor(category);
-  st.source = 'all'; st.limit = 10; st.type = 'all'; st.status = 'all'; st.diffType = 'all'; st.keyword = ''; st.market = 'all';
+  st.source = 'all'; st.page = 1; st.type = 'all'; st.status = 'all'; st.diffType = 'all'; st.keyword = ''; st.market = 'all';
   if (category === 'campaign') st.reward = 'all';
   document.getElementById(`${category}SourceFilter`).addEventListener('click', e => {
     const t = e.target.closest('[data-src]');
@@ -1419,19 +1567,25 @@ function wireCategoryPane(category) {
     document.querySelectorAll(`#${category}SourceFilter .filter-btn`).forEach(x => x.classList.remove('active'));
     t.classList.add('active');
     st.source = t.dataset.src;
-    st.limit = 10;
+    st.page = 1;
     renderCategoryBody(category);
   });
-  document.getElementById(`${category}TypeFilter`).addEventListener('change', e => { st.type = e.target.value; st.limit = 10; renderCategoryBody(category); });
-  document.getElementById(`${category}StatusFilter`).addEventListener('change', e => { st.status = e.target.value; st.limit = 10; renderCategoryBody(category); });
-  document.getElementById(`${category}DiffFilter`).addEventListener('change', e => { st.diffType = e.target.value; st.limit = 10; renderCategoryBody(category); });
-  document.getElementById(`${category}MarketFilter`).addEventListener('change', e => { st.market = e.target.value; st.limit = 10; renderCategoryBody(category); });
-  if (category === 'campaign') document.getElementById('campaignRewardFilter').addEventListener('change', e => { st.reward = e.target.value; st.limit = 10; renderCategoryBody(category); });
+  document.getElementById(`${category}TypeFilter`).addEventListener('change', e => { st.type = e.target.value; st.page = 1; renderCategoryBody(category); });
+  document.getElementById(`${category}StatusFilter`).addEventListener('change', e => { st.status = e.target.value; st.page = 1; renderCategoryBody(category); });
+  document.getElementById(`${category}DiffFilter`).addEventListener('change', e => { st.diffType = e.target.value; st.page = 1; renderCategoryBody(category); });
+  document.getElementById(`${category}MarketFilter`).addEventListener('change', e => { st.market = e.target.value; st.page = 1; renderCategoryBody(category); });
+  if (category === 'campaign') document.getElementById('campaignRewardFilter').addEventListener('change', e => { st.reward = e.target.value; st.page = 1; renderCategoryBody(category); });
   const kw = document.getElementById(`${category}KeywordFilter`);
   let debounce;
   kw.addEventListener('input', () => {
     clearTimeout(debounce);
-    debounce = setTimeout(() => { st.keyword = kw.value; st.limit = 10; renderCategoryBody(category); }, 200);
+    debounce = setTimeout(() => { st.keyword = kw.value; st.page = 1; renderCategoryBody(category); }, 200);
+  });
+  if(category==='campaign') document.getElementById('campaignUpdatesPagination')?.addEventListener('click',e=>{
+    const action=e.target.closest('[data-page-action]')?.dataset.pageAction;
+    if(!action)return;
+    campaignState.updatesPage+=action==='next'?1:-1;
+    renderActivePane();
   });
   renderCategoryBody(category);
 }
@@ -1546,13 +1700,24 @@ function renderListingPane() {
       <input class="search-input" id="listingKeyword" type="search" placeholder="Token / trading pair / keyword">
     </div>
     <div class="search-summary" id="listingSummary"></div>
-    <div class="table-wrap"><table class="data-table"><thead><tr><th>Exchange</th><th>Token</th><th>Listing Type</th><th>Status</th><th>Category</th><th>Markets</th><th>Launch Date</th><th>View Detail</th></tr></thead><tbody id="listingBody"></tbody></table></div>`;
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Exchange</th><th>Token</th><th>Listing Type</th><th>Status</th><th>Category</th><th>Markets</th><th>Launch Date</th><th>View Detail</th></tr></thead><tbody id="listingBody"></tbody></table></div>
+    <div id="listingPagination"></div>`;
 }
 
 function renderListingBody() {
   const rows=listingFilteredRows();
+  const totalPages=Math.max(1,Math.ceil(rows.length/TABLE_PAGE_SIZE));
+  listingState.page=Math.min(listingState.page,totalPages);
+  const pageRows=rows.slice((listingState.page-1)*TABLE_PAGE_SIZE,listingState.page*TABLE_PAGE_SIZE);
   document.getElementById('listingSummary').textContent=`共 ${rows.length} 条 Listing & Delisting 记录`;
-  document.getElementById('listingBody').innerHTML=rows.length?rows.map(listingDetailRow).join(''):`<tr><td colspan="8" class="table-empty">无匹配数据</td></tr>`;
+  document.getElementById('listingBody').innerHTML=pageRows.length?pageRows.map(listingDetailRow).join(''):`<tr><td colspan="8" class="table-empty">无匹配数据</td></tr>`;
+  document.getElementById('listingPagination').outerHTML=paginationMarkup('listingPagination',listingState.page,rows.length);
+  document.getElementById('listingPagination').addEventListener('click',e=>{
+    const action=e.target.closest('[data-page-action]')?.dataset.pageAction;
+    if(!action)return;
+    listingState.page+=action==='next'?1:-1;
+    renderListingBody();
+  });
   document.querySelectorAll('[data-listing-expand]').forEach(btn=>btn.addEventListener('click',()=>{
     const uid=btn.dataset.listingExpand;
     listingState.expanded.has(uid)?listingState.expanded.delete(uid):listingState.expanded.add(uid);
@@ -1562,8 +1727,8 @@ function renderListingBody() {
 
 function wireListingPane() {
   const bindings=[['listingSource','source'],['listingType','type'],['listingStatus','status'],['listingCategory','category'],['listingLocale','locale']];
-  bindings.forEach(([id,key])=>document.getElementById(id).addEventListener('change',e=>{listingState[key]=e.target.value;renderListingBody();}));
-  document.getElementById('listingKeyword').addEventListener('input',e=>{listingState.keyword=e.target.value;renderListingBody();});
+  bindings.forEach(([id,key])=>document.getElementById(id).addEventListener('change',e=>{listingState[key]=e.target.value;listingState.page=1;renderListingBody();}));
+  document.getElementById('listingKeyword').addEventListener('input',e=>{listingState.keyword=e.target.value;listingState.page=1;renderListingBody();});
   wireDistributionCharts();
   renderListingBody();
 }
@@ -1669,7 +1834,7 @@ function renderMarketsPane() {
     <div class="market-summary-grid">
       ${marketSection('campaign', 'Campaign', campaignRows)}
       ${marketSection('product', 'Product', productRows)}
-      ${marketSection('listing', 'Listing（含下架）', listingRows)}
+      ${marketSection('listing', 'Listing & Delisting', listingRows)}
     </div>
 
     <div class="section-label">跨地区公告对比 · group 粒度（当前全局筛选结果）</div>
@@ -1728,16 +1893,16 @@ function daysBetween(a, b) { return Math.round((new Date(b) - new Date(a)) / 864
 function searchFilteredRows() {
   const rows = globalFiltered(DATA.search_index.rows);
   const anchor = DATA.meta.batch_date;
-  const rangeDays = { '30d': 30, '90d': 90, '365d': 365 }[searchState.range];
+  const selectedRangeDays=[...searchState.ranges].map(range=>({ '30d':30, '90d':90, '365d':365 })[range]).filter(Boolean);
   const q = searchState.query.trim().toLowerCase();
   return rows.filter(r => {
     if (!dateMatches(r, r.category)) return false;
-    if (searchState.locale !== 'all' && !rowMarkets(r).includes(searchState.locale)) return false;
-    if (searchState.source !== 'all' && r.source !== searchState.source) return false;
-    if (searchState.category !== 'all' && r.category !== searchState.category) return false;
-    if (searchState.diffType !== 'all' && (r.diff_tag || 'na') !== searchState.diffType) return false;
+    if (searchState.locales.size && !rowMarkets(r).some(locale=>searchState.locales.has(locale))) return false;
+    if (searchState.sources.size && !searchState.sources.has(r.source)) return false;
+    if (searchState.categories.size && !searchState.categories.has(r.category)) return false;
+    if (searchState.diffTypes.size && !searchState.diffTypes.has(r.diff_tag || 'na')) return false;
     const date = r.post_time ? r.post_time.slice(0, 10) : null;
-    if (rangeDays && (!date || daysBetween(date, anchor) > rangeDays)) return false;
+    if (selectedRangeDays.length && (!date || !selectedRangeDays.some(days=>daysBetween(date, anchor)<=days))) return false;
     if (q && !r.title.toLowerCase().includes(q)) return false;
     return true;
   });
@@ -1773,11 +1938,16 @@ function renderSearchPane() {
         <span class="search-filter-label">差异</span>
         <button class="filter-btn active" data-f="diffType" data-v="all">全部</button>
         ${DIFF_FILTER_TAGS.map(k => `<button class="filter-btn" data-f="diffType" data-v="${k}">${esc(DIFF_LABEL[k])}</button>`).join('')}
+      </div>
+      <div class="search-filter-row search-query-row">
+        <span class="search-filter-label">标题</span>
         <input type="text" class="search-input" id="searchQuery" placeholder="搜索标题…">
       </div>
     </div>
-    <div class="search-summary" id="searchSummary"></div>
-    <div style="padding:0 1.5rem"><button class="filter-btn" id="downloadCsv">下载当前结果 CSV</button></div>
+    <div class="table-toolbar">
+      <div class="search-summary" id="searchSummary"></div>
+      <button class="filter-btn" id="downloadCsv">下载当前结果</button>
+    </div>
     <div class="table-wrap" style="margin-top:8px">
       <table class="data-table">
         <thead><tr><th style="width:90px">来源</th><th style="width:64px">地区</th><th>标题</th><th style="width:110px">分类</th><th class="td-time" style="width:88px">日期</th><th style="width:110px">差异</th><th style="width:70px">优先级</th><th style="width:76px">状态</th></tr></thead>
@@ -1790,10 +1960,10 @@ function renderSearchPane() {
 
 function renderSearchTable() {
   const filtered = searchFilteredRows();
-  const totalPages = Math.max(1, Math.ceil(filtered.length / SEARCH_PAGE_SIZE));
+  const totalPages = Math.max(1, Math.ceil(filtered.length / TABLE_PAGE_SIZE));
   searchState.page = Math.min(searchState.page, totalPages);
-  const start = (searchState.page - 1) * SEARCH_PAGE_SIZE;
-  const pageRows = filtered.slice(start, start + SEARCH_PAGE_SIZE);
+  const start = (searchState.page - 1) * TABLE_PAGE_SIZE;
+  const pageRows = filtered.slice(start, start + TABLE_PAGE_SIZE);
 
   document.getElementById('searchSummary').innerHTML =
     `共 <strong>${filtered.length}</strong> 条匹配结果（全量共 ${DATA.search_index.total} 条）`;
@@ -1814,29 +1984,38 @@ function renderSearchTable() {
   `;
   }).join('') : `<tr><td colspan="8" class="table-empty">无匹配数据，试试放宽筛选条件</td></tr>`;
 
-  document.getElementById('searchPagination').innerHTML = `
-    <button class="page-btn" id="pagePrev" ${searchState.page <= 1 ? 'disabled' : ''}>← 上一页</button>
-    <span>第 ${searchState.page} / ${totalPages} 页</span>
-    <button class="page-btn" id="pageNext" ${searchState.page >= totalPages ? 'disabled' : ''}>下一页 →</button>
-  `;
-  const prev = document.getElementById('pagePrev'), next = document.getElementById('pageNext');
-  if (prev) prev.addEventListener('click', () => { searchState.page--; renderSearchTable(); });
-  if (next) next.addEventListener('click', () => { searchState.page++; renderSearchTable(); });
+  document.getElementById('searchPagination').outerHTML=paginationMarkup('searchPagination',searchState.page,filtered.length);
+  document.getElementById('searchPagination').addEventListener('click',e=>{
+    const action=e.target.closest('[data-page-action]')?.dataset.pageAction;
+    if(!action)return;
+    searchState.page+=action==='next'?1:-1;
+    renderSearchTable();
+  });
 }
 
 function wireSearchPane() {
+  const searchSetForField={locale:'locales',range:'ranges',source:'sources',category:'categories',diffType:'diffTypes'};
   document.querySelectorAll('[data-f]').forEach(btn => {
     const field = btn.dataset.f, val = btn.dataset.v;
-    btn.classList.toggle('active', searchState[field] === val);
+    const selected=searchState[searchSetForField[field]];
+    const active=val==='all'?selected.size===0:selected.has(val);
+    btn.classList.toggle('active',active);
+    btn.setAttribute('aria-pressed',String(active));
   });
   document.querySelectorAll('.search-filter-row').forEach(row => {
     row.addEventListener('click', e => {
       const t = e.target.closest('[data-f]');
       if (!t) return;
       const field = t.dataset.f;
-      row.querySelectorAll(`[data-f="${field}"]`).forEach(b => b.classList.remove('active'));
-      t.classList.add('active');
-      searchState[field] = t.dataset.v;
+      const selected=searchState[searchSetForField[field]];
+      if(t.dataset.v==='all') selected.clear();
+      else if(selected.has(t.dataset.v)) selected.delete(t.dataset.v);
+      else selected.add(t.dataset.v);
+      row.querySelectorAll(`[data-f="${field}"]`).forEach(button=>{
+        const active=button.dataset.v==='all'?selected.size===0:selected.has(button.dataset.v);
+        button.classList.toggle('active',active);
+        button.setAttribute('aria-pressed',String(active));
+      });
       searchState.page = 1;
       renderSearchTable();
     });
