@@ -227,7 +227,7 @@ def _request(
         headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json; charset=utf-8"}
         try:
             resp = fetch_json(url, method=method, headers=headers, body=body)
-        except HttpError as e:
+        except (HttpError, OSError) as e:
             last_error = str(e)
             force_refresh = False
             if attempt < max_retries - 1:
@@ -532,6 +532,7 @@ def _sync_table(
     target: str,
     creds: FeishuCredentials,
     dry_run: bool,
+    log_actions: bool = True,
 ) -> SyncReport:
     report = SyncReport()
     if not rows:
@@ -557,13 +558,15 @@ def _sync_table(
             continue
         if _record_needs_update(existing["fields"], desired, field_specs):
             ok, err = _update_record(app_token, table_id, existing["record_id"], desired, creds)
-            _log_sync(conn, target, key, "update", "success" if ok else "failed", err)
+            if log_actions:
+                _log_sync(conn, target, key, "update", "success" if ok else "failed", err)
             if ok:
                 report.updated += 1
             else:
                 report.failed += 1
         else:
-            _log_sync(conn, target, key, "skip", "success")
+            if log_actions:
+                _log_sync(conn, target, key, "skip", "success")
             report.skipped += 1
 
     for batch in _chunks(to_create, BATCH_CREATE_SIZE):
@@ -572,11 +575,13 @@ def _sync_table(
         try:
             _batch_create(app_token, table_id, fields_list, creds)
             for key in keys:
-                _log_sync(conn, target, key, "create", "success")
+                if log_actions:
+                    _log_sync(conn, target, key, "create", "success")
             report.created += len(keys)
         except FeishuApiError as e:
             for key in keys:
-                _log_sync(conn, target, key, "create", "failed", str(e))
+                if log_actions:
+                    _log_sync(conn, target, key, "create", "failed", str(e))
             report.failed += len(keys)
 
     return report

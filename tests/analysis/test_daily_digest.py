@@ -87,7 +87,12 @@ def test_cache_hit_returns_parsed_summary_without_calling_llm(conn, monkeypatch)
     cache_key = compute_digest_cache_key(batches)
     set_cached_response(
         conn, cache_key,
-        json.dumps({"daily_summary": "今日综述内容", "priority_focus": "关注 Bitunix 活动"}),
+        json.dumps({
+            "daily_summary": "活动侧以交易竞赛为主。产品侧出现一项功能更新。",
+            "campaign_summary": "活动类型以交易竞赛为主。奖励信息保持稳定。",
+            "product_summary": "核心能力集中在交易功能。整体以新增能力为主。",
+            "priority_focus": None,
+        }),
     )
     conn.commit()
 
@@ -99,8 +104,10 @@ def test_cache_hit_returns_parsed_summary_without_calling_llm(conn, monkeypatch)
     result = generate_daily_digest(conn, "EN", BATCH_DATE, dry_run=False)
     assert result.generated is True
     assert result.from_cache is True
-    assert result.daily_summary == "今日综述内容"
-    assert result.priority_focus == "关注 Bitunix 活动"
+    assert result.daily_summary == "活动侧以交易竞赛为主。产品侧出现一项功能更新。"
+    assert result.campaign_summary == "活动类型以交易竞赛为主。奖励信息保持稳定。"
+    assert result.product_summary == "核心能力集中在交易功能。整体以新增能力为主。"
+    assert result.priority_focus is None
     assert result.tokens_used == 0
 
 
@@ -115,6 +122,18 @@ def test_cache_hit_with_invalid_json_returns_not_generated(conn):
     assert result.generated is False
     assert result.from_cache is True
     assert any("json_parse_failed" in i for i in result.issues)
+
+
+def test_cache_hit_rejects_summary_outside_two_to_four_sentences(conn):
+    _insert_insight(conn, id_="b1", source="Bitunix", category="campaign", locale="EN", summary="s1")
+    batches = load_locale_batches(conn, "EN", BATCH_DATE)
+    cache_key = compute_digest_cache_key(batches)
+    set_cached_response(conn, cache_key, json.dumps({"daily_summary": "只有一句。"}))
+    conn.commit()
+
+    result = generate_daily_digest(conn, "EN", BATCH_DATE, dry_run=False)
+    assert result.generated is False
+    assert "daily_summary_sentence_count:1" in result.issues
 
 
 def test_missing_credentials_raises_when_not_dry_run_and_cache_miss(conn):

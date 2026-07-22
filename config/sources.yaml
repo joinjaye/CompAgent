@@ -926,6 +926,13 @@ sources:
         update_time: article.gmtUpdatedAt   # unix 毫秒，抽样确认可靠
         category: null   # 固定值，取决于抓取时用的哪个 categories.* menu_id，无需逐条解析
       lang_code: "en-US"
+      # url_locale: 详情页 URL 的 locale path segment，跟上面 API 用的 lang_code 不是
+      # 一回事（EN 这里是 "en" 不是 "en-US"）。2026-07-22 用 Playwright 实测验证
+      # （help.zoomex.com/{url_locale}/article/{id} 会客户端重定向到
+      # www.zoomex.com/{url_locale}/help/article/{id}，渲染出的标题跟 DB 里对应
+      # locale 的 title 逐字匹配）：EN/FR/EN-Asia/VN/ID 五个 locale 全部验证过，
+      # 不是猜测。合法 locale 前缀列表来自 https://www.zoomex.com/sitemap-local.xml。
+      url_locale: "en"
     FR:
       categories:
         platform_announcement:
@@ -955,6 +962,7 @@ sources:
         update_time: article.gmtUpdatedAt
         category: null
       lang_code: "fr-FR"
+      url_locale: "fr-FR"  # 2026-07-22 Playwright 实测验证，见 EN 块注释
     EN-Asia:
       categories:
         platform_announcement:
@@ -986,6 +994,7 @@ sources:
         update_time: article.gmtUpdatedAt
         category: null
       lang_code: "en-AS"
+      url_locale: "en-AS"  # 2026-07-22 Playwright 实测验证，见 EN 块注释
     VN:
       categories:
         platform_announcement:
@@ -1015,6 +1024,7 @@ sources:
         update_time: article.gmtUpdatedAt
         category: null
       lang_code: "vi-VN"
+      url_locale: "vi-VN"  # 2026-07-22 Playwright 实测验证，见 EN 块注释
     ID:
       categories:
         platform_announcement:
@@ -1044,3 +1054,4 @@ sources:
         update_time: article.gmtUpdatedAt
         category: null
       lang_code: "id-ID"
+      url_locale: "id-ID"  # 2026-07-22 Playwright 实测验证，见 EN 块注释

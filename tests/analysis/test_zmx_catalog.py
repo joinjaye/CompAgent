@@ -245,3 +245,30 @@ def test_max_calls_budget_cap_skips_remaining_batches(conn, fake_credentials, mo
     assert calls["n"] == 1
     assert report.llm_calls == 1
     assert report.skipped_budget_cap == 1
+
+
+# ---------------------------------------------------------------- select_relevant_catalog 停用词 ----
+
+
+def _catalog_entry(uid: str, mechanism_type: str, title: str, key_mechanics: str):
+    from src.analysis.zmx_catalog import ZmxCatalogEntry
+
+    return ZmxCatalogEntry(
+        uid=uid, title=title, mechanism_type=mechanism_type, key_mechanics=key_mechanics,
+        reward_range=None, target_users=None, start_date=None, end_date=None, post_time=None,
+    )
+
+
+def test_select_relevant_catalog_ignores_generic_stopwords():
+    """2026-07-22 真实数据发现：跟 staged.py::recall_candidates 同一个问题——不
+    过滤"users"/"account"/"platform"这类高频词，几乎任何两段英文文本都会碰出
+    重叠，导致批次级候选窄化选到不相关的条目。"""
+    from src.analysis.zmx_catalog import select_relevant_catalog
+
+    rows = [{"title": "AUSTRAC registration for remittance entity", "content": "Users can view their account on the platform."}]
+    unrelated = _catalog_entry("z1", "wallet", "Quick transfer", "Users click transfer on the platform to use their account.")
+    relevant = _catalog_entry("z2", "other", "Registration", "Remittance entity registration process for users.")
+    other_filler = [_catalog_entry(f"z{i}", "earn", f"filler {i}", "generic filler text") for i in range(3, 6)]
+
+    selected = select_relevant_catalog(rows, [unrelated, relevant, *other_filler], max_entries=1)
+    assert selected[0].uid == "z2"

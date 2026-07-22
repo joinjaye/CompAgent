@@ -55,6 +55,23 @@ logger = logging.getLogger(__name__)
 CATALOG_CATEGORIES = ("campaign", "product")
 TAXONOMY_PATH = PROJECT_ROOT / "config" / "zmx_mechanism_taxonomy.yaml"
 _TERM_RE = re.compile(r"[a-z0-9]{3,}|[一-鿿]{2,}", re.IGNORECASE)
+# 跟 src/analysis/staged.py 的 _STOPWORDS 同一份清单、同样的理由（见该文件顶部
+# 注释）：select_relevant_catalog() 是词项重叠召回，不过滤虚词/行业通用词会导致
+# 几乎任何两段英文文本都碰出重叠，2026-07-22 真实数据证实过。两边各自维护一份
+# （zmx_catalog.py 反过来会被 staged.py import，放一起会循环 import），改动时
+# 两处一起改。
+_STOPWORDS = frozenset({
+    "a", "an", "and", "are", "as", "at", "be", "by", "can", "for", "from",
+    "has", "have", "in", "into", "is", "it", "its", "may", "more", "no",
+    "not", "of", "on", "or", "per", "than", "that", "the", "their", "then",
+    "there", "this", "to", "up", "use", "used", "using", "via", "was",
+    "were", "will", "with", "without", "you", "your",
+    "users", "user", "trading", "trade", "traders", "trader",
+    "feature", "features", "platform", "service", "services",
+    "account", "accounts", "available", "support", "supports", "supported",
+    "new", "now", "official", "officially", "launch", "launches", "live",
+    "update", "updates", "please", "click", "also",
+})
 
 
 def _chunk(items: list, size: int) -> list[list]:
@@ -62,7 +79,10 @@ def _chunk(items: list, size: int) -> list[list]:
 
 
 def _terms(text: str) -> set[str]:
-    return {m.group(0).lower() for m in _TERM_RE.finditer(text or "")}
+    return {
+        m.group(0).lower() for m in _TERM_RE.finditer(text or "")
+        if m.group(0).lower() not in _STOPWORDS
+    }
 
 
 # ============================================================

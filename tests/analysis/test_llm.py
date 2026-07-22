@@ -99,16 +99,43 @@ def test_validate_business_judgment_maps_gap_type_to_diff_type():
     assert result.items[0].diff_type == "ZMX缺失"
 
 
-def test_validate_business_judgment_baseline_not_found_maps_to_not_applicable_diff_type():
-    """关键区分：baseline_not_found（没召回到候选）不等于 confirmed_gap（确认缺失），
-    映射到的 diff_type 必须是「不适用」，不是「ZMX缺失」——这是防止误报缺失的核心。
-    """
+def test_validate_business_judgment_baseline_not_found_maps_to_missing_diff_type():
+    """Campaign/Product 均执行对比；没召回候选即“未检索到同类”。"""
     raw = json.dumps({"items": [
         {"i": 1, "gap_type": "baseline_not_found", "business_impact": "low", "novelty": 0, "urgency": 0,
          "zmx_evidence": [], "reason": "无候选"},
     ]})
     result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index={1: []})
-    assert result.items[0].diff_type == "不适用"
+    assert result.items[0].diff_type == "ZMX缺失"
+
+
+def test_validate_business_judgment_flags_reason_citing_candidate_despite_baseline_not_found():
+    """2026-07-22 真实数据发现的自相矛盾：gap_type=baseline_not_found（+ 空
+    zmx_evidence）本该表示"没有候选可比"，但 reason 里点名了具体候选（"候选 z2"），
+    说明模型其实做了比较却判错了 gap_type。不能代码自动纠正成哪个"有候选"的取值
+    （猜不出真实应该是哪个），只记 issue 供人工/下次重跑复核，diff_type 仍然是
+    「不适用」，不擅自改写。"""
+    raw = json.dumps({"items": [
+        {"i": 1, "gap_type": "baseline_not_found", "business_impact": "low", "zmx_evidence": [],
+         "reason": "候选 z2 为同类功能，但本地化机制不同"},
+    ]})
+    candidates = {1: [_entry("z1"), _entry("z2")]}
+    result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index=candidates)
+    assert result.items[0].gap_type == "baseline_not_found"
+    assert result.items[0].diff_type == "ZMX缺失"
+    assert any("reason_cites_candidate_but_gap_type_baseline_not_found" in i for i in result.issues)
+
+
+def test_validate_business_judgment_reason_without_candidate_reference_is_not_flagged():
+    """reason 只泛述"候选类型不匹配"、不点名具体序号时，不应误报——这是绝大多数
+    真实 baseline_not_found 案例的正常写法。"""
+    raw = json.dumps({"items": [
+        {"i": 1, "gap_type": "baseline_not_found", "business_impact": "low", "zmx_evidence": [],
+         "reason": "召回候选均为钱包充提划转，无固定风险仓位计算机制"},
+    ]})
+    candidates = {1: [_entry("z1")]}
+    result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index=candidates)
+    assert not any("reason_cites_candidate" in i for i in result.issues)
 
 
 def test_validate_business_judgment_drops_item_not_in_batch():
@@ -168,7 +195,7 @@ def test_validate_business_judgment_invalid_gap_type_becomes_not_applicable():
     ]})
     result = validate_business_judgment(raw, expected_indices={1}, candidates_by_index={1: []})
     assert result.items[0].gap_type == "not_applicable"
-    assert result.items[0].diff_type == "不适用"
+    assert result.items[0].diff_type == "ZMX缺失"
 
 
 def test_validate_business_judgment_invalid_business_impact_defaults_to_low():

@@ -103,8 +103,8 @@ def test_search_index_rows_have_only_specified_fields_no_content_leak(conn, db_p
     rows = data["search_index"]["rows"]
     assert len(rows) == 1
     expected_keys = {
-        "uid", "group_id", "source", "locale", "markets", "localized_variants",
-        "category", "title", "post_time", "status", "diff_type", "priority", "url",
+            "uid", "group_id", "source", "locale", "markets", "localized_variants",
+            "category", "title", "post_time", "status", "diff_type", "diff_tag", "priority", "url",
     }
     assert set(rows[0].keys()) == expected_keys
     assert "content" not in rows[0]
@@ -196,6 +196,35 @@ def test_listing_uses_title_rule_and_ignores_legacy_llm_fields(conn, db_path):
     assert row["follow_up"] is None
 
 
+def test_listing_exports_category_only_analysis_without_zmx_judgment(conn, db_path):
+    uid = _insert(
+        conn, source="Bitunix", locale="EN", article_id="ai", category="listing",
+        title="ABC/USDT Perpetual Contract Is Now Live",
+    )
+    conn.commit()
+    _insight(
+        conn, source="Bitunix", category="listing", locale="EN", uids=[uid],
+        articles=[{
+            "uid": uid, "token_symbol": "ABC", "trading_pair": "ABC/USDT",
+            "listing_type": "Perpetual", "listing_status": "New Listing",
+            "token_category": "AI", "classification_confidence": 0.91,
+            "diff_type": "ZMX缺失", "priority": "高", "follow_up": "legacy",
+        }],
+    )
+    conn.commit()
+
+    row = build_dashboard_data(str(db_path))["listing"][0]
+    assert row["token_symbol"] == "ABC"
+    assert row["trading_pair"] == "ABC/USDT"
+    assert row["listing_type"] == "Perpetual"
+    assert row["listing_status"] == "New Listing"
+    assert row["token_category"] == "AI"
+    assert row["classification_confidence"] == 0.91
+    assert row["diff_type"] is None
+    assert row["priority"] is None
+    assert row["follow_up"] is None
+
+
 def test_overview_chip_diff_breakdown_counts_per_article_diff_type(conn, db_path):
     uid1 = _insert(conn, source="Bitunix", locale="EN", article_id="1", category="campaign")
     uid2 = _insert(conn, source="Bitunix", locale="EN", article_id="2", category="campaign")
@@ -210,7 +239,7 @@ def test_overview_chip_diff_breakdown_counts_per_article_diff_type(conn, db_path
     chip = data["overview"]["chips"]["campaign"]
     assert chip["count_new"] == 2
     assert chip["diff_breakdown"]["missing"] == 1
-    assert chip["diff_breakdown"]["same"] == 1
+    assert chip["diff_breakdown"]["broad"] == 1
 
 
 def test_overview_highlights_use_business_priority_not_llm_priority(conn, db_path):
@@ -305,11 +334,11 @@ def test_detail_tables_merge_localized_variants_and_keep_parallel_links(conn, db
     }
 
 
-def _zmx_catalog_entry(conn, *, category, mechanism_type, exists_flag, capability_desc="desc"):
+def _zmx_catalog_entry(conn, *, category, mechanism_type, exists_flag, capability_desc="desc", example_uids=()):
     conn.execute(
         """INSERT INTO zmx_catalog_entry (id, category, mechanism_type, exists_flag, capability_desc, example_uids, typical_reward, updated_at)
-           VALUES (?, ?, ?, ?, ?, '[]', NULL, '2026-07-15T00:00:00Z')""",
-        (f"{category}_{mechanism_type}", category, mechanism_type, exists_flag, capability_desc),
+           VALUES (?, ?, ?, ?, ?, ?, NULL, '2026-07-15T00:00:00Z')""",
+        (f"{category}_{mechanism_type}", category, mechanism_type, exists_flag, capability_desc, json.dumps(list(example_uids))),
     )
 
 
@@ -344,6 +373,114 @@ def test_product_row_exposes_zmx_catalog_fields_when_mechanism_type_matches(conn
     assert row["zmx_capability_desc"] == "desc"
     assert row["zmx_counterpart"]["url"] == "https://example.com/zmx"
     assert row["comparison_status"] == "analyzed"
+
+
+def test_diff_tag_downgrades_na_to_broad_when_catalog_confirms_exact_type_match(conn, db_path):
+    """2026-07-22 真实数据发现：diff_tag='na'（Stage3 逐篇比对没找到具体对应项）
+    跟 zmx_exists='yes'（Zoomex 目录按 mechanism_type 标签确认有同类型玩法）同时
+    出现时，前端只显示"未进行对比"会跟旁边确实有内容的 Zoomex 卡片自相矛盾。
+    exists_flag 精确命中（不是 'partial' 近似匹配）且没有具体 zmx_counterpart 时，
+    展示用的 diff_tag 应该降级为 'broad'，不改写 diff_type/diff_detail 本身。"""
+    uid = _insert(conn, source="Lbank", locale="EN", article_id="c", category="campaign",
+                  title="P2P Limited-Time Offer for New Users")
+    zmx_uid = _insert(conn, source="Zoomex", locale="EN", article_id="z", category="campaign",
+                       title="First Trade Protection", url="https://www.zoomex.com/en/help/article/1")
+    conn.commit()
+    _zmx_catalog_entry(conn, category="campaign", mechanism_type="zero_risk_new_user", exists_flag="yes",
+                        example_uids=[zmx_uid])
+    _insight(conn, source="Lbank", category="campaign", locale="EN", uids=[uid], articles=[{
+        "uid": uid, "mechanism_type": "zero_risk_new_user",
+        "diff_type": "不适用", "diff_detail": "候选均不匹配", "zmx_counterpart_uids": [],
+    }])
+    conn.commit()
+
+    row = build_dashboard_data(str(db_path))["campaign"][0]
+    assert row["zmx_exists"] == "yes"
+    assert row["zmx_counterpart"] is None
+    assert row["diff_tag"] == "broad"
+    assert row["diff_type"] == "不适用"  # 原始 Stage3 结论保留，不擅自改写
+    assert row["diff_detail"] == "候选均不匹配"
+    # 2026-07-22：粗粒度匹配也要能跳转到 Zoomex 目录示例文章，不能只有文字描述
+    assert row["zmx_capability_url"] == "https://www.zoomex.com/en/help/article/1"
+
+
+def test_diff_tag_upgrades_na_to_missing_when_catalog_confirms_no_history(conn, db_path):
+    """2026-07-22：反过来，exists_flag='no' 是 rollup 覆盖 Zoomex 全量历史后确认
+    这个 mechanism_type 从未出现过——比 Stage3 单批次窄召回的"没找到候选"是更强的
+    证据，应该把展示用的 diff_tag 从 'na'（未进行对比）升级成 'missing'
+    （未检索到同类），不能让用户以为这条压根没被比对过。"""
+    uid = _insert(conn, source="Lbank", locale="EN", article_id="c", category="product")
+    conn.commit()
+    _zmx_catalog_entry(conn, category="product", mechanism_type="institutional", exists_flag="no")
+    _insight(conn, source="Lbank", category="product", locale="EN", uids=[uid], articles=[{
+        "uid": uid, "mechanism_type": "institutional",
+        "diff_type": "不适用", "diff_detail": "候选均不匹配", "zmx_counterpart_uids": [],
+    }])
+    conn.commit()
+
+    row = build_dashboard_data(str(db_path))["product"][0]
+    assert row["diff_tag"] == "missing"
+    assert row["diff_type"] == "不适用"  # 原始 Stage3 结论保留，不擅自改写
+    assert row["zmx_exists"] is None
+    assert row["zmx_capability_desc"] is None
+    assert row["zmx_capability_url"] is None
+
+
+def test_analyzed_na_becomes_missing_when_mechanism_type_has_no_catalog_entry(conn, db_path):
+    uid = _insert(conn, source="Lbank", locale="EN", article_id="c", category="product")
+    conn.commit()
+    _insight(conn, source="Lbank", category="product", locale="EN", uids=[uid], articles=[{
+        "uid": uid, "mechanism_type": None,
+        "diff_type": "不适用", "diff_detail": "无法分类", "zmx_counterpart_uids": [],
+    }])
+    conn.commit()
+
+    row = build_dashboard_data(str(db_path))["product"][0]
+    assert row["zmx_exists"] is None
+    assert row["diff_tag"] == "missing"
+
+
+def test_analyzed_na_becomes_missing_when_catalog_match_is_only_partial(conn, db_path):
+    """exists_flag='partial' 是词项重叠出来的近似匹配（rollup 自己标注"建议人工
+    核对"），置信度不够，不应该触发 na->broad 的降级——只有精确标签命中('yes')
+    才算数。"""
+    uid = _insert(conn, source="Lbank", locale="EN", article_id="c", category="campaign")
+    conn.commit()
+    _zmx_catalog_entry(conn, category="campaign", mechanism_type="zero_risk_new_user", exists_flag="partial")
+    _insight(conn, source="Lbank", category="campaign", locale="EN", uids=[uid], articles=[{
+        "uid": uid, "mechanism_type": "zero_risk_new_user",
+        "diff_type": "不适用", "diff_detail": "候选均不匹配", "zmx_counterpart_uids": [],
+    }])
+    conn.commit()
+
+    row = build_dashboard_data(str(db_path))["campaign"][0]
+    assert row["diff_tag"] == "missing"
+    assert row["zmx_exists"] is None
+    assert row["zmx_capability_desc"] is None
+
+
+def test_missing_diff_never_exposes_stale_unrelated_zmx_catalog_content(conn, db_path):
+    """回归：召回池第一项不能在“未检索到同类”时变成前端 Zoomex 对照内容。"""
+    uid = _insert(conn, source="Bitunix", locale="EN", article_id="c", category="product",
+                  title="Funding Rate Settlement Frequency")
+    zmx_uid = _insert(conn, source="Zoomex", locale="EN", article_id="z", category="product",
+                      title="Strategy Bot Center", url="https://example.com/unrelated-bot")
+    conn.commit()
+    _zmx_catalog_entry(conn, category="product", mechanism_type="bot", exists_flag="yes",
+                       example_uids=[zmx_uid])
+    _insight(conn, source="Bitunix", category="product", locale="EN", uids=[uid], articles=[{
+        "uid": uid, "mechanism_type": "bot", "diff_type": "ZMX缺失",
+        "diff_detail": "未检索到资金费率结算同类", "zmx_counterpart_uids": [],
+    }])
+    conn.commit()
+
+    row = build_dashboard_data(str(db_path))["product"][0]
+    assert row["diff_tag"] == "missing"
+    assert row["zmx_mechanism_type"] is None
+    assert row["zmx_exists"] is None
+    assert row["zmx_capability_desc"] is None
+    assert row["zmx_capability_url"] is None
+    assert row["zmx_counterpart"] is None
 
 
 def test_row_without_any_analysis_is_pending_not_candidate_found():
@@ -462,17 +599,21 @@ def test_build_daily_digest_uses_real_cached_llm_response(conn, db_path):
     _insight(conn, source="Bitunix", category="campaign", locale="EN", uids=[uid], articles=[])
     conn.commit()
 
-    batches = [{
-        "id": f"Bitunix_campaign_EN_{BATCH_DATE}", "source": "Bitunix", "category": "campaign",
-        "article_count": 1, "diff_type": "不适用", "priority": "低", "summary": "s", "zmx_diff": None,
-    }]
+    from src.analysis.daily_digest import load_locale_batches
+    batches = load_locale_batches(conn, "ALL", BATCH_DATE)
     cache_key = compute_digest_cache_key(batches)
     set_cached_response(conn, cache_key, json.dumps({
-        "daily_summary": "今日 Bitunix 集中发力充值激励活动。", "priority_focus": "关注 Bitunix 的充值活动",
+        "daily_summary": "活动侧集中在充值激励。市场变化主要分布在 EN。",
+        "campaign_summary": "活动类型以充值激励为主。奖励范围保持稳定。",
+        "product_summary": "产品能力集中在交易。整体以功能更新为主。",
+        "priority_focus": None,
     }))
     conn.commit()
 
     digest = build_daily_digest(conn, BATCH_DATE)
     assert digest["source"] == "llm"
-    assert digest["summary"] == "今日 Bitunix 集中发力充值激励活动。"
-    assert digest["priority_focus"] == "关注 Bitunix 的充值活动"
+    assert digest["daily_summary"] == "活动侧集中在充值激励。市场变化主要分布在 EN。"
+    assert digest["summary"] == "活动侧集中在充值激励。市场变化主要分布在 EN。"
+    assert digest["campaign_summary"] == "活动类型以充值激励为主。奖励范围保持稳定。"
+    assert digest["product_summary"] == "产品能力集中在交易。整体以功能更新为主。"
+    assert digest["priority_focus"] is None

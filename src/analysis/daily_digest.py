@@ -15,6 +15,7 @@ llm_cache 表（不新增 schema），cache_key 只跟"当天这些批次的 id 
 """
 from __future__ import annotations
 
+import argparse
 import hashlib
 import json
 import logging
@@ -23,14 +24,19 @@ import sqlite3
 from dataclasses import dataclass, field
 from typing import Optional
 
-from src.analysis.config import LlmCredentials
+from src.analysis.config import (
+    LlmCredentials,
+    load_analysis_config,
+    load_cursor_credentials,
+    load_llm_credentials,
+)
 from src.analysis.cursor_agent import call_llm_cursor_agent
 from src.analysis.llm import call_llm, get_cached_response, set_cached_response
 from src.analysis.prompts import BuiltPrompt, build_daily_digest_prompt
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "daily-digest-v1"
+PROMPT_VERSION = "daily-digest-v4"
 
 _CODE_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
 
@@ -39,20 +45,54 @@ def load_locale_batches(conn: sqlite3.Connection, locale: str, batch_date: str) 
     """取某个 locale 当天已经产出的全部批次（category != other，跟 insights 表本身
     的约束一致——other 从不产出 insights），按 category/source 排列，顺序稳定。"""
     conn.row_factory = sqlite3.Row
+    locale_clause = "" if locale == "ALL" else "AND locale = ?"
+    params = (batch_date,) if locale == "ALL" else (batch_date, locale)
     rows = conn.execute(
-        """SELECT id, source, category, article_count, diff_type, priority, summary, zmx_diff
-           FROM insights WHERE locale = ? AND batch_date = ?
-           ORDER BY category, source""",
-        (locale, batch_date),
+        f"""SELECT id, source, category, locale, article_count, diff_type, priority,
+                   summary, zmx_diff, articles_analysis
+            FROM insights WHERE batch_date = ? {locale_clause}
+            ORDER BY category, source, locale""",
+        params,
     ).fetchall()
-    return [dict(r) for r in rows]
+    batches = []
+    for row in rows:
+        item = dict(row)
+        try:
+            articles = json.loads(item.pop("articles_analysis") or "[]")
+        except (json.JSONDecodeError, TypeError):
+            articles = []
+        mechanisms = []
+        reward_changes = 0
+        for article in articles:
+            signal = (
+                article.get("mechanism") or article.get("feature")
+                or article.get("token_category") or article.get("listing_type")
+            )
+            if signal and signal not in mechanisms:
+                mechanisms.append(str(signal)[:80])
+            if article.get("change_kind") == "reward":
+                reward_changes += 1
+        parts = []
+        if mechanisms:
+            parts.append("主要信号：" + "；".join(mechanisms[:4]))
+        if reward_changes:
+            parts.append(f"奖励变化：{reward_changes} 条")
+        item["signals"] = "；".join(parts) or "（无额外结构化信号）"
+        batches.append(item)
+    return batches
 
 
 def compute_digest_cache_key(batches: list[dict], prompt_version: str = PROMPT_VERSION) -> str:
-    """跟 llm.compute_cache_key 同样的思路：key 只跟"当天这些批次的 id 集合"有关，
-    不跟查询返回顺序有关——同一天批次集合没变时复用缓存，任何一个批次 id 变化
-    （新增批次/批次被重跑产生新 id）都会让 key 变化，不会复用过期的当日综述。"""
-    fingerprint = "".join(sorted(b["id"] for b in batches))
+    """缓存键覆盖批次 id、摘要、结构化信号、数量和差异结论，且与查询顺序无关。
+    因此同一批次被重新分析但 id 不变时，只要内容变化也会失效，避免复用旧 Insight。"""
+    normalized = [
+        {
+            "id": b["id"], "summary": b.get("summary"), "signals": b.get("signals"),
+            "article_count": b.get("article_count"), "diff_type": b.get("diff_type"),
+        }
+        for b in sorted(batches, key=lambda item: item["id"])
+    ]
+    fingerprint = json.dumps(normalized, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     inner = hashlib.sha256(fingerprint.encode("utf-8")).hexdigest()
     return hashlib.sha256(f"{inner}|{prompt_version}".encode("utf-8")).hexdigest()
 
@@ -62,6 +102,8 @@ class DailyDigestResult:
     generated: bool  # False = dry_run，或本日没有任何批次，或响应校验失败
     from_cache: bool = False
     daily_summary: Optional[str] = None
+    campaign_summary: Optional[str] = None
+    product_summary: Optional[str] = None
     priority_focus: Optional[str] = None
     tokens_used: Optional[int] = None
     cache_key: Optional[str] = None
@@ -73,21 +115,40 @@ def _strip_code_fences(text: str) -> str:
     return _CODE_FENCE_RE.sub("", text.strip()).strip()
 
 
-def _validate_digest_response(raw_text: str) -> tuple[Optional[str], Optional[str], list[str]]:
+def _validate_digest_response(raw_text: str) -> tuple[Optional[str], Optional[str], Optional[str], Optional[str], list[str]]:
     """比四套 category prompt 的校验简单得多：只要求 daily_summary 是非空字符串，
     priority_focus 可选。JSON 解析失败或 daily_summary 缺失都返回 (None, None, issues)
     ——上层据此判断"这次调用没有产出可用摘要"，不拿半成品充数。"""
     try:
         data = json.loads(_strip_code_fences(raw_text))
     except (json.JSONDecodeError, TypeError) as e:
-        return None, None, [f"json_parse_failed: {e}"]
+        return None, None, None, None, [f"json_parse_failed: {e}"]
     if not isinstance(data, dict):
-        return None, None, ["response_not_object"]
+        return None, None, None, None, ["response_not_object"]
     summary = data.get("daily_summary")
     if not isinstance(summary, str) or not summary.strip():
-        return None, None, ["missing_daily_summary"]
+        return None, None, None, None, ["missing_daily_summary"]
+    issues = []
+    summaries = {
+        "daily_summary": summary,
+        "campaign_summary": data.get("campaign_summary"),
+        "product_summary": data.get("product_summary"),
+    }
+    for field_name, value in summaries.items():
+        if value is None and field_name != "daily_summary":
+            continue
+        if not isinstance(value, str) or not value.strip():
+            issues.append(f"invalid_{field_name}")
+            continue
+        sentences = [part for part in re.split(r"[。！？!?]+", value.strip()) if part.strip()]
+        if not 2 <= len(sentences) <= 4:
+            issues.append(f"{field_name}_sentence_count:{len(sentences)}")
+    if issues:
+        return None, None, None, None, issues
     focus = data.get("priority_focus")
-    return summary, (focus if isinstance(focus, str) else None), []
+    campaign = summaries["campaign_summary"]
+    product = summaries["product_summary"]
+    return summary, campaign, product, (focus if isinstance(focus, str) else None), []
 
 
 def peek_cached_digest(conn: sqlite3.Connection, locale: str, batch_date: str) -> Optional[DailyDigestResult]:
@@ -103,10 +164,11 @@ def peek_cached_digest(conn: sqlite3.Connection, locale: str, batch_date: str) -
     cached = get_cached_response(conn, cache_key)
     if cached is None:
         return None
-    summary, focus, issues = _validate_digest_response(cached)
+    summary, campaign, product, focus, issues = _validate_digest_response(cached)
     return DailyDigestResult(
         generated=summary is not None, from_cache=True, daily_summary=summary,
-        priority_focus=focus, tokens_used=0, cache_key=cache_key, issues=issues,
+        campaign_summary=campaign, product_summary=product, priority_focus=focus,
+        tokens_used=0, cache_key=cache_key, issues=issues,
     )
 
 
@@ -144,10 +206,11 @@ def generate_daily_digest(
 
     cached = get_cached_response(conn, cache_key)
     if cached is not None:
-        summary, focus, issues = _validate_digest_response(cached)
+        summary, campaign, product, focus, issues = _validate_digest_response(cached)
         return DailyDigestResult(
             generated=summary is not None, from_cache=True, daily_summary=summary,
-            priority_focus=focus, tokens_used=0, cache_key=cache_key, prompt=prompt, issues=issues,
+            campaign_summary=campaign, product_summary=product, priority_focus=focus,
+            tokens_used=0, cache_key=cache_key, prompt=prompt, issues=issues,
         )
 
     if credentials is None:
@@ -163,8 +226,55 @@ def generate_daily_digest(
             temperature=temperature, max_tokens=max_tokens, timeout_s=timeout_s, max_retries=max_retries,
         )
     set_cached_response(conn, cache_key, raw_text)
-    summary, focus, issues = _validate_digest_response(raw_text)
+    summary, campaign, product, focus, issues = _validate_digest_response(raw_text)
     return DailyDigestResult(
         generated=summary is not None, from_cache=False, daily_summary=summary,
-        priority_focus=focus, tokens_used=tokens_used, cache_key=cache_key, prompt=prompt, issues=issues,
+        campaign_summary=campaign, product_summary=product, priority_focus=focus,
+        tokens_used=tokens_used, cache_key=cache_key, prompt=prompt, issues=issues,
     )
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="生成跨市场竞品情报 Insight，并写入 LLM 缓存")
+    parser.add_argument("--db", default="data/competitor_intel.db")
+    parser.add_argument("--date", required=True)
+    parser.add_argument("--provider", choices=["openai_http", "cursor_agent"])
+    parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--require-generated", action="store_true",
+        help="未产出完整的 Overview/Campaign/Product 摘要时以非零状态退出（生产流水线使用）",
+    )
+    args = parser.parse_args()
+
+    config = load_analysis_config().get("llm", {})
+    provider = args.provider or config.get("provider", "openai_http")
+    credentials = load_cursor_credentials() if provider == "cursor_agent" else load_llm_credentials()
+    if not args.dry_run:
+        credentials.validate()
+    conn = sqlite3.connect(args.db, timeout=60)
+    conn.execute("PRAGMA busy_timeout = 60000")
+    try:
+        result = generate_daily_digest(
+            conn, "ALL", args.date, credentials=credentials, provider=provider,
+            temperature=config.get("temperature", 0),
+            max_tokens=config.get("max_tokens_per_call", {}).get("daily_digest", 800),
+            timeout_s=config.get("timeout_s", 60), max_retries=config.get("max_retries", 3),
+            dry_run=args.dry_run,
+        )
+        if not args.dry_run:
+            conn.commit()
+        print(json.dumps({
+            "generated": result.generated, "from_cache": result.from_cache,
+            "tokens_used": result.tokens_used, "issues": result.issues,
+            "daily_summary": result.daily_summary,
+            "campaign_summary": result.campaign_summary,
+            "product_summary": result.product_summary,
+        }, ensure_ascii=False))
+        if args.require_generated and not result.generated:
+            raise SystemExit(1)
+    finally:
+        conn.close()
+
+
+if __name__ == "__main__":
+    main()

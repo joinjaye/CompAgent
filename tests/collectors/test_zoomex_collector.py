@@ -36,6 +36,7 @@ CFG = {
     "detail_mode": "separate_api",
     "strategy": "watermark",
     "lang_code": "en-US",
+    "url_locale": "en",
 }
 
 def _default_articles() -> dict[int, dict]:
@@ -124,7 +125,7 @@ def _collector() -> ZoomexCollector:
 
 # ---------------------------------------------------------------- normalize ----
 
-def test_normalize_builds_group_id_and_leaves_url_and_category_none():
+def test_normalize_builds_group_id_and_url_and_leaves_category_none():
     from src.collectors.base import RawItem
 
     collector = _collector()
@@ -134,7 +135,7 @@ def test_normalize_builds_group_id_and_leaves_url_and_category_none():
     assert ann.source == "Zoomex"
     assert ann.article_id == "4116"
     assert ann.group_id == "zoomex_4116"
-    assert ann.url is None
+    assert ann.url == "https://www.zoomex.com/en/help/article/4116"
     assert ann.category is None
 
 

@@ -28,10 +28,15 @@ llm:
                             # category 只是 payload 字段，不再是模板选择器）
     article_facts: 400       # Stage1 单篇事实抽取，响应结构很小
     business_judgment: 3000  # Stage3 批量业务判断，响应随批次文章数增长
+    listing_category: 1200   # Listing/Delisting 批量币种赛道分类；不做 ZMX 对比
+    daily_digest: 800        # Overview Insight：全市场批次信号归纳为 2-4 句话
 
 prompt_versions:          # 改 staged-v1 任一段 prompt 正文后必须递增对应版本号
   article_facts: article-facts-v1
-  business_judgment: business-judgment-v1
+  business_judgment: business-judgment-v2  # 2026-07-22：加了 gap_type 与 reason
+                                            # 自洽性约束（见 prompts.py），必须
+                                            # 递增才能让 Stage3 缓存失效重跑
+  listing_category: listing-category-v1
 
 zmx_catalog:               # Zoomex 能力目录（Phase①，取代原来的 zmx_baseline 结构化
                             # 基线，见 src/analysis/zmx_catalog.py 顶部注释 / CLAUDE.md）。

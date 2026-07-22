@@ -1,0 +1,129 @@
+name: Daily Competitive Intelligence
+
+on:
+  schedule:
+    - cron: "0 9 * * *"
+      timezone: "Asia/Shanghai"
+  workflow_dispatch:
+    inputs:
+      batch_date:
+        description: "UTC batch date (YYYY-MM-DD); empty means today"
+        required: false
+        type: string
+
+concurrency:
+  group: daily-competitive-intelligence
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  daily-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    env:
+      PYTHON: .venv/bin/python
+      DB_PATH: data/competitor_intel.db
+      DASHBOARD_OUT: docs/data/dashboard.json
+      SCREENSHOT_DIR: data/daily_screenshots
+      LLM_PROVIDER: cursor_agent
+      CURSOR_API_KEY: ${{ secrets.CURSOR_API_KEY }}
+      CURSOR_MODEL: ${{ vars.CURSOR_MODEL }}
+      FEISHU_APP_ID: ${{ secrets.FEISHU_APP_ID }}
+      FEISHU_APP_SECRET: ${{ secrets.FEISHU_APP_SECRET }}
+      FEISHU_CAMPAIGN_APP_TOKEN: ${{ secrets.FEISHU_CAMPAIGN_APP_TOKEN }}
+      FEISHU_CAMPAIGN_TABLE_ID: ${{ secrets.FEISHU_CAMPAIGN_TABLE_ID }}
+      FEISHU_PRODUCT_APP_TOKEN: ${{ secrets.FEISHU_PRODUCT_APP_TOKEN }}
+      FEISHU_PRODUCT_TABLE_ID: ${{ secrets.FEISHU_PRODUCT_TABLE_ID }}
+      FEISHU_LISTING_APP_TOKEN: ${{ secrets.FEISHU_LISTING_APP_TOKEN }}
+      FEISHU_LISTING_TABLE_ID: ${{ secrets.FEISHU_LISTING_TABLE_ID }}
+      FEISHU_BITABLE_BASE_URL: https://zoomex.larksuite.com/base
+      DASHBOARD_PUBLIC_URL: https://joinjaye.github.io/CompAgent/
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set batch date
+        shell: bash
+        run: |
+          requested="${{ inputs.batch_date }}"
+          echo "BATCH_DATE=${requested:-$(date -u +%F)}" >> "$GITHUB_ENV"
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: |
+          python -m venv .venv
+          .venv/bin/python -m pip install --upgrade pip
+          .venv/bin/python -m pip install -r requirements.txt
+
+      - name: Install Chromium
+        run: .venv/bin/python -m playwright install --with-deps chromium
+
+      - name: Restore database state
+        uses: actions/cache/restore@v4
+        with:
+          path: data/competitor_intel.db
+          key: competitor-db-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            competitor-db-
+
+      - name: Initialize database when cache is empty
+        run: .venv/bin/python -m src.db init --db-path "$DB_PATH"
+
+      - name: Prepare runtime configuration
+        run: cp config/.env.example .env
+
+      - name: Validate required secrets
+        shell: bash
+        run: |
+          required=(
+            CURSOR_API_KEY FEISHU_APP_ID FEISHU_APP_SECRET
+            FEISHU_CAMPAIGN_APP_TOKEN FEISHU_CAMPAIGN_TABLE_ID
+            FEISHU_PRODUCT_APP_TOKEN FEISHU_PRODUCT_TABLE_ID
+            FEISHU_LISTING_APP_TOKEN FEISHU_LISTING_TABLE_ID
+          )
+          for name in "${required[@]}"; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "Missing required GitHub Actions secret: $name" >&2
+              exit 1
+            fi
+          done
+
+      - name: Run complete daily pipeline
+        run: scripts/run_daily.sh
+
+      - name: Save database state
+        uses: actions/cache/save@v4
+        with:
+          path: data/competitor_intel.db
+          key: competitor-db-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Upload Overview screenshot and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: daily-output-${{ env.BATCH_DATE }}-${{ github.run_number }}
+          path: |
+            data/daily_screenshots/
+            data/logs/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publish refreshed dashboard data
+        run: |
+          if git diff --quiet -- docs/data/dashboard.json; then
+            echo "Dashboard data unchanged; nothing to publish."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/data/dashboard.json
+          git commit -m "Update daily competitive intelligence dashboard"
+          git push

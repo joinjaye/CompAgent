@@ -2,7 +2,8 @@
 set -euo pipefail
 
 # 每日生产链路（止于 Lark 同步/推送之前）：
-# collect -> group/classify/region/dedup -> ZMX capability catalog -> competitor analysis -> dashboard
+# collect -> group/classify/region/dedup -> ZMX capability catalog -> competitor analysis
+# -> Listing/Delisting 分类 -> Overview/Campaign/Product 三份 Summary -> dashboard -> export QA
 # 默认总 LLM 预算 5,000,000 token：目录 1,000,000 + 五家竞品各 800,000。
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -12,7 +13,6 @@ PYTHON="${PYTHON:-.venv/bin/python}"
 DB_PATH="${DB_PATH:-data/competitor_intel.db}"
 DASHBOARD_OUT="${DASHBOARD_OUT:-docs/data/dashboard.json}"
 BATCH_DATE="${BATCH_DATE:-$(date -u +%F)}"
-LOOKBACK_DAYS="${LOOKBACK_DAYS:-2}"
 LLM_PROVIDER="${LLM_PROVIDER:-cursor_agent}"
 LLM_MAX_TOKENS="${LLM_MAX_TOKENS:-5000000}"
 
@@ -31,7 +31,7 @@ mkdir -p data/backups
 cp "$DB_PATH" "data/backups/competitor_intel_pre_${BATCH_DATE}.db"
 
 "$PYTHON" -m src.collectors \
-  --lookback-days "$LOOKBACK_DAYS" \
+  --date "$BATCH_DATE" \
   --db-path "$DB_PATH"
 
 "$PYTHON" -m src.pipeline --db "$DB_PATH" group-check \
@@ -68,10 +68,32 @@ for source in "${SOURCES[@]}"; do
       --max-calls 2 \
       --max-tokens "$COMPETITOR_PROCESS_BUDGET"
   done
+  # Listing/Delisting 不进入 ZMX 对比，只做一次轻量币种赛道分类；每个
+  # source×locale×category 最多一次调用，受控输出 AI/Meme/Layer2/DeFi 等标签。
+  "$PYTHON" -m src.analysis \
+    --db "$DB_PATH" \
+    --date "$BATCH_DATE" \
+    --source "$source" \
+    --category listing,delisting \
+    --provider "$LLM_PROVIDER" \
+    --max-calls 10 \
+    --max-tokens "$COMPETITOR_PROCESS_BUDGET"
 done
+
+# 汇总全部市场的已分析批次，一次生成 Overview、Campaign、Product 三份 2-4 句
+# AI Insight。生产流程要求三份均成功，否则不继续导出兜底文案。
+"$PYTHON" -m src.analysis.daily_digest \
+  --db "$DB_PATH" \
+  --date "$BATCH_DATE" \
+  --provider "$LLM_PROVIDER" \
+  --require-generated
 
 "$PYTHON" -m src.dashboard \
   --db-path "$DB_PATH" \
   --out "$DASHBOARD_OUT"
+
+"$PYTHON" -m src.dashboard.validate \
+  --input "$DASHBOARD_OUT" \
+  --date "$BATCH_DATE"
 
 echo "完成：每日流程已运行到 Dashboard；未执行 Lark 表格同步或群推送。"

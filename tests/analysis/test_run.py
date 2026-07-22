@@ -140,33 +140,51 @@ def test_full_run_creates_insight_row(conn, fake_credentials, monkeypatch):
     assert row["article_count"] == 1
     assert json.loads(row["related_uids"]) == [uid]
     assert row["is_locale_derived"] == 0
-    assert row["prompt_version"] == "article-facts-v1+business-judgment-v1"
-    assert row["diff_type"] == "不适用"  # gap_type=not_applicable 的默认 fake 响应
+    assert row["prompt_version"] == "article-facts-v1+business-judgment-v2"
+    assert row["diff_type"] == "ZMX缺失"  # 已对比但无可比候选
     assert row["llm_tokens_used"] == 20
 
     articles = json.loads(row["articles_analysis"])
     assert articles[0]["uid"] == uid
     assert articles[0]["event_type"] == "created"
-    assert articles[0]["diff_type"] == "不适用"
+    assert articles[0]["diff_type"] == "ZMX缺失"
 
 
 @pytest.mark.parametrize("category", ["listing", "delisting"])
-def test_listing_categories_never_load_credentials_or_call_llm(conn, monkeypatch, category):
-    _insert(conn, source="Bitunix", locale="EN", article_id="1", group_id="g1", category=category)
+def test_listing_categories_only_call_llm_for_token_category(conn, fake_credentials, monkeypatch, category):
+    uid = _insert(
+        conn, source="Bitunix", locale="EN", article_id="1", group_id="g1", category=category,
+        title="ABC/USDT Perpetual Listing", content="ABC is an artificial intelligence agent token.",
+    )
     conn.commit()
 
-    def boom(*a, **k):
-        raise AssertionError("listing/delisting must not touch the LLM path")
+    calls = {"n": 0}
+    def classify(system, user, **kwargs):
+        calls["n"] += 1
+        assert "Only classify the token/project sector" in system
+        return json.dumps({"items": [{"i": 1, "category": "AI", "confidence": 0.95}]}), 7
 
-    monkeypatch.setattr("src.analysis.run.load_llm_credentials", boom)
-    monkeypatch.setattr("src.analysis.run.call_llm", boom)
+    monkeypatch.setattr("src.analysis.run.call_llm", classify)
 
+    from src.analysis.batch import compute_batch_id
     from src.analysis.run import run
     report = run(conn, batch_date=BATCH_DATE, sources=("Bitunix",), dry_run=False)
 
-    assert report.llm_calls == 0
-    assert report.analyzed == 0
-    assert conn.execute("SELECT COUNT(*) FROM insights").fetchone()[0] == 0
+    assert calls["n"] == 1
+    assert report.llm_calls == 1
+    assert report.analyzed == 1
+    row = conn.execute(
+        "SELECT * FROM insights WHERE id = ?",
+        (compute_batch_id("Bitunix", category, "EN", BATCH_DATE),),
+    ).fetchone()
+    article = json.loads(row["articles_analysis"])[0]
+    assert article["uid"] == uid
+    assert article["token_category"] == "AI"
+    assert article["listing_type"] == "Perpetual"
+    assert article["listing_status"] == ("Delisted" if category == "delisting" else "New Listing")
+    assert article["trading_pair"] == "ABC/USDT"
+    assert row["diff_type"] == "不适用"
+    assert row["priority"] is None
 
 
 def test_rerun_same_day_hits_cache_and_skips_llm_call(conn, fake_credentials, monkeypatch):

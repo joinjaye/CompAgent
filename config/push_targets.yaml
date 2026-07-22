@@ -1,9 +1,8 @@
 # ============================================================
-# 推送目标配置：locale -> 飞书群映射。每个 locale 对应一个独立的群，
-# 各群独立推送，不做跨语言去重（详见 CLAUDE.md 核心约束 4）。
+# 推送目标配置：应用机器人把日报文本与 Overview 全局截图合并成一张卡片，发送到
+# EN 群。
 #
-# 2026-07-15 起改用"应用机器人"路径（见 src/sinks/feishu_bot.py 顶部说明），
-# 不再是"自定义机器人 webhook"。`chat_name` 是群在飞书里显示的名字，运行时通过
+# `chat_name` 是群在飞书里显示的名字，运行时通过
 # `list_bot_chats()`（GET im/v1/chats，机器人自己所在的群列表）按名字动态解析成
 # `chat_id`——群名不是需要保密的密钥，直接写在这里，不用 `.env` 占位符。
 #
@@ -15,12 +14,3 @@ targets:
   EN:
     chat_name: "CompAgent_EN"
     name: "竞品情报-EN"
-  FR:
-    chat_name: "CompAgent_FR"
-    name: "竞品情报-FR"
-  VN:
-    chat_name: "CompAgent_VN"
-    name: "竞品情报-VN"
-  ID:
-    chat_name: "CompAgent_ID"
-    name: "竞品情报-ID"

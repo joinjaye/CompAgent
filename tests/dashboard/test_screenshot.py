@@ -17,6 +17,7 @@ class _FakePage:
         self.goto_calls = []
         self.wait_for_selector_calls = []
         self.screenshot_calls = []
+        self.click_calls = []
 
     def goto(self, url, **kwargs):
         self.goto_calls.append(url)
@@ -29,6 +30,13 @@ class _FakePage:
 
     def wait_for_timeout(self, ms):
         pass
+
+    def locator(self, selector):
+        page = self
+        class _Locator:
+            def click(self):
+                page.click_calls.append(selector)
+        return _Locator()
 
     def screenshot(self, *, path, full_page):
         self.screenshot_calls.append(path)
@@ -104,3 +112,15 @@ def test_capture_push_views_one_locale_failure_does_not_block_others(tmp_path, m
 
     assert set(result.keys()) == {"EN", "VN"}
     assert "FR" not in result
+
+
+def test_capture_overview_selects_latest_batch_before_screenshot(tmp_path, monkeypatch):
+    page = _FakePage()
+    _install_fake_playwright(monkeypatch, page)
+
+    result = screenshot_module.capture_overview("http://localhost:8731/index.html", tmp_path)
+
+    assert page.goto_calls == ["http://localhost:8731/index.html"]
+    assert page.click_calls == ["#latestSnapshot"]
+    assert '#latestSnapshot.active' in page.wait_for_selector_calls
+    assert result.name == "overview.png"

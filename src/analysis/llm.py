@@ -38,6 +38,13 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _CODE_FENCE_RE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
+# Stage3 prompt 把候选目录条目标成 z1/z2/...；reason 是自由文本，不受 gap_type/
+# zmx_evidence 的结构化约束限制，模型可能在判定 baseline_not_found/not_applicable
+# （"没有候选可比"）的同时，又在 reason 里点名某个候选（如"候选 z2 ... 机制不同"）
+# ——这是模型自相矛盾，不是可以由代码安全纠正的情况（无法确定真实 gap_type 该是
+# confirmed_gap/different_mechanism/covered 里的哪一个），只记录为 issue 供人工/
+# 下次重跑复核，不擅自改写 gap_type。
+_CANDIDATE_REF_RE = re.compile(r"\bz(\d{1,2})\b")
 
 _VALID_EVENT_TYPES: set[str] = {
     "created", "reward_changed", "rule_changed", "extended", "ended",
@@ -50,15 +57,14 @@ _VALID_BUSINESS_IMPACT: set[str] = {"high", "medium", "low"}
 
 # gap_type（英文，staged.py/prompts.py 的内部wire格式）→ 项目历史上一直使用的中文
 # diff_type 枚举，只在这里、写库前这一个边界做一次翻译（见 CLAUDE.md「Phase②」的
-# 决定：gap_type 的值不是 diff_type 的简单 1:1 改名——baseline_not_found 特指"没
-# 召回到候选，不能断言缺失"，必须映射到「不适用」而不是「ZMX缺失」，这是防止误报
-# 缺失的关键，不是随意的措辞选择）。
+# 业务口径：Campaign/Product 每条都会执行对比；没有召回候选或判断不适用，都表示
+# 当前 Zoomex 目录未检索到可比同类，统一归入「ZMX缺失」。
 GAP_TYPE_TO_DIFF_TYPE: dict[str, str] = {
     "confirmed_gap": "ZMX缺失",
     "different_mechanism": "ZMX玩法不同",
     "covered": "ZMX已有",
-    "baseline_not_found": "不适用",
-    "not_applicable": "不适用",
+    "baseline_not_found": "ZMX缺失",
+    "not_applicable": "ZMX缺失",
 }
 
 
@@ -279,6 +285,11 @@ def validate_business_judgment(
     - gap_type 断言了 different_mechanism/covered 但引用不到任何真实候选证据 →
       同样降级为「baseline_not_found」（防幻觉，跟旧版 evidence_indices 为空强制
       「不适用」是同一条规则在新 schema 下的等价物）。
+    - gap_type 为 baseline_not_found/not_applicable 且 zmx_evidence 为空，但 reason
+      点名了候选序号（如"候选 z2"）→ 记一条 issue，不擅自改写 gap_type（2026-07-22
+      真实数据发现：模型有时会一边写"没有候选可比"一边在 reason 里描述某个候选的
+      具体差异，自相矛盾；无法从代码安全推断真实 gap_type 该是三种"有候选"取值里的
+      哪一个，只能标记出来供人工/下次重跑复核）。
     - business_impact 不合法 → 置「low」（安全默认，不是「不产出」，因为
       calculate_priority() 需要这个字段才能算分，留空会破坏下游确定性算分）。
     """
@@ -327,6 +338,12 @@ def validate_business_judgment(
             if gap_type in ("different_mechanism", "covered") and not zmx_evidence_uids:
                 issues.append(f"item:{idx}:empty_evidence_forced_baseline_not_found")
                 gap_type = "baseline_not_found"
+
+            reason_raw = item.get("reason")
+            if gap_type in ("baseline_not_found", "not_applicable") and not zmx_evidence_uids and isinstance(reason_raw, str):
+                cited = {int(n) for n in _CANDIDATE_REF_RE.findall(reason_raw)}
+                if any(1 <= n <= len(candidates) for n in cited):
+                    issues.append(f"item:{idx}:reason_cites_candidate_but_gap_type_{gap_type}")
 
             business_impact = item.get("business_impact")
             if business_impact not in _VALID_BUSINESS_IMPACT:

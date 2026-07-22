@@ -58,6 +58,25 @@ def test_recall_returns_only_relevant_top_four_and_no_forced_fallback():
     assert recall_candidates({"mechanism": "NFT mint"}, entries) == []
 
 
+def test_recall_ignores_generic_english_stopwords_and_industry_filler_words():
+    """2026-07-22 真实数据发现：英文语料下 recall_candidates 几乎对任何两篇文章都
+    能碰出重叠词（"users"/"trading"/"account"这类高频虚词或行业通用词长度都够
+    _TOKEN_RE 的门槛），导致 Bitunix product/EN 一整批毫不相关的文章（tick size
+    调整、AUSTRAC 注册等）全部被强行召回同一两个 Zoomex 目录条目。停用词过滤后，
+    只共享通用虚词/行业套话的两段文本不应再被判定为"相关"。"""
+    entries = [_entry("z1", "wallet", "Users can view their account balance and use the platform.")]
+    facts = {"mechanism": "Regulatory registration for a new remittance entity", "feature": "AUSTRAC registration"}
+    assert recall_candidates(facts, entries) == []
+
+
+def test_recall_still_matches_on_genuine_shared_domain_terms():
+    """停用词过滤不能矫枉过正——真正共享的机制词（如 tick/deposit/wallet）必须
+    继续被识别为相关，不能被停用词表误杀。"""
+    entries = [_entry("z1", "wallet", "Supports instant deposit and withdrawal via OnlinePay.")]
+    facts = {"mechanism": "Instant deposit and withdrawal for local currency"}
+    assert [e.uid for e in recall_candidates(facts, entries)] == ["z1"]
+
+
 def test_priority_is_programmatic_and_weight_changes_need_no_llm():
     score, priority = calculate_priority(
         event_type="reward_changed", gap_type="different_mechanism",

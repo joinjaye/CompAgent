@@ -39,6 +39,28 @@ _RULE_RE = re.compile(
     re.IGNORECASE,
 )
 _TOKEN_RE = re.compile(r"[A-Za-z0-9\u4e00-\u9fff]{2,}")
+# recall_candidates() \u9760\u8bcd\u9879\u91cd\u53e0\u5224\u65ad\u5019\u9009\u662f\u5426\u76f8\u5173\uff0c\u53ea\u8981\u6c42 >=1 \u4e2a\u5171\u540c\u8bcd\u2014\u20142026-07-22
+# \u771f\u5b9e\u6570\u636e\u53d1\u73b0\u8fd9\u4e2a\u9608\u503c\u5728\u82f1\u6587\u8bed\u6599\u4e0b\u5f62\u540c\u865a\u8bbe\uff1a\u4e2d\u6587\u56e0\u4e3a _TOKEN_RE \u8981\u6c42\u81f3\u5c11 2 \u4e2a\u5b57\u7b26\uff0c
+# \u5929\u7136\u8fc7\u6ee4\u6389\u4e86"\u7684"/"\u4e86"\u8fd9\u7c7b\u5355\u5b57\u865a\u8bcd\uff0c\u4f46\u82f1\u6587\u7684"is"/"to"/"users"/"trading"/
+# "account"\u8fd9\u7c7b\u9ad8\u9891\u865a\u8bcd\u6216\u884c\u4e1a\u901a\u7528\u8bcd\u957f\u5ea6\u90fd >=2\uff0c\u4f1a\u88ab\u5f53\u6210\u6709\u6548\u8bcd\u9879\uff0c\u5bfc\u81f4\u51e0\u4e4e\u4efb\u4f55\u4e24\u6bb5
+# \u82f1\u6587\u4e1a\u52a1\u6587\u672c\u90fd\u80fd\u78b0\u51fa\u81f3\u5c11\u4e00\u4e2a\u91cd\u53e0\u8bcd\u2014\u2014\u5b9e\u6d4b Bitunix product/EN \u4e00\u6574\u6279 12 \u7bc7\u51e0\u4e4e\u5b8c\u5168
+# \u4e0d\u540c\u4e3b\u9898\u7684\u6587\u7ae0\uff08tick size \u8c03\u6574\u3001AUSTRAC \u6ce8\u518c\u3001SEPA \u4e3b\u4f53\u53d8\u66f4\u3001CRWD \u62c6\u80a1\u5408\u7ea6\u8c03\u6574\u7b49\uff09
+# \u53ec\u56de\u7ed3\u679c\u5168\u90e8\u8d8b\u540c\u6307\u5411\u540c\u4e00\u4e24\u4e2a Zoomex \u76ee\u5f55\u6761\u76ee\uff08wallet/card_payment\uff09\uff0c\u4e0d\u662f\u56e0\u4e3a
+# \u771f\u7684\u76f8\u5173\uff0c\u53ea\u662f\u56e0\u4e3a\u90fd\u542b"users""trading"\u8fd9\u7c7b\u8bcd\u3002\u505c\u7528\u8bcd\u8868\u53ea\u505a\u4fdd\u5b88\u7684\u8bed\u6cd5\u865a\u8bcd +
+# \u9ad8\u9891\u65e0\u533a\u5206\u5ea6\u884c\u4e1a\u60ef\u7528\u8bcd\uff0c\u4e0d\u52a8\u4efb\u4f55\u53ef\u80fd\u627f\u8f7d\u5b9e\u9645\u8bed\u4e49\u7684\u8bcd\uff08\u5982 fee/deposit/tick/
+# wallet/copy/risk \u7b49\u5177\u4f53\u673a\u5236\u8bcd\u90fd\u4fdd\u7559\uff09\u3002
+_STOPWORDS = frozenset({
+    "a", "an", "and", "are", "as", "at", "be", "by", "can", "for", "from",
+    "has", "have", "in", "into", "is", "it", "its", "may", "more", "no",
+    "not", "of", "on", "or", "per", "than", "that", "the", "their", "then",
+    "there", "this", "to", "up", "use", "used", "using", "via", "was",
+    "were", "will", "with", "without", "you", "your",
+    "users", "user", "trading", "trade", "traders", "trader",
+    "feature", "features", "platform", "service", "services",
+    "account", "accounts", "available", "support", "supports", "supported",
+    "new", "now", "official", "officially", "launch", "launches", "live",
+    "update", "updates", "please", "click", "also",
+})
 
 
 def _sentences(text: str) -> list[str]:
@@ -168,7 +190,10 @@ def _terms(value: Any) -> set[str]:
         return set().union(*(_terms(item) for item in value)) if value else set()
     if value is None:
         return set()
-    return {token.lower() for token in _TOKEN_RE.findall(str(value))}
+    return {
+        token.lower() for token in _TOKEN_RE.findall(str(value))
+        if token.lower() not in _STOPWORDS
+    }
 
 
 def recall_candidates(

@@ -2,6 +2,7 @@
 <title>竞品情报看板 · ZMX Competitor Intel</title>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" type="image/png" href="/favicon.png">
 <style>
 :root {
   color-scheme: dark;
@@ -74,6 +75,7 @@ a { color: inherit; }
 .topbar-left { display: flex; align-items: baseline; gap: 12px; }
 .topbar-title { font-size: 15px; font-weight: 650; letter-spacing: -0.01em; }
 .topbar-date { font-size: 12.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.tz-badge { font-size: 10.5px; color: var(--text-muted); border: 1px solid var(--border); border-radius: 20px; padding: 2px 8px; }
 .topbar-right { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
 .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--status-good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-good) 20%, transparent); }
 
@@ -94,11 +96,6 @@ a { color: inherit; }
 .tab-pane.active { display: flex; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(2px); } to { opacity: 1; transform: none; } }
 
-/* ---------- quick jump ---------- */
-.quick-jump { display: flex; gap: 8px; padding: 0.4rem 1.5rem 0; flex-wrap: wrap; }
-.quick-jump-btn { font-size: 11.5px; padding: 4px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface-1); color: var(--text-secondary); transition: all 0.12s var(--ease); }
-.quick-jump-btn:hover { border-color: var(--hue-campaign); color: var(--hue-campaign); }
-
 /* ---------- stat / chip cards ---------- */
 .overview-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 0 1.5rem; }
 @media (max-width: 860px) { .overview-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
@@ -107,6 +104,13 @@ a { color: inherit; }
   padding: 0.85rem 1rem; box-shadow: var(--shadow-card); transition: border-color 0.15s var(--ease);
 }
 .stat-card:hover { border-color: var(--border-strong); }
+.stat-card-link {
+  width: 100%; color: inherit; font: inherit; text-align: left; cursor: pointer;
+  appearance: none;
+}
+.stat-card-link:hover { border-color: var(--hue-campaign); }
+.stat-card-link:focus-visible { outline: 2px solid var(--hue-campaign); outline-offset: 2px; }
+.stat-card-jump { margin-top: 10px; color: var(--hue-campaign); font-size: 11px; font-weight: 650; }
 .stat-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; font-weight: 500; }
 .stat-value { font-size: 24px; font-weight: 650; line-height: 1.1; letter-spacing: -0.02em; font-variant-numeric: proportional-nums; }
 .stat-value.accent { color: var(--hue-campaign); }
@@ -129,10 +133,10 @@ a { color: inherit; }
 .insight-leader-empty { color:var(--text-muted); font-size:13px; padding-top:3px; }
 .insight-narrative { padding:12px 14px; border:1px solid rgba(91,157,238,.18); border-radius:10px; background:rgba(7,17,30,.46); color:var(--text-secondary); font-size:12.5px; line-height:1.75; }
 .insight-narrative p { margin:0; }.insight-narrative p+p { margin-top:5px; }.insight-empty { min-height:86px; display:flex; align-items:center; justify-content:center; text-align:center; color:var(--text-muted); font-size:14px; letter-spacing:.01em; }
-.platform-stack-card { margin:0 1.5rem; padding:1rem; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-1); box-shadow:var(--shadow-card); }
+.platform-stack-card { position:relative; margin:0 1.5rem; padding:1rem; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-1); box-shadow:var(--shadow-card); }
 .platform-stack-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:15px; flex-wrap:wrap; }.platform-stack-note { color:var(--text-muted); font-size:10.5px; margin-top:3px; }
-.platform-stack-legend { display:flex; gap:6px; flex-wrap:wrap; }.platform-stack-toggle { min-height:34px; display:inline-flex; align-items:center; gap:7px; padding:5px 9px; border:1px solid var(--border); border-radius:8px; color:var(--text-secondary); background:var(--surface-2); cursor:pointer; font:inherit; font-size:11px; transition:opacity .15s var(--ease),border-color .15s var(--ease); }.platform-stack-toggle:hover,.platform-stack-toggle:focus-visible { border-color:var(--border-strong); outline:none; }.platform-stack-toggle.off { opacity:.38; }.platform-stack-swatch { width:9px; height:9px; border-radius:3px; background:var(--stack-color); }
-.platform-stack-chart { display:grid; gap:11px; }.platform-stack-row { display:grid; grid-template-columns:82px minmax(0,1fr) 38px; align-items:center; gap:10px; min-height:30px; }.platform-stack-source { color:var(--text-secondary); font-size:11.5px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.platform-stack-track { height:22px; display:flex; align-items:stretch; border-radius:6px; background:var(--surface-3); overflow:hidden; position:relative; }.platform-stack-segment { min-width:0; display:flex; align-items:center; justify-content:center; color:#07111e; font-family:var(--font-mono); font-size:9px; font-weight:800; cursor:default; transition:width .3s var(--ease),filter .15s var(--ease); }.platform-stack-segment:hover { filter:brightness(1.16); }.platform-stack-segment:first-child { border-radius:6px 0 0 6px; }.platform-stack-segment:last-child { border-radius:0 6px 6px 0; }.platform-stack-total { color:var(--text-muted); text-align:right; font-family:var(--font-mono); font-size:11px; }.platform-stack-empty { padding:22px; text-align:center; color:var(--text-muted); font-size:12px; border:1px dashed var(--border); border-radius:8px; }
+.platform-stack-legend { display:flex; gap:6px; flex-wrap:wrap; }.platform-stack-toggle { min-height:34px; display:inline-flex; align-items:center; gap:7px; padding:5px 9px; border:1px solid var(--border); border-radius:8px; color:var(--text-secondary); background:var(--surface-2); cursor:default; font:inherit; font-size:11px; transition:opacity .15s var(--ease),border-color .15s var(--ease),color .15s var(--ease); }.platform-stack-toggle:hover,.platform-stack-toggle:focus-visible { color:var(--text-primary); border-color:var(--border-strong); outline:none; }.platform-stack-swatch { width:9px; height:9px; border-radius:3px; background:var(--stack-color); }
+.platform-stack-chart { display:grid; gap:11px; }.platform-stack-row { display:grid; grid-template-columns:82px minmax(0,1fr) 38px; align-items:center; gap:10px; min-height:30px; }.platform-stack-source { color:var(--text-secondary); font-size:11.5px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.platform-stack-track { height:22px; display:flex; align-items:stretch; border-radius:6px; background:var(--surface-3); overflow:hidden; position:relative; }.platform-stack-segment { min-width:0; display:flex; align-items:center; justify-content:center; color:#07111e; font-family:var(--font-mono); font-size:9px; font-weight:800; cursor:default; transition:width .3s var(--ease),filter .15s var(--ease),opacity .15s var(--ease); }.platform-stack-segment:hover { filter:brightness(1.16); }.platform-stack-card[data-active-series] .platform-stack-segment { opacity:.18; }.platform-stack-card[data-active-series="campaign"] .platform-stack-segment[data-stack-series="campaign"],.platform-stack-card[data-active-series="product"] .platform-stack-segment[data-stack-series="product"],.platform-stack-card[data-active-series="listing"] .platform-stack-segment[data-stack-series="listing"] { opacity:1; }.platform-stack-segment:first-child { border-radius:6px 0 0 6px; }.platform-stack-segment:last-child { border-radius:0 6px 6px 0; }.platform-stack-total { color:var(--text-muted); text-align:right; font-family:var(--font-mono); font-size:11px; }.platform-stack-empty { padding:22px; text-align:center; color:var(--text-muted); font-size:12px; border:1px dashed var(--border); border-radius:8px; }.platform-stack-tooltip { position:absolute; z-index:8; display:none; min-width:165px; padding:8px 10px; border:1px solid var(--border-strong); border-radius:8px; background:rgba(7,17,31,.96); box-shadow:0 10px 28px rgba(0,0,0,.34); color:var(--text-secondary); font-size:11px; line-height:1.55; pointer-events:none; transform:translate(10px,-50%); }.platform-stack-tooltip.show { display:block; }.platform-stack-tooltip strong { display:block; color:var(--text-primary); margin-bottom:2px; }
 @media (max-width:720px) { .insight-shell{margin:0 1rem}.insight-leaders{grid-template-columns:1fr}.insight-leader{min-height:72px}.insight-head{align-items:flex-start;flex-direction:column;gap:8px} }
 @media (max-width:720px) { .platform-stack-card{margin:0 1rem;padding:.8rem}.platform-stack-row{grid-template-columns:64px minmax(0,1fr) 30px;gap:7px}.platform-stack-source{font-size:10.5px} }
 .trend-card { margin:0 1.5rem; padding:1rem 1rem .85rem; background:linear-gradient(145deg,rgba(91,157,238,.055),transparent 48%),var(--surface-1); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
@@ -159,11 +163,6 @@ a { color: inherit; }
 @media (max-width:600px) { .trend-card{margin:0 1rem;padding:.8rem}.trend-toolbar{align-items:flex-start}.trend-chart-wrap{min-height:210px}.trend-svg{min-height:210px}.trend-legend-btn{padding:5px 7px} }
 @media (prefers-reduced-motion:reduce) { .trend-legend-btn,.trend-line,.trend-point,.trend-tooltip{transition:none} }
 .summary-table td strong { font-size:16px; }
-.overview-actions { display:flex; align-items:center; justify-content:space-between; padding:.5rem 1.5rem 0; flex-wrap:wrap; gap:8px; }
-.rule-guide { margin:.8rem 1.5rem 0; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-1); color:var(--text-secondary); font-size:12px; }
-.rule-guide summary { cursor:pointer; min-height:44px; display:flex; align-items:center; padding:0 1rem; color:var(--text-primary); font-weight:650; }
-.rule-guide-body { border-top:1px solid var(--border); padding:.8rem 1rem; line-height:1.65; display:grid; gap:5px; }
-.rule-guide code { color:var(--hue-campaign); font-family:var(--font-mono); }
 .freshness { display:inline-flex; align-items:center; gap:6px; padding:4px 9px; border:1px solid var(--border); border-radius:20px; color:var(--text-secondary); font-size:11px; }
 .source-link { color:var(--hue-campaign); font-weight:650; white-space:nowrap; }
 
@@ -198,7 +197,6 @@ a { color: inherit; }
   color: var(--hue-campaign); font-weight: 600; transition: opacity 0.12s;
 }
 .analysis-toggle:hover { opacity: 0.75; }
-.follow-up { margin-top: 8px; font-size: 12.5px; color: var(--hue-campaign); font-weight: 600; line-height: 1.5; }
 .detail-meta { margin-top: 8px; font-size: 11px; color: var(--text-muted); display: flex; gap: 10px; align-items: center; }
 .detail-meta a { color: var(--hue-campaign); font-weight: 600; }
 
@@ -227,8 +225,8 @@ a { color: inherit; }
 .tag { font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600; white-space: nowrap; letter-spacing: 0.01em; }
 .tag-missing { background: color-mix(in srgb, var(--status-critical) 18%, transparent); color: #ff9d99; }
 .tag-diff { background: color-mix(in srgb, var(--status-warning) 20%, transparent); color: #f6cb6b; }
-.tag-same { background: color-mix(in srgb, var(--status-good) 16%, transparent); color: var(--status-good); }
-.tag-mixed { background: color-mix(in srgb, var(--status-serious) 18%, transparent); color: #f5a582; }
+.tag-broad { background: color-mix(in srgb, var(--status-good) 16%, transparent); color: var(--status-good); }
+.tag-broad { background: color-mix(in srgb, var(--hue-campaign) 18%, transparent); color: var(--hue-campaign); }
 .tag-na { background: var(--surface-2); color: var(--text-muted); border: 1px solid var(--border); }
 .tag-pending { background: transparent; color: var(--text-muted); border: 1px dashed var(--border-strong); }
 .tag-campaign { background: color-mix(in srgb, var(--hue-campaign) 18%, transparent); color: #8fbdf5; }
@@ -268,7 +266,12 @@ a { color: inherit; }
 .status-chip.changed { background: color-mix(in srgb, var(--status-warning) 20%, transparent); color: #f6cb6b; }
 .status-chip.unchanged { background: var(--surface-2); color: var(--text-muted); }
 .table-empty { padding: 2rem 1.25rem; color: var(--text-muted); font-size: 13px; text-align: center; }
-.table-footer { display: flex; align-items: center; justify-content: space-between; padding: 8px 1rem; border-top: 1px solid var(--border); font-size: 11.5px; color: var(--text-muted); }
+.table-footer { padding:8px 1rem; border-top:1px solid var(--border); font-size:11.5px; color:var(--text-muted); white-space:nowrap; }
+.table-footer-inner { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:nowrap; white-space:nowrap; }
+.table-footer-inner > span,.table-footer-inner .filter-btn { flex:0 0 auto; white-space:nowrap; }
+.category-insight { margin-top:14px; }
+.category-insight .insight-head { margin-bottom:10px; }
+.category-insight .insight-narrative { min-height:0; }
 
 .excl-badge { font-size: 10px; padding: 2px 7px; border-radius: 20px; background: color-mix(in srgb, var(--loc-asia) 22%, transparent); color: var(--loc-asia); white-space: nowrap; font-weight: 600; }
 .locale-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; }
@@ -286,7 +289,16 @@ a { color: inherit; }
 .market-tab.disabled { color: var(--border-strong); cursor: default; }
 .market-tab.disabled:hover { background: none; color: var(--border-strong); }
 .market-summary-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; padding: 0.75rem 1.5rem 0; }
+.market-category-filter { justify-content:flex-start; margin-top:8px; }
+.market-listing-detail { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.listing-detail-grid.market-detail-grid { grid-template-columns:minmax(190px,.8fr) minmax(320px,1.7fr) minmax(190px,.8fr); gap:40px; padding:20px 16px; }
+.market-detail-section { display:flex; flex-direction:column; gap:18px; min-width:0; }
+.market-detail-field { display:flex; flex-direction:column; gap:6px; }
+.market-detail-label { color:var(--text-muted); font-size:11px; font-weight:650; letter-spacing:.03em; }
+.market-detail-content { color:var(--text-secondary); font-size:12.5px; line-height:1.65; overflow-wrap:anywhere; }
+.market-detail-content strong { color:var(--text-primary); font-size:12.5px; margin-right:6px; }
 @media (max-width: 860px) { .market-summary-grid { grid-template-columns: 1fr; } }
+@media (max-width: 860px) { .market-listing-detail,.listing-detail-grid.market-detail-grid { grid-template-columns:1fr; gap:20px; } }
 .market-section { background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-card); overflow: hidden; }
 .market-section-head { padding: 0.6rem 0.9rem; border-bottom: 1px solid var(--border); font-size: 12px; font-weight: 650; color: var(--text-secondary); display: flex; align-items: center; justify-content: space-between; }
 .market-section-body { padding: 0.6rem 0.9rem; display: flex; flex-direction: column; gap: 8px; }
@@ -321,10 +333,6 @@ a { color: inherit; }
 .page-btn { background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary); border-radius: var(--radius-sm); padding: 5px 12px; font-size: 12px; transition: all 0.12s var(--ease); }
 .page-btn:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text-primary); }
 .page-btn:disabled { opacity: 0.35; cursor: default; }
-
-.footnote { padding: 1.5rem; font-size: 11.5px; color: var(--text-muted); line-height: 1.7; border-top: 1px solid var(--border); margin-top: 1.5rem; }
-.footnote code { font-family: var(--font-mono); background: var(--surface-2); padding: 1px 5px; border-radius: 4px; font-size: 10.5px; }
-.mock-note { display: inline-flex; align-items: center; gap: 4px; }
 
 .loading, .load-error { padding: 4rem 1.25rem; text-align: center; color: var(--text-muted); font-size: 13px; }
 
@@ -374,8 +382,6 @@ body { max-width:1480px; min-height:100vh; font-size:14px; }
 .filter-bar { margin-top:20px; }
 .filter-btn { min-height:36px; padding:7px 12px; background:var(--surface-1); }
 .filter-btn.active { box-shadow:0 3px 10px rgba(37,99,235,.18); }
-.rule-guide { background:#0b1727; box-shadow:none; }
-.rule-guide summary { color:var(--text-secondary); }
 .insight-card { background:linear-gradient(135deg,rgba(79,140,255,.16),var(--surface-1)); border-color:#2d4e78; color:var(--text-secondary); }
 .trend-card,.rank-card { box-shadow:var(--shadow-card); }
 .source-pill { background:#17263a; border-color:#2a405c; color:#c9d4e3; }
@@ -393,27 +399,50 @@ body { max-width:1480px; min-height:100vh; font-size:14px; }
 .product-coverage { display:flex; flex-wrap:wrap; gap:8px; padding:0 1.5rem; }
 .coverage-chip { padding:8px 11px; border-radius:10px; background:var(--surface-1); border:1px solid var(--border); color:#b9c7d8; font-size:12px; box-shadow:0 1px 2px rgba(0,0,0,.18); }
 .coverage-chip strong { color:#f1f5fb; margin-left:5px; }
-.quality-banner { margin:14px 1.5rem 0; padding:13px 15px; border-radius:10px; background:#352515; border:1px solid #795128; color:#f6c87c; font-size:12px; line-height:1.55; }
-.readiness-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; padding:0 1.5rem; }
-.readiness-item { padding:14px 15px; border:1px solid var(--border); background:var(--surface-1); border-radius:10px; color:#aebdd0; font-size:12px; line-height:1.55; }
-.readiness-item strong { display:block; color:#eef3fa; margin-bottom:4px; }
+.listing-distributions { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); align-items:stretch; gap:14px; padding:14px 1.5rem 0; }
+.distribution-card { position:relative; display:flex; flex-direction:column; height:100%; padding:16px 18px; border:1px solid var(--border); border-radius:var(--radius); background:var(--surface-1); box-shadow:var(--shadow-card); }
+.distribution-title { color:var(--text-primary); font-size:13px; font-weight:700; margin-bottom:12px; }
+.distribution-legend { display:flex; flex-wrap:wrap; gap:7px 12px; margin-bottom:14px; }
+.distribution-legend-item { display:inline-flex; align-items:center; gap:6px; color:var(--text-muted); font-size:10.5px; border-radius:5px; cursor:default; transition:color .16s var(--ease),opacity .16s var(--ease); }
+.distribution-legend-item:hover,.distribution-legend-item:focus-visible { color:var(--text-primary); outline:none; }
+.distribution-legend-swatch { width:8px; height:8px; border-radius:2px; }
+.distribution-list { display:grid; flex:1; align-content:space-evenly; gap:10px; }
+.distribution-row { display:grid; grid-template-columns:minmax(92px,auto) 1fr 34px; align-items:center; gap:10px; color:var(--text-secondary); font-size:12px; }
+.distribution-track { display:flex; height:12px; overflow:hidden; border-radius:4px; background:var(--surface-3); }
+.distribution-segment { height:100%; min-width:2px; transition:opacity .18s var(--ease); }
+.distribution-segment:hover { opacity:.78; }
+.distribution-card[data-active-exchange] .distribution-segment { opacity:.18; }
+.distribution-card[data-active-exchange="Bitunix"] .distribution-segment[data-source="Bitunix"],
+.distribution-card[data-active-exchange="Weex"] .distribution-segment[data-source="Weex"],
+.distribution-card[data-active-exchange="BingX"] .distribution-segment[data-source="BingX"],
+.distribution-card[data-active-exchange="Phemex"] .distribution-segment[data-source="Phemex"],
+.distribution-card[data-active-exchange="Lbank"] .distribution-segment[data-source="Lbank"] { opacity:1; }
+.distribution-tooltip { position:absolute; z-index:8; display:none; min-width:150px; padding:8px 10px; border:1px solid var(--border-strong); border-radius:8px; background:rgba(7,17,31,.96); box-shadow:0 10px 28px rgba(0,0,0,.34); color:var(--text-secondary); font-size:11px; line-height:1.55; pointer-events:none; transform:translate(10px,-50%); }
+.distribution-tooltip.show { display:block; }
+.distribution-tooltip strong { display:block; color:var(--text-primary); margin-bottom:2px; }
+.distribution-row strong { text-align:right; color:var(--text-primary); font-variant-numeric:tabular-nums; }
+.distribution-empty { color:var(--text-muted); font-size:12px; padding:8px 0; }
+.listing-filter-bar { display:flex; flex-wrap:wrap; gap:8px; }
+.listing-filter-bar .search-input { min-width:220px; flex:1; }
+.token-category { display:inline-flex; padding:3px 8px; border-radius:999px; border:1px solid #315278; color:#9dc1ff; background:#142943; font-size:11px; font-weight:650; }
+.token-category.pending { color:var(--text-muted); border-color:var(--border); background:var(--surface-2); }
+.detail-expand-row td { background:#0b1727; }
+.listing-detail-grid { display:grid; grid-template-columns:1fr 2fr 1fr; gap:22px; padding:7px 2px; }
 .global-controls { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .global-select { min-height:36px; padding:0 30px 0 10px; border:1px solid var(--border); border-radius:8px; background:var(--surface-2); color:#dce6f3; }
 .global-controls .date-input { min-height:36px; background:var(--surface-2); }
-.scope-note { color:var(--text-muted); font-size:12px; }
 .empty-panel { margin:0 1.5rem; padding:18px; border:1px dashed var(--border-strong); border-radius:var(--radius); color:var(--text-muted); font-size:12.5px; background:var(--surface-1); }
 .group-divider td { background:#101e31 !important; color:#8fb9ff; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; padding-top:11px !important; padding-bottom:11px !important; }
 .compact-table td { vertical-align:middle; }
 a { color:#7eacff; }
 .source-link { color:#7eacff; }
-.footnote { color:#8190a5; }
 @media(max-width:860px){
   .topbar { margin:8px 8px 0; border-radius:12px; }
   .category-tabs { margin:8px 8px 0; overflow-x:auto; }
   .category-tab { flex:0 0 auto; min-width:108px; }
   .overview-grid { grid-template-columns:1fr 1fr; }
   .table-wrap { max-width:calc(100% - 2rem); }
-  .readiness-grid { grid-template-columns:1fr; }
+  .listing-distributions,.listing-detail-grid { grid-template-columns:1fr; }
 }
 @media(max-width:520px){
   .overview-grid { grid-template-columns:1fr; }
@@ -456,31 +485,34 @@ const TOP_TABS = [
   { key: 'overview', label: 'Overview' },
   { key: 'campaign', label: 'Campaign' },
   { key: 'product', label: 'Product' },
-  { key: 'listing', label: 'Listing' },
+  { key: 'listing', label: 'Listing & Delisting' },
   { key: 'markets', label: 'Markets' },
   { key: 'search', label: 'Search' },
 ];
 const CATEGORY_ORDER = ['campaign', 'product', 'listing', 'delisting'];
 const CATEGORY_LABEL = { campaign: '活动 Campaign', product: '产品 Product', listing: '上币 Listing', delisting: '下架 Delisting', other: '其他' };
-const DIFF_LABEL = { missing: '未检索到同类', diff: '已有同类 · 机制不同', same: '已有同类', mixed: '需人工核验', na: '未进行对比', pending: '待分析' };
+const DIFF_LABEL = { missing: '未检索到同类', diff: '已有同类 · 机制不同', broad: '已有同类型 · 粗粒度', na: '未进行对比' };
+const DIFF_FILTER_TAGS = ['missing', 'diff', 'broad', 'na'];
 const STATUS_LABEL = { new: '新增', changed: '变更', unchanged: '未变' };
 const SOURCES = ['Bitunix', 'Weex', 'BingX', 'Phemex', 'Lbank'];
 const LOCALE_LABEL = { EN: 'EN', FR: 'FR', VN: 'VN', ID: 'ID' };
 const LOCALE_DOT_CLASS = { EN: 'en', FR: 'fr', VN: 'vn', ID: 'id' };
 const PRIORITY_ORDER = { '高': 0, '中': 1, '低': 2 };
-const DIFF_SORT_ORDER = { missing: 0, diff: 1, mixed: 2, same: 3, na: 3 };
+const DIFF_SORT_ORDER = { missing: 0, diff: 1, broad: 2, na: 3 };
+const LISTING_TOKEN_CATEGORIES = ['AI', 'Meme', 'Layer2', 'DeFi', 'GameFi', 'RWA', 'DePIN', 'Other'];
+const EXCHANGE_CHART_COLORS = { Bitunix:'#4f8cff', Weex:'#2dd4a7', BingX:'#a78bfa', Phemex:'#fb8b5a', Lbank:'#f3ad3d' };
 const SEARCH_PAGE_SIZE = 50;
 
 let DATA = null;
 let state = {
-  tab: 'overview', trendDays: 7, trendSeries: {campaign:true, product:true, listing:true}, platformStackSeries: {campaign:true, product:true, listing:true}, globalSource: 'all', globalMarket: 'all',
+  tab: 'overview', trendDays: 7, trendSeries: {campaign:true, product:true, listing:true}, globalSource: 'all', globalMarket: 'all',
   dateFrom: '', dateTo: '',
 };
 let campaignState = { source: 'all', limit: 10, type: 'all', status: 'all', reward: 'all', market: 'all', diffType: 'all', keyword: '', expanded: new Set() };
 let productState = { source: 'all', limit: 10, category: 'all', status: 'all', market: 'all', diffType: 'all', keyword: '', expanded: new Set() };
-let listingState = { source: 'all' };
-let marketsState = { market: 'EN' };
-let searchState = { locale: 'all', source: 'all', category: 'all', diffType: 'all', range: 'all', dateFrom: '', dateTo: '', query: '', page: 1 };
+let listingState = { source: 'all', type: 'all', status: 'all', category: 'all', locale: 'all', keyword: '', expanded: new Set() };
+let marketsState = { market: 'EN', category: 'all', expanded: new Set() };
+let searchState = { locale: 'all', source: 'all', category: 'all', diffType: 'all', range: 'all', query: '', page: 1 };
 
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -539,20 +571,6 @@ function globalRuleSort(rows) {
 function sourceLink(row, label='View source ↗') {
   return row.url ? `<a class="source-link" href="${esc(row.url)}" target="_blank" rel="noopener noreferrer">${esc(label)}</a>` : '<span title="源数据缺少 URL">链接缺失</span>';
 }
-function ruleGuide(scope) {
-  const details = {
-    overview: '<code>模块</code> Campaign → Product → Listing → Other；同模块按事件类型，再按发布时间倒序。全局 Top 5，每个交易所最多 2 条。多语言与重复抓取只计一次。',
-    campaign: '<code>排序</code> New → Updated → Ongoing → Upcoming → Ended；同状态按发布时间倒序。AI 仅做抽取与总结，不参与排序或是否值得关注的判断。',
-    product: '<code>排序</code> New Product → Update；同类型按发布时间倒序。产品覆盖表示本期涉及的能力分类，不代表历史产品总量。',
-    listing: '<code>排序</code> New Spot → New Perpetual → Delisting → 未识别；同类型按发布时间倒序。Listing 不调用 AI 做优先级或 Zoomex 对比。',
-  }[scope];
-  return `<details class="rule-guide"><summary>口径与排序规则</summary><div class="rule-guide-body"><div>${details}</div><div><code>Zoomex 对比</code>“未检索到同类”仅表示当前基线没有召回证据，不等于确认缺失；“未进行对比”表示该模块不做对比或尚无分析结果。</div><div><code>可追溯性</code>每条记录均提供原始公告链接；完整历史统一在 Search 中检索。</div></div></details>`;
-}
-function formatTime(iso) {
-  if (!iso) return '--:--';
-  const t = iso.split('T')[1];
-  return t ? t.slice(0, 5) : '--:--';
-}
 function formatDate(iso) {
   return iso ? iso.slice(0, 10) : '—';
 }
@@ -602,10 +620,11 @@ function zmxComparisonBox(row) {
     return `<div class="comparison-box"><strong>尚未分析</strong><small>该条尚未被任何一次竞品分析运行覆盖，不是"确认无差异"。</small></div>`;
   }
   const label = esc(DIFF_LABEL[row.diff_tag] || row.diff_type || '不适用');
-  const detail = esc(row.diff_detail || row.zmx_capability_desc || '');
+  const detail = esc(row.diff_detail || (row.diff_tag === 'missing' ? '' : row.zmx_capability_desc) || '');
   const counterpart = row.zmx_counterpart;
-  const cls = row.diff_tag === 'same' ? 'matched' : row.diff_tag === 'missing' ? 'unmatched' : '';
-  return `<div class="comparison-box ${cls}"><strong>${label}</strong>${detail ? `<small>${detail}</small>` : ''}${counterpart?.url ? `<div class="variant-links"><a class="variant-link" href="${esc(counterpart.url)}" target="_blank" rel="noopener noreferrer">Open Zoomex evidence ↗</a></div>` : ''}</div>`;
+  const evidenceUrl = counterpart?.url || (row.diff_tag === 'broad' ? row.zmx_capability_url : null);
+  const cls = row.diff_tag === 'broad' ? 'matched' : row.diff_tag === 'missing' ? 'unmatched' : '';
+  return `<div class="comparison-box ${cls}"><strong>${label}</strong>${detail ? `<small>${detail}</small>` : ''}${evidenceUrl ? `<div class="variant-links"><a class="variant-link" href="${esc(evidenceUrl)}" target="_blank" rel="noopener noreferrer">Open Zoomex evidence ↗</a></div>` : ''}</div>`;
 }
 
 async function loadData() {
@@ -676,12 +695,12 @@ function renderPushView(locale) {
             <div class="hl-source">${esc(r.source)}</div>
             <div class="hl-body">
               <div class="hl-title">${esc(r.title)}</div>
-              ${(r.description || r.follow_up) ? `<div class="hl-summary">${esc((r.description || r.follow_up || '').slice(0, 140))}</div>` : ''}
+              ${r.description ? `<div class="hl-summary">${esc(r.description.slice(0, 140))}</div>` : ''}
               <div class="hl-meta">
                 <span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || r.diff_tag)}</span>
                 <span class="tag tag-${r.category}">${esc(CATEGORY_LABEL[r.category] || r.category)}</span>
                 ${mockBadge(r.is_mock)}
-                <span class="hl-time">${formatTime(r.post_time)}</span>
+                <span class="hl-time">${formatDate(r.post_time)}</span>
               </div>
             </div>
           </div>
@@ -699,10 +718,11 @@ function render() {
       <div class="topbar-left">
         <span class="topbar-title">竞品情报看板</span>
         <span class="topbar-date">${esc(DATA.meta.batch_date)}</span>
+        <span class="tz-badge" title="全站时间字段均为 UTC，比北京时间（UTC+8）慢 8 小时">时间基准 · UTC</span>
       </div>
       <div class="topbar-right">
         <span class="status-dot"></span>
-        <span>Updated At ${esc(DATA.meta.generated_at)}</span>
+        <span>Updated ${esc(formatDate(DATA.meta.generated_at))}</span>
         <div class="global-controls">
           <label class="date-control">From <input class="date-input" id="globalDateFrom" type="date" min="${esc(DATA.search_index.date_min)}" max="${esc(DATA.search_index.date_max)}" value="${esc(state.dateFrom)}"></label>
           <label class="date-control">To <input class="date-input" id="globalDateTo" type="date" min="${esc(DATA.search_index.date_min)}" max="${esc(DATA.search_index.date_max)}" value="${esc(state.dateTo)}"></label>
@@ -716,14 +736,6 @@ function render() {
       ${TOP_TABS.map(t => `<div class="category-tab" data-tab="${t.key}">${esc(t.label)}</div>`).join('')}
     </div>
     <div id="paneHost"></div>
-    <div class="footnote">
-      竞品情报平台 · SQLite 为唯一真相源，本页由 <code>python -m src.dashboard</code> 从数据库快照静态导出，
-      不含实时查询。标注 <span class="mock-note"><span class="tag tag-mock">模拟</span></span> 的条目是本次演示为填补
-      insights 缺口生成的占位内容（非真实 LLM 分析结果），详见项目 CLAUDE.md「Phase 7」。
-      共 ${DATA.meta.insights_total} 个分析批次（真实 ${DATA.meta.insights_total - DATA.meta.insights_mock} / 模拟 ${DATA.meta.insights_mock}），
-      Zoomex 基线累计 ${DATA.meta.zoomex_baseline_total} 条。Overview/Product/Listing/Markets 默认展示最新批次（${esc(DATA.meta.batch_date)}）；
-      Campaign 同时展示全量活动生命周期。完整去重历史请见「Search」。
-    </div>
   `;
 
   document.getElementById('categoryTabs').addEventListener('click', e => {
@@ -733,6 +745,9 @@ function render() {
   });
   ['globalSource','globalMarket'].forEach(id => document.getElementById(id).addEventListener('change', e => {
     state[id === 'globalSource' ? 'globalSource' : 'globalMarket'] = e.target.value;
+    if (id === 'globalMarket' && state.tab === 'markets' && e.target.value !== 'all') {
+      marketsState.market = ['VN', 'ID'].includes(e.target.value) ? 'SEA' : e.target.value;
+    }
     renderActivePane();
   }));
   ['From', 'To'].forEach(which => document.getElementById(`globalDate${which}`).addEventListener('change', e => {
@@ -746,9 +761,8 @@ function render() {
   document.getElementById('latestSnapshot').addEventListener('click', () => {
     state.dateFrom = ''; state.dateTo = '';
     render();
-    switchTab(state.tab);
   });
-  document.querySelector('[data-tab="overview"]').classList.add('active');
+  document.querySelector(`[data-tab="${state.tab}"]`)?.classList.add('active');
   renderActivePane();
 }
 
@@ -780,18 +794,20 @@ function computeActivityRanking() {
 function chipCard(key, label, chip) {
   const total = chip.today ?? (chip.count_new + chip.count_changed);
   const diffs = Object.entries(chip.diff_breakdown).filter(([, n]) => n > 0);
+  const jumpable = key !== 'announcement';
   // campaign/product 都走真实 Stage1/Stage3 分析（Phase②起），diff_breakdown
   // 对两者同样有意义，不再是只有 campaign 才展示的特殊逻辑。
   let secondary = (key === 'campaign' || key === 'product') && diffs.length
     ? `<div class="chip-diffs">${diffs.map(([tag, n]) => `<span class="tag tag-${tag}">${esc(DIFF_LABEL[tag] || tag)} ${n}</span>`).join('')}</div>`
     : '';
   return `
-    <div class="stat-card">
+    <${jumpable ? 'button' : 'div'} class="stat-card${jumpable ? ' stat-card-link' : ''}"${jumpable ? ` type="button" data-jump="${key}" aria-label="查看 ${esc(label)} 详情"` : ''}>
       <div class="stat-label">${esc(label)}</div>
       <div class="stat-value ${key === 'announcement' ? '' : 'accent'}">${total}</div>
       <div class="stat-delta">新增 ${chip.count_new} · 变更 ${chip.count_changed}</div>
       ${secondary}
-    </div>
+      ${jumpable ? `<div class="stat-card-jump">查看详情 →</div>` : ''}
+    </${jumpable ? 'button' : 'div'}>
   `;
 }
 
@@ -807,6 +823,18 @@ function insightText(insight) {
   return parts.join('。') + '。';
 }
 
+function businessInsightLabel(value) {
+  return ({
+    task_reward:'任务奖励',deposit_reward:'入金激励',trading_competition:'交易竞赛',
+    grid_trading_contest:'网格交易竞赛',trading_volume_tier:'交易量阶梯奖励',
+    zero_risk_new_user:'新用户零风险体验',copy_trading_recruit:'跟单交易招募',
+    social_engagement:'社交互动活动',other:'其他活动',
+    referral:'邀请推荐',airdrop:'空投活动',launchpool:'Launchpool',staking:'质押活动',
+    Trading:'交易功能',Earn:'理财产品',CopyTrading:'跟单产品',Wallet:'钱包能力',
+    API:'API 能力',Security:'安全与风控',Others:'其他产品更新'
+  }[value]||value);
+}
+
 function insightModel() {
   const campaign=globalFiltered(scopedRows('campaign','campaign_all','campaign'));
   const product=globalFiltered(scopedRows('product','product_all','product'));
@@ -818,17 +846,23 @@ function insightModel() {
   const productNew=product.filter(r=>r.status==='new' && (r.update_kind==='New Product'||!r.update_kind));
   const rewardChanges=campaign.filter(r=>r.change_kind==='reward');
   const topValue=(rows,key)=>leader(countBy(rows,key));
-  const topCampaignType=topValue(campaign,r=>r.campaign_type||r.mechanism_type||'其他活动');
-  const topProductType=topValue(product,r=>r.product_category||r.update_kind||'产品更新');
-  const topMarket=topValue(all,r=>(rowMarkets(r)[0]||r.locale||'Global'));
+  const topCampaignType=topValue(campaign.filter(r=>r.mechanism_type),r=>r.mechanism_type);
+  const topProductType=topValue(product.filter(r=>r.product_category),r=>r.product_category);
+  const marketCounts={};
+  all.forEach(r=>rowMarkets(r).forEach(locale=>{marketCounts[locale]=(marketCounts[locale]||0)+1;}));
+  const marketRanking=Object.entries(marketCounts).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
   const leaders={new_campaigns:leader(countBy(campaignNew)),new_products:leader(countBy(productNew)),reward_changes:leader(countBy(rewardChanges))};
   const total=all.length, changed=all.filter(r=>r.status==='changed').length;
   const sentences=[];
   if(total) {
-    sentences.push(`当前范围共识别 ${total} 条去重后的竞品动态，其中新增 ${total-changed} 条、内容变更 ${changed} 条。`);
-    if(campaign.length) sentences.push(`活动侧以${topCampaignType?.source||'综合活动'}为主，共 ${campaign.length} 条${rewardChanges.length?`，其中 ${rewardChanges.length} 条涉及奖励变化`:''}。`);
-    if(product.length) sentences.push(`产品侧共 ${product.length} 条动态，主要集中在${topProductType?.source||'产品更新'}。`);
-    if(topMarket) sentences.push(`市场分布以 ${topMarket.source} 最活跃（${topMarket.count} 条），整体变化${changed>total/3?'以规则或内容调整为主':'以新增发布为主'}。`);
+    const modules=[['活动',campaign.length],['产品',product.length],['上/下币',listing.length]].filter(([,n])=>n).sort((a,b)=>b[1]-a[1]);
+    sentences.push(`当前范围共识别 ${total} 条去重竞品动态，新增 ${total-changed} 条、内容变更 ${changed} 条，整体以${modules[0]?.[0]||'新增发布'}变化为主。`);
+    if(campaign.length) sentences.push(`活动侧${topCampaignType?`主要集中在${businessInsightLabel(topCampaignType.source)}`:'以常规运营活动为主'}${rewardChanges.length?`，并出现 ${rewardChanges.length} 条奖励变化`:'，暂未识别到明确奖励变化'}。`);
+    if(product.length) sentences.push(`产品侧${topProductType?`主要集中在${businessInsightLabel(topProductType.source)}`:'以功能新增与规则更新为主'}，其中新增产品 ${productNew.length} 条，其余为功能或规则调整。`);
+    if(marketRanking.length) {
+      const topMarkets=marketRanking.slice(0,2).map(([locale,count])=>`${locale}（${count} 条）`).join('、');
+      sentences.push(`市场分布以 ${topMarkets} 最活跃，${marketRanking.length>2?'变化覆盖多个区域':'变化相对集中'}。`);
+    }
   }
   return {significant:total>0,leaders,sentences:sentences.slice(0,4),total};
 }
@@ -841,7 +875,8 @@ function todaysInsightMarkup(ov) {
   const model=insightModel();
   const digest = DATA.daily_digest;
   const customScope=Boolean(state.dateFrom||state.dateTo||state.globalSource!=='all'||state.globalMarket!=='all');
-  const useLlm=!customScope && digest && digest.source==='llm' && digest.summary;
+  const overviewSummary=digest?.daily_summary||digest?.summary;
+  const useLlm=!customScope && digest && digest.source==='llm' && overviewSummary;
   const leaderCards=[
     ['新增活动最多',model.leaders.new_campaigns,'var(--hue-campaign)'],
     ['新增产品最多',model.leaders.new_products,'var(--hue-product)'],
@@ -850,7 +885,7 @@ function todaysInsightMarkup(ov) {
   const scope=state.dateFrom||state.dateTo?`${state.dateFrom||'最早'} → ${state.dateTo||'最新'}`:`最新批次 · ${DATA.meta.batch_date}`;
   let narrative='';
   if(!model.significant) narrative=`<div class="insight-empty">No Significant Changes Today</div>`;
-  else if(useLlm) narrative=`<div class="insight-narrative"><p>${esc(digest.summary)}</p>${digest.priority_focus?`<p>→ ${esc(digest.priority_focus)}</p>`:''}</div>`;
+  else if(useLlm) narrative=`<div class="insight-narrative"><p>${esc(overviewSummary)}</p></div>`;
   else narrative=`<div class="insight-narrative">${model.sentences.map(s=>`<p>${esc(s)}</p>`).join('')}</div>`;
   return `<div class="insight-shell">
     <div class="insight-head"><div><div class="insight-title"><span class="insight-title-mark">AI</span><span>Competitive Insight</span></div><div class="insight-scope">${esc(scope)} · 跟随全局平台、市场与日期范围</div></div><span class="tag ${useLlm?'tag-llm':'tag-na'}">${useLlm?'AI 自动总结':'范围实时汇总'}</span></div>
@@ -878,23 +913,28 @@ function platformStackMarkup() {
   const defs=[
     {key:'campaign',label:'Campaign',color:'var(--hue-campaign)'},
     {key:'product',label:'Product',color:'var(--hue-product)'},
-    {key:'listing',label:'Listing',color:'var(--hue-listing)'}
+    {key:'listing',label:'Listing & Delisting',color:'var(--hue-listing)'}
   ];
   const rowsByCategory={
     campaign:dedupeStackRows(globalFiltered(scopedRows('campaign','campaign_all','campaign'))),
     product:dedupeStackRows(globalFiltered(scopedRows('product','product_all','product'))),
-    listing:dedupeStackRows(globalFiltered(scopedRows('listing','listing_all','listing')).filter(r=>r.category==='listing'))
+    listing:dedupeStackRows(globalFiltered(scopedRows('listing','listing_all','listing')))
   };
   const platforms=[...new Set(defs.flatMap(d=>rowsByCategory[d.key].map(r=>r.source)))];
   const rows=platforms.map(source=>{
     const counts=Object.fromEntries(defs.map(d=>[d.key,rowsByCategory[d.key].filter(r=>r.source===source).length]));
-    const total=defs.reduce((n,d)=>n+(state.platformStackSeries[d.key]?counts[d.key]:0),0);
-    return {source,counts,total};
+    const total=defs.reduce((n,d)=>n+counts[d.key],0);
+    const listingBreakdown={
+      listing:rowsByCategory.listing.filter(r=>r.source===source&&r.category==='listing').length,
+      delisting:rowsByCategory.listing.filter(r=>r.source===source&&r.category==='delisting').length,
+    };
+    return {source,counts,total,listingBreakdown};
   }).filter(r=>r.total>0).sort((a,b)=>b.total-a.total||a.source.localeCompare(b.source));
   const max=Math.max(1,...rows.map(r=>r.total));
   return `<div class="platform-stack-card">
-    <div class="platform-stack-head"><div><strong>Platform × Category</strong><div class="platform-stack-note">Value = 按 group_id 去重后的公告数量 · 点击图例筛选分类</div></div><div class="platform-stack-legend" aria-label="切换堆叠分类">${defs.map(d=>`<button class="platform-stack-toggle ${state.platformStackSeries[d.key]?'':'off'}" data-stack-series="${d.key}" aria-pressed="${state.platformStackSeries[d.key]}" style="--stack-color:${d.color}"><i class="platform-stack-swatch"></i>${d.label}</button>`).join('')}</div></div>
-    ${rows.length?`<div class="platform-stack-chart" role="img" aria-label="按平台和分类统计的水平堆叠柱状图">${rows.map(r=>`<div class="platform-stack-row"><div class="platform-stack-source" title="${esc(r.source)}">${esc(r.source)}</div><div class="platform-stack-track">${defs.filter(d=>state.platformStackSeries[d.key]&&r.counts[d.key]).map(d=>{const width=r.counts[d.key]/max*100;return `<div class="platform-stack-segment" style="width:${width}%;background:${d.color}" title="${esc(r.source)} · ${d.label}: ${r.counts[d.key]}" aria-label="${esc(r.source)} ${d.label} ${r.counts[d.key]} 条">${width>=8?r.counts[d.key]:''}</div>`}).join('')}</div><div class="platform-stack-total">${r.total}</div></div>`).join('')}</div>`:`<div class="platform-stack-empty">当前筛选范围暂无可展示数据</div>`}
+    <div class="platform-stack-head"><div><strong>Platform × Category</strong><div class="platform-stack-note">Value = 按 group_id 去重后的公告数量 · 悬浮图例高亮分类</div></div><div class="platform-stack-legend" aria-label="悬浮高亮堆叠分类">${defs.map(d=>`<span class="platform-stack-toggle" data-stack-series="${d.key}" tabindex="0" style="--stack-color:${d.color}"><i class="platform-stack-swatch"></i>${d.label}</span>`).join('')}</div></div>
+    ${rows.length?`<div class="platform-stack-chart" role="img" aria-label="按平台和分类统计的水平堆叠柱状图">${rows.map(r=>`<div class="platform-stack-row"><div class="platform-stack-source" title="${esc(r.source)}">${esc(r.source)}</div><div class="platform-stack-track">${defs.filter(d=>r.counts[d.key]).map(d=>{const count=r.counts[d.key],width=count/max*100,share=Math.round(count/r.total*100),detail=d.key==='listing'?`${count} 条 · Listing ${r.listingBreakdown.listing} / Delisting ${r.listingBreakdown.delisting} · 占该平台 ${share}%`:`${count} 条 · 占该平台 ${share}%`;return `<div class="platform-stack-segment" data-stack-series="${d.key}" data-tooltip-title="${esc(r.source)} · ${esc(d.label)}" data-tooltip-detail="${esc(detail)}" tabindex="0" style="width:${width}%;background:${d.color}" aria-label="${esc(r.source)} ${esc(d.label)} ${count} 条"></div>`}).join('')}</div><div class="platform-stack-total">${r.total}</div></div>`).join('')}</div>`:`<div class="platform-stack-empty">当前筛选范围暂无可展示数据</div>`}
+    <div class="platform-stack-tooltip" role="status" aria-live="polite"></div>
   </div>`;
 }
 
@@ -903,7 +943,7 @@ function overviewForFilters() {
   if (!customScope) return DATA.overview;
   const chip = rows => {
     const values = globalFiltered(rows);
-    const diff_breakdown = { missing:0, diff:0, same:0, mixed:0, na:0 };
+    const diff_breakdown = { missing:0, diff:0, broad:0, na:0 };
     values.forEach(r => { diff_breakdown[r.diff_tag || 'na']++; });
     return { today:values.length, count_new:values.filter(r => r.status === 'new').length, count_changed:values.filter(r => r.status === 'changed').length, diff_breakdown };
   };
@@ -928,8 +968,8 @@ function overviewForFilters() {
   return {
     ...DATA.overview,
     batch_date: state.dateFrom || state.dateTo ? `${state.dateFrom || '…'} → ${state.dateTo || '…'}` : DATA.overview.batch_date,
-    chips:{ campaign:chip(campaign), product:chip(product), listing:chip(listing.filter(r=>r.category==='listing')), announcement:chip([...announcements,...listing.filter(r=>r.category==='delisting')]) },
-    highlights:selected.map(r=>({source:r.source,category:r.category,priority:priorityFor(r),title:r.title,one_line_summary:(r.description||r.follow_up||'').slice(0,160),time:formatTime(r.post_time),url:r.url,is_mock:r.is_mock})),
+    chips:{ campaign:chip(campaign), product:chip(product), listing:chip(listing), announcement:chip(announcements) },
+    highlights:selected.map(r=>({source:r.source,category:r.category,priority:priorityFor(r),title:r.title,one_line_summary:(r.description||'').slice(0,160),time:formatDate(r.post_time),url:r.url,is_mock:r.is_mock})),
   };
 }
 
@@ -939,11 +979,13 @@ function trendMarkup(days) {
   const shown = dates.slice(start);
   const campaign = (DATA.trend.series.campaign || []).slice(start);
   const product = (DATA.trend.series.product || []).slice(start);
-  const listing = (DATA.trend.series.listing || []).slice(start);
+  const listingRaw = (DATA.trend.series.listing || []).slice(start);
+  const delistingRaw = (DATA.trend.series.delisting || []).slice(start);
+  const listing = listingRaw.map((value, index) => value + (delistingRaw[index] || 0));
   const series = [
     {key:'campaign', label:'Campaign', values:campaign, color:'var(--hue-campaign)'},
     {key:'product', label:'Product', values:product, color:'var(--hue-product)'},
-    {key:'listing', label:'Listing', values:listing, color:'var(--hue-listing)'}
+    {key:'listing', label:'Listing & Delisting', values:listing, color:'var(--hue-listing)'}
   ];
   const visible = series.filter(s => state.trendSeries[s.key]);
   const maxValue = Math.max(1, ...visible.flatMap(s => s.values));
@@ -979,28 +1021,18 @@ function renderOverviewPane() {
   const ov = overviewForFilters();
 
   return `
-    <div class="overview-actions">
-      <div class="quick-jump">
-        <button class="quick-jump-btn" data-jump="campaign">→ Campaign</button>
-        <button class="quick-jump-btn" data-jump="product">→ Product</button>
-        <button class="quick-jump-btn" data-jump="listing">→ Listing</button>
-      </div>
-      <span class="scope-note">${state.dateFrom || state.dateTo ? `发布时间范围 ${esc(state.dateFrom || '最早')} → ${esc(state.dateTo || '最新')}` : `最新采集批次 ${esc(DATA.meta.batch_date)}`}</span>
-    </div>
-
-    ${ruleGuide('overview')}
-    <div class="section-label">最新一批概览 · ${esc(ov.batch_date)} <span class="freshness">● Updated ${esc(DATA.meta.generated_at)}</span></div>
+    <div class="section-label">最新一批概览 · ${esc(ov.batch_date)} <span class="freshness">● Updated ${esc(formatDate(DATA.meta.generated_at))}</span></div>
     <div class="overview-grid">
       ${chipCard('campaign', '活动 Campaign', ov.chips.campaign)}
       ${chipCard('product', '产品 Product', ov.chips.product)}
-      ${chipCard('listing', '上币 Listing', ov.chips.listing)}
-      ${chipCard('announcement', '公告 Announcement（下架+其他）', ov.chips.announcement)}
+      ${chipCard('listing', 'Listing & Delisting', ov.chips.listing)}
+      ${chipCard('announcement', '公告 Announcement（其他）', ov.chips.announcement)}
     </div>
 
     <div class="section-label">Daily Highlights · Rule-based 全局 Top 5 / 每个竞品最多 2 条</div>
     <div class="table-wrap">
       <table class="data-table">
-        <thead><tr><th>Priority</th><th>Exchange</th><th>Category</th><th>Title</th><th>Summary</th><th>Publish Time</th><th>Detail</th></tr></thead>
+        <thead><tr><th>Priority</th><th>Exchange</th><th>Category</th><th>Title</th><th>Summary</th><th>Publish Date</th><th>Detail</th></tr></thead>
         <tbody>
       ${ov.highlights.length ? ov.highlights.map(h => `
         <tr><td><strong>${esc(h.priority)}</strong></td><td><span class="source-pill">${esc(h.source)}</span></td>
@@ -1031,13 +1063,6 @@ function renderOverviewPane() {
 
     <div class="section-label">去重公告结构 · 按平台与分类</div>
     ${platformStackMarkup()}
-
-    <div class="section-label">Data readiness · 尚未伪装成已完成的能力</div>
-    <div class="readiness-grid">
-      <div class="readiness-item"><strong>Campaign lifecycle · Partial</strong>Ongoing / Upcoming / Ending Soon 依赖公告中可抽取的 Start/End；缺少时间字段的活动明确显示 Date unknown。</div>
-      <div class="readiness-item"><strong>Product evolution · Pending entity model</strong>当前能展示公告级 New / Update，但尚无稳定 Product Entity ID，因此不伪造跨公告 Change History。</div>
-      <div class="readiness-item"><strong>KR market · No source</strong>当前没有 KR collector。KR 页面显示真实空数据，不从其他语言推断或复制。</div>
-    </div>
   `;
 }
 
@@ -1056,13 +1081,25 @@ function wireOverviewPane() {
     state.trendSeries[key]=!state.trendSeries[key];
     renderActivePane();
   }));
-  document.querySelectorAll('[data-stack-series]').forEach(btn => btn.addEventListener('click', () => {
-    const key=btn.dataset.stackSeries;
-    const enabled=Object.values(state.platformStackSeries).filter(Boolean).length;
-    if(state.platformStackSeries[key] && enabled===1) return;
-    state.platformStackSeries[key]=!state.platformStackSeries[key];
-    renderActivePane();
-  }));
+  const stackCard=document.querySelector('.platform-stack-card');
+  if(stackCard) {
+    const tooltip=stackCard.querySelector('.platform-stack-tooltip');
+    const show=(segment,x,y)=>{tooltip.innerHTML=`<strong>${esc(segment.dataset.tooltipTitle)}</strong>${esc(segment.dataset.tooltipDetail)}`;tooltip.classList.add('show');const maxX=Math.max(8,stackCard.clientWidth-tooltip.offsetWidth-20);tooltip.style.left=`${Math.max(8,Math.min(x,maxX))}px`;tooltip.style.top=`${Math.max(28,y)}px`;};
+    const hide=()=>tooltip.classList.remove('show');
+    stackCard.querySelectorAll('.platform-stack-segment').forEach(segment=>{
+      segment.addEventListener('pointerenter',e=>show(segment,e.clientX-stackCard.getBoundingClientRect().left,e.clientY-stackCard.getBoundingClientRect().top));
+      segment.addEventListener('pointermove',e=>show(segment,e.clientX-stackCard.getBoundingClientRect().left,e.clientY-stackCard.getBoundingClientRect().top));
+      segment.addEventListener('pointerleave',hide);
+      segment.addEventListener('focus',()=>{const a=segment.getBoundingClientRect(),b=stackCard.getBoundingClientRect();show(segment,a.left-b.left+a.width/2,a.top-b.top+a.height/2);});
+      segment.addEventListener('blur',hide);
+    });
+    stackCard.querySelectorAll('.platform-stack-legend [data-stack-series]').forEach(item=>{
+      const activate=()=>stackCard.dataset.activeSeries=item.dataset.stackSeries;
+      const clear=()=>delete stackCard.dataset.activeSeries;
+      item.addEventListener('pointerenter',activate);item.addEventListener('pointerleave',clear);
+      item.addEventListener('focus',activate);item.addEventListener('blur',clear);
+    });
+  }
   const wrap=document.querySelector('.trend-chart-wrap');
   if(wrap) {
     const svg=wrap.querySelector('.trend-svg'), hit=wrap.querySelector('.trend-hit'), tip=wrap.querySelector('.trend-tooltip'), cross=wrap.querySelector('.trend-crosshair');
@@ -1095,14 +1132,22 @@ function zmxCompareTwoColumn(r) {
   let right;
   if (r.comparison_status !== 'analyzed') {
     right = `<div class="zmx-compare-col"><strong>Zoomex</strong><div class="detail-body">尚未被任何一次分析运行覆盖，不是"确认无差异"。</div></div>`;
+  } else if (r.diff_tag === 'missing') {
+    right = `<div class="zmx-compare-col"><strong>Zoomex</strong><div class="detail-body">未检索到与当前内容直接可比的同类案例。</div></div>`;
   } else if (r.zmx_counterpart) {
     const c = r.zmx_counterpart;
     right = `<div class="zmx-compare-col"><strong>Zoomex</strong><div>${c.url ? `<a href="${esc(c.url)}" target="_blank" rel="noopener">${esc(c.title)}</a>` : esc(c.title)}</div>${c.core_summary ? `<div class="detail-body" style="margin-top:4px">${esc(c.core_summary)}</div>` : ''}${c.reward_range ? `<div class="detail-body">奖励：${esc(c.reward_range)}</div>` : ''}</div>`;
+  } else if (r.diff_tag === 'broad' && r.zmx_capability_desc) {
+    // zmx_exists==='yes'：Zoomex 目录按 mechanism_type 标签确认有同类型玩法，但
+    // Stage3 逐篇比对没有找到具体对应的那一条——跟真正匹配到具体公告（上面
+    // zmx_counterpart 分支）不是一回事，用提示语 + 弱化样式明确标出"粗粒度"，
+    // 避免看起来像已经逐条核实过。
+    right = `<div class="zmx-compare-col"><strong>Zoomex</strong><div class="detail-body" style="color:var(--hue-campaign)">同类型参考 · 粗粒度匹配，非逐篇核对</div><div class="detail-body" style="margin-top:4px">${esc(r.zmx_capability_desc)}</div>${r.zmx_capability_url ? `<div style="margin-top:4px"><a href="${esc(r.zmx_capability_url)}" target="_blank" rel="noopener">查看同类型示例 ↗</a></div>` : ''}</div>`;
   } else {
     right = `<div class="zmx-compare-col"><strong>Zoomex</strong><div class="detail-body">${esc(r.zmx_capability_desc || (r.zmx_exists === 'no' ? '目前没有此类玩法/功能' : '暂无具体对照示例'))}</div></div>`;
   }
   const diffLine = r.diff_detail || r.diff_type
-    ? `<div class="detail-body" style="margin-top:8px"><span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || r.diff_type)}</span> ${esc(r.diff_detail || '')}</div>`
+    ? `<div class="detail-body" style="margin-top:8px"><span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || r.diff_type)}</span> ${r.diff_tag === 'broad' && r.diff_detail ? `具体比对：${esc(r.diff_detail)}` : esc(r.diff_detail || '')}</div>`
     : '';
   return `<div class="zmx-compare-grid">${left}${right}</div>${diffLine}`;
 }
@@ -1123,9 +1168,9 @@ function renderDetailPanelRow(r, category) {
       ${detailField('Target users', r.target_users)}
       ${detailField('Participation / Mechanism', r.description)}
       ${detailField('Reward amount / form', r.reward_range)}
-      ${detailField('Start', r.start_date)}
-      ${detailField('End', r.end_date)}
-      ${detailField('Announcement time', r.post_time)}
+      ${detailField('Start', r.start_date && formatDate(r.start_date))}
+      ${detailField('End', r.end_date && formatDate(r.end_date))}
+      ${detailField('Announcement date', r.post_time && formatDate(r.post_time))}
       ${(!r.target_users && !r.reward_range && !r.start_date && !r.end_date) ? '<div style="color:var(--text-muted)">暂无结构化字段</div>' : ''}
     </div>` : `
     <div class="detail-panel-col">
@@ -1134,21 +1179,20 @@ function renderDetailPanelRow(r, category) {
       ${detailField('Change type', r.update_kind)}
       ${detailField('Supported market / language', rowMarkets(r).join(', '))}
       ${detailField('Token', r.token_symbol)}
-      ${detailField('Launch time', r.launch_time)}
+      ${detailField('Launch date', r.launch_time && formatDate(r.launch_time))}
       ${(!r.feature && !r.update_kind) ? '<div style="color:var(--text-muted)">暂无结构化字段</div>' : ''}
     </div>`;
   const aiSummary = `
     <div class="detail-panel-col">
       <div class="section-label">AI Summary</div>
       <div class="detail-body">${esc((category === 'product' ? (r.feature || r.description) : r.description) || '待分析')}</div>
-      ${r.follow_up ? `<div class="follow-up">→ ${esc(r.follow_up)}</div>` : ''}
     </div>`;
   const zmxCol = `
     <div class="detail-panel-col">
       <div class="section-label">Zoomex Comparison</div>
       ${zmxCompareTwoColumn(r)}
     </div>`;
-  return `<tr class="detail-row"><td colspan="9"><div class="detail-panel">${basicInfo}${middleCol}${aiSummary}${zmxCol}</div></td></tr>`;
+  return `<tr class="detail-row"><td colspan="${category === 'campaign' ? 9 : 8}"><div class="detail-panel">${basicInfo}${middleCol}${aiSummary}${zmxCol}</div></td></tr>`;
 }
 
 function categoryStateFor(category) {
@@ -1178,7 +1222,7 @@ function renderCampaignUpdates(rows) {
   return `
     <div class="section-label">Campaign Update · 已识别变化 ${updates.length}</div>
     <div class="table-wrap"><table class="data-table compact-table">
-      <thead><tr><th>Change</th><th>Exchange</th><th>Campaign</th><th>Markets</th><th>Publish Time</th><th>Source</th></tr></thead>
+      <thead><tr><th>Change</th><th>Exchange</th><th>Campaign</th><th>Markets</th><th>Publish Date</th><th>Source</th></tr></thead>
       <tbody>${ruleSort(updates, 'campaign').map(r => `<tr>
         <td><span class="tag tag-diff">${esc(campaignUpdateType(r))}</span></td>
         <td><span class="source-pill">${esc(r.source)}</span></td>
@@ -1186,6 +1230,54 @@ function renderCampaignUpdates(rows) {
         <td>${formatDate(r.post_time)}</td><td>${sourceLink(r)}</td>
       </tr>`).join('')}</tbody>
     </table></div>`;
+}
+
+function categoryInsightFiltersActive(category) {
+  const st=categoryStateFor(category);
+  return Boolean(
+    state.dateFrom||state.dateTo||state.globalSource!=='all'||state.globalMarket!=='all'||
+    st.source!=='all'||st.type!=='all'||st.status!=='all'||st.market!=='all'||
+    st.diffType!=='all'||st.keyword||(category==='campaign'&&st.reward!=='all')
+  );
+}
+
+function categoryInsightMarkup(category, rows) {
+  const digest=DATA.daily_digest||{};
+  const digestKey=category==='campaign'?'campaign_summary':'product_summary';
+  const useLlm=!categoryInsightFiltersActive(category)&&digest.source==='llm'&&digest[digestKey];
+  const title=category==='campaign'?'Campaign Insight':'产品核心能力 & 内容总结';
+  let sentences=[];
+  if(rows.length) {
+    const countValues=getter=>rows.reduce((acc,row)=>{const values=getter(row);(Array.isArray(values)?values:[values]).filter(Boolean).forEach(value=>{acc[value]=(acc[value]||0)+1;});return acc;},{});
+    const top=(counts,limit=2)=>Object.entries(counts).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0])).slice(0,limit);
+    const markets=top(countValues(row=>rowMarkets(row))).map(([name,count])=>`${name}（${count} 条）`).join('、');
+    if(category==='campaign') {
+      const types=top(countValues(row=>row.mechanism_type||'其他活动')).map(([name])=>businessInsightLabel(name)).join('、');
+      const rewardKnown=rows.filter(row=>row.reward_range).length;
+      const rewardChanged=rows.filter(row=>row.change_kind==='reward').length;
+      sentences.push(`当前范围共 ${rows.length} 条活动动态，活动类型主要为${types||'常规运营活动'}。`);
+      if(markets) sentences.push(`重点市场集中在 ${markets}。`);
+      sentences.push(`主要玩法围绕${types||'任务参与与用户激励'}展开，并通过奖励任务、交易门槛或资格条件驱动参与。`);
+      sentences.push(`其中 ${rewardKnown} 条包含明确奖励信息${rewardChanged?`，识别到 ${rewardChanged} 条奖励变化`:'，暂未识别到明确奖励变化'}，整体以${rows.filter(r=>r.status==='changed').length>rows.length/3?'规则与内容调整':'新增活动发布'}为主。`);
+    } else {
+      const capabilities=top(countValues(row=>row.product_category||'Others')).map(([name])=>businessInsightLabel(name)).join('、');
+      const features=[...new Set(rows.map(row=>row.feature||row.description).filter(Boolean))].slice(0,2).map(text=>text.length>54?`${text.slice(0,54)}…`:text);
+      const newProducts=rows.filter(row=>row.update_kind==='New Product').length;
+      sentences.push(`当前范围共 ${rows.length} 条产品动态，核心能力主要集中在${capabilities||'产品功能更新'}。`);
+      if(features.length) sentences.push(`内容重点包括${features.join('；')}。`);
+      if(markets) sentences.push(`重点市场集中在 ${markets}。`);
+      sentences.push(`其中新增产品 ${newProducts} 条、功能或规则更新 ${rows.length-newProducts} 条，整体以${newProducts>=rows.length-newProducts?'新能力发布':'既有能力迭代'}为主。`);
+    }
+  }
+  const narrative=!rows.length
+    ? '<div class="insight-empty">No Significant Changes Today</div>'
+    : useLlm
+      ? `<div class="insight-narrative"><p>${esc(digest[digestKey])}</p></div>`
+      : `<div class="insight-narrative">${sentences.slice(0,4).map(sentence=>`<p>${esc(sentence)}</p>`).join('')}</div>`;
+  return `<div class="insight-shell category-insight">
+    <div class="insight-head"><div><div class="insight-title"><span class="insight-title-mark">AI</span><span>${esc(title)}</span></div><div class="insight-scope">跟随当前页面全部筛选条件</div></div><span class="tag ${useLlm?'tag-llm':'tag-na'}">${useLlm?'AI 自动总结':'范围实时汇总'}</span></div>
+    ${narrative}
+  </div>`;
 }
 
 function renderCategoryPane(category) {
@@ -1213,8 +1305,6 @@ function renderCategoryPane(category) {
       <div class="stat-card"><div class="stat-label">${category === 'product' ? 'Affected Exchange' : 'Ongoing Campaign'}</div><div class="stat-value">${category === 'product' ? new Set(rows.map(r => r.source)).size : ongoingCount}</div></div>
       <div class="stat-card"><div class="stat-label">${category === 'product' ? 'Affected Category' : 'Ending Soon · ≤3 days'}</div><div class="stat-value warn">${category === 'product' ? new Set(rows.map(r => r.product_category || 'Others')).size : endingSoonCount}</div></div>
     </div>
-    ${ruleGuide(category)}
-    ${category === 'product' ? `<div class="quality-banner"><strong>Comparison coverage</strong> · 已被真实分析运行覆盖 ${DATA.quality.product_comparison.analyzed}；尚未被任何分析运行覆盖 ${DATA.quality.product_comparison.pending}。"已覆盖"里的具体结论（含"不适用"）见每行 Zoomex 对照，pending 不能解读为"确认无差异"。</div>` : ''}
     ${category === 'product' ? `<div class="section-label">Product coverage · 本期变化涉及的能力</div><div class="product-coverage">${Object.entries(rows.reduce((acc,r) => (acc[r.product_category || 'Others']=(acc[r.product_category || 'Others']||0)+1,acc),{})).map(([name,n]) => `<span class="coverage-chip">${esc(name)}<strong>${n}</strong></span>`).join('')}</div>` : ''}
     <div class="filter-bar">
       <div class="section-label" style="padding:0">${esc(label)} · ${category === 'campaign' ? `全部活动 ${rows.length} 条；最新批次变化 ${latestRows.length} 条` : `最新一批（${esc(DATA.overview.batch_date)}）共 ${rows.length} 条`}</div>
@@ -1237,17 +1327,18 @@ function renderCategoryPane(category) {
         <select class="global-select" id="${category}MarketFilter" aria-label="按语言或市场筛选"><option value="all">全部市场</option>${Object.keys(LOCALE_LABEL).map(l => `<option value="${l}">${esc(l)}</option>`).join('')}</select>
         <select class="global-select" id="${category}DiffFilter" aria-label="按 Zoomex 差异筛选">
           <option value="all">全部差异</option>
-          ${Object.entries(DIFF_LABEL).filter(([k]) => k !== 'pending').map(([k, v]) => `<option value="${k}">${esc(v)}</option>`).join('')}
+          ${DIFF_FILTER_TAGS.map(k => `<option value="${k}">${esc(DIFF_LABEL[k])}</option>`).join('')}
         </select>
         <input type="text" class="search-input" id="${category}KeywordFilter" placeholder="搜索标题…" style="max-width:220px">
       </div>
     </div>
+    <div id="${category}Insight">${categoryInsightMarkup(category, rows)}</div>
     ${category === 'campaign' ? renderCampaignUpdates(rows) : ''}
     <div class="section-label">${category === 'campaign' ? 'Campaign List' : 'New Product / Product Update'}</div>
     <div class="table-wrap"><table class="data-table">
       <thead>${category === 'campaign'
-        ? '<tr><th>Exchange</th><th>Activity</th><th>Type</th><th>Reward</th><th>Timeline</th><th>Markets</th><th>AI Summary</th><th>Zoomex / Action</th><th>Sources</th></tr>'
-        : '<tr><th>Exchange</th><th>Product / Update</th><th>Category</th><th>Change Type</th><th>Markets</th><th>AI Summary</th><th>Zoomex Comparison</th><th>Follow-up</th><th>Sources</th></tr>'}
+        ? '<tr><th>Exchange</th><th>Activity</th><th>Type</th><th>Reward</th><th>Timeline</th><th>Markets</th><th>AI Summary</th><th>Zoomex Comparison</th><th>Sources</th></tr>'
+        : '<tr><th>Exchange</th><th>Product / Update</th><th>Category</th><th>Change Type</th><th>Markets</th><th>AI Summary</th><th>Zoomex Comparison</th><th>Sources</th></tr>'}
       </thead><tbody id="${category}Body"></tbody>
     </table></div>
   `;
@@ -1275,6 +1366,7 @@ function renderCategoryBody(category) {
     filtered = filtered.filter(r => (r.title || '').toLowerCase().includes(kw));
   }
   const sorted = ruleSort(filtered, category);
+  document.getElementById(`${category}Insight`).innerHTML=categoryInsightMarkup(category, sorted);
   const visible = sorted.slice(0, st.limit);
   const body = document.getElementById(`${category}Body`);
   document.getElementById(`${category}LoadMore`)?.remove();
@@ -1284,16 +1376,16 @@ function renderCategoryBody(category) {
         const expanded = st.expanded.has(r.uid);
         const productSection = category === 'product' ? (r.update_kind === 'New Product' ? 'New Product' : 'Product Update') : null;
         const divider = productSection && productSection !== previousProductSection
-          ? `<tr class="group-divider"><td colspan="9">${esc(productSection)}</td></tr>` : '';
+          ? `<tr class="group-divider"><td colspan="8">${esc(productSection)}</td></tr>` : '';
         previousProductSection = productSection;
         const summaryRow = category === 'campaign' ? `
       <tr>
         <td><span class="source-pill">${esc(r.source)}</span></td>
         <td class="td-title"><button class="row-expand-toggle" data-expand="${esc(r.uid)}">${expanded ? '▾' : '▸'} ${esc(r.title)}</button><br><span class="status-chip ${r.status}">${esc(campaignDisplayStatus(r))}</span></td>
         <td>${esc(r.mechanism_type || '—')}</td><td>${esc(r.reward_range || '—')}</td>
-        <td>${esc(r.start_date || '—')}<br><small>→ ${esc(r.end_date || '—')}</small></td><td>${marketChips(r)}</td>
+        <td>${r.start_date ? esc(formatDate(r.start_date)) : '—'}<br><small>→ ${r.end_date ? esc(formatDate(r.end_date)) : '—'}</small></td><td>${marketChips(r)}</td>
         <td><div class="cell-copy">${esc(r.description || '待分析')}</div></td>
-        <td><span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || '待分析')}</span>${r.follow_up ? `<br>${esc(r.follow_up)}` : ''}</td>
+        <td><span class="tag tag-${r.diff_tag}">${esc(DIFF_LABEL[r.diff_tag] || '待分析')}</span></td>
         <td>${variantLinks(r)}</td>
       </tr>` : `
       <tr>
@@ -1301,13 +1393,13 @@ function renderCategoryBody(category) {
         <td class="td-title"><button class="row-expand-toggle" data-expand="${esc(r.uid)}">${expanded ? '▾' : '▸'} ${esc(r.title)}</button><br><span class="status-chip ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span></td>
         <td><span class="tag tag-product">${esc(r.product_category || 'Others')}</span></td><td>${esc(r.update_kind || '—')}</td>
         <td>${marketChips(r)}</td><td><div class="cell-copy">${esc(r.feature || r.description || '待分析')}</div></td>
-        <td>${zmxComparisonBox(r)}</td><td><div class="cell-copy">${esc(r.follow_up || '—')}</div></td><td>${variantLinks(r)}</td>
+        <td>${zmxComparisonBox(r)}</td><td>${variantLinks(r)}</td>
       </tr>`;
         return divider + summaryRow + (expanded ? renderDetailPanelRow(r, category) : '');
       }).join('')
-    : `<tr><td colspan="9" class="table-empty">无匹配数据</td></tr>`;
+    : `<tr><td colspan="${category === 'campaign' ? 9 : 8}" class="table-empty">无匹配数据</td></tr>`;
   if (sorted.length > visible.length) {
-    body.insertAdjacentHTML('afterend', `<tbody id="${category}LoadMore"><tr><td colspan="9" class="table-footer"><span>当前展示 ${visible.length} / ${sorted.length}</span><button class="filter-btn" data-load-more="${category}">Load More</button></td></tr></tbody>`);
+    body.insertAdjacentHTML('afterend', `<tbody id="${category}LoadMore"><tr><td colspan="${category === 'campaign' ? 9 : 8}" class="table-footer"><div class="table-footer-inner"><span>当前展示 ${visible.length} / ${sorted.length}</span><button class="filter-btn" data-load-more="${category}">Load More</button></div></td></tr></tbody>`);
     document.querySelector(`[data-load-more="${category}"]`).addEventListener('click', () => { st.limit += 10; renderCategoryBody(category); });
   }
   body.querySelectorAll('[data-expand]').forEach(btn => btn.addEventListener('click', () => {
@@ -1344,71 +1436,135 @@ function wireCategoryPane(category) {
   renderCategoryBody(category);
 }
 
-/* ==================== Listing (compact table, incl. delisting) ==================== */
+/* ==================== Listing & Delisting ==================== */
 
-function listingKindLabel(r) {
-  if (r.category === 'delisting') return '下架';
-  if (r.listing_kind === 'spot') return '现货';
-  if (r.listing_kind === 'perp') return '合约';
-  return '—';
+function listingType(r) {
+  return r.listing_type || (r.listing_kind === 'perp' ? 'Perpetual' : r.listing_kind === 'spot' ? 'Spot' : 'Unknown');
+}
+function listingStatus(r) { return r.listing_status || (r.category === 'delisting' ? 'Delisted' : 'New Listing'); }
+function listingCategory(r) { return r.token_category || 'Pending'; }
+
+function groupedStackedChart(title, rows, axisGetter, {exclude=[], order=[]}={}) {
+  const matrix={};
+  rows.forEach(r=>{const axis=axisGetter(r);if(!axis||exclude.includes(axis))return;(matrix[axis]??={});matrix[axis][r.source]=(matrix[axis][r.source]||0)+1;});
+  let axes=Object.keys(matrix).map(label=>({label,counts:matrix[label],total:Object.values(matrix[label]).reduce((n,v)=>n+v,0)}));
+  axes.sort((a,b)=>{const ai=order.indexOf(a.label),bi=order.indexOf(b.label);if(ai>=0||bi>=0)return (ai<0?999:ai)-(bi<0?999:bi);return b.total-a.total||a.label.localeCompare(b.label);});
+  const sources=SOURCES.filter(source=>axes.some(a=>a.counts[source]));
+  const max=Math.max(1,...axes.map(a=>a.total));
+  return `<div class="distribution-card"><div class="distribution-title">${esc(title)}</div>
+    ${sources.length?`<div class="distribution-legend">${sources.map(source=>`<span class="distribution-legend-item" data-chart-exchange="${source}" tabindex="0"><i class="distribution-legend-swatch" style="background:${EXCHANGE_CHART_COLORS[source]}"></i>${esc(source)}</span>`).join('')}</div>`:''}
+    ${axes.length?`<div class="distribution-list">${axes.map(axis=>`<div class="distribution-row"><span>${esc(axis.label)}</span><div class="distribution-track" role="img" aria-label="${esc(axis.label)}：${sources.map(s=>`${s} ${axis.counts[s]||0}`).join('，')}">${sources.filter(s=>axis.counts[s]).map(source=>{const count=axis.counts[source],share=Math.round(count/axis.total*100);return `<i class="distribution-segment" data-source="${source}" data-tooltip-title="${esc(axis.label)} · ${esc(source)}" data-tooltip-detail="${count} 条 · 占该项 ${share}%" tabindex="0" style="width:${count/max*100}%;background:${EXCHANGE_CHART_COLORS[source]}"></i>`}).join('')}</div><strong>${axis.total}</strong></div>`).join('')}</div>`:`<div class="distribution-empty">暂无数据</div>`}
+    <div class="distribution-tooltip" role="status" aria-live="polite"></div>
+  </div>`;
 }
 
-function renderListingRow(r) {
-  return `
-    <tr>
-      <td><span class="source-pill">${esc(r.source)}</span></td>
-      <td>${marketChips(r)}</td>
-      <td class="td-title">
-        ${esc(r.title)}
-        ${mockBadge(r.is_mock)}
-        ${variantLinks(r)}
-      </td>
-      <td><span class="tag ${r.category === 'delisting' ? 'tag-delisting' : 'tag-listing'}">${esc(listingKindLabel(r))}</span></td>
-      <td class="td-time">${formatDate(r.post_time)}</td>
-      <td><span class="status-chip ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span></td>
-    </tr>
-  `;
+function wireDistributionCharts() {
+  document.querySelectorAll('.distribution-card').forEach(card=>{
+    const tooltip=card.querySelector('.distribution-tooltip');
+    const show=(segment,x,y)=>{tooltip.innerHTML=`<strong>${esc(segment.dataset.tooltipTitle)}</strong>${esc(segment.dataset.tooltipDetail)}`;tooltip.classList.add('show');const maxX=Math.max(8,card.clientWidth-tooltip.offsetWidth-20);tooltip.style.left=`${Math.max(8,Math.min(x,maxX))}px`;tooltip.style.top=`${Math.max(28,y)}px`;};
+    const hide=()=>tooltip.classList.remove('show');
+    card.querySelectorAll('.distribution-segment').forEach(segment=>{
+      segment.addEventListener('pointerenter',e=>show(segment,e.clientX-card.getBoundingClientRect().left,e.clientY-card.getBoundingClientRect().top));
+      segment.addEventListener('pointermove',e=>show(segment,e.clientX-card.getBoundingClientRect().left,e.clientY-card.getBoundingClientRect().top));
+      segment.addEventListener('pointerleave',hide);
+      segment.addEventListener('focus',()=>{const a=segment.getBoundingClientRect(),b=card.getBoundingClientRect();show(segment,a.left-b.left+a.width/2,a.top-b.top+a.height/2);});
+      segment.addEventListener('blur',hide);
+    });
+    card.querySelectorAll('[data-chart-exchange]').forEach(item=>{
+      const activate=()=>card.dataset.activeExchange=item.dataset.chartExchange;
+      const clear=()=>delete card.dataset.activeExchange;
+      item.addEventListener('pointerenter',activate);item.addEventListener('pointerleave',clear);
+      item.addEventListener('focus',activate);item.addEventListener('blur',clear);
+    });
+  });
+}
+
+function listingSummary(rows) {
+  const newListings=rows.filter(r=>r.category==='listing');
+  return {
+    spot:newListings.filter(r=>listingType(r).includes('Spot')).length,
+    perpetual:newListings.filter(r=>listingType(r).includes('Perpetual')).length,
+    delisting:rows.filter(r=>r.category==='delisting').length,
+    exchanges:new Set(rows.map(r=>r.source)).size,
+  };
+}
+
+function listingDetailRow(r) {
+  const expanded=listingState.expanded.has(r.uid);
+  const category=listingCategory(r), status=listingStatus(r), type=listingType(r);
+  return `<tr>
+    <td><span class="source-pill">${esc(r.source)}</span></td>
+    <td><strong>${esc(r.token_symbol || '—')}</strong></td>
+    <td><span class="tag tag-listing">${esc(type)}</span></td>
+    <td><span class="tag ${status==='Delisted'?'tag-delisting':'tag-listing'}">${esc(status)}</span></td>
+    <td><span class="token-category ${category==='Pending'?'pending':''}">${esc(category)}</span></td>
+    <td>${marketChips(r)}</td>
+    <td class="td-time">${r.launch_time ? esc(formatDate(r.launch_time)) : formatDate(r.post_time)}</td>
+    <td><button class="filter-btn" type="button" data-listing-expand="${esc(r.uid)}" aria-expanded="${expanded}">${expanded?'收起':'View Detail'}</button></td>
+  </tr>${expanded?`<tr class="detail-expand-row"><td colspan="8"><div class="listing-detail-grid">
+    <div>${detailField('Trading Pair',r.trading_pair||'—')}${detailField('Markets',rowMarkets(r).join(' / ')||'—')}${detailField('Language',r.locale||'—')}</div>
+    <div>${detailField('Announcement',r.title)}${detailField('Publish Date',formatDate(r.post_time))}</div>
+    <div><div class="detail-label">Source</div>${sourceLink(r,'Open announcement ↗')}${variantLinks(r)}</div>
+  </div></td></tr>`:''}`;
+}
+
+function listingFilteredRows() {
+  let rows=globalFiltered(scopedRows('listing','listing_all','listing'));
+  if(listingState.source!=='all') rows=rows.filter(r=>r.source===listingState.source);
+  if(listingState.type!=='all') rows=rows.filter(r=>listingType(r).includes(listingState.type));
+  if(listingState.status!=='all') rows=rows.filter(r=>listingStatus(r)===listingState.status);
+  if(listingState.category!=='all') rows=rows.filter(r=>listingCategory(r)===listingState.category);
+  if(listingState.locale!=='all') rows=rows.filter(r=>rowMarkets(r).includes(listingState.locale));
+  const q=listingState.keyword.trim().toLowerCase();
+  if(q) rows=rows.filter(r=>`${r.title||''} ${r.token_symbol||''} ${r.trading_pair||''}`.toLowerCase().includes(q));
+  return rows.sort((a,b)=>publishTimeRank(b)-publishTimeRank(a));
 }
 
 function renderListingPane() {
-  const rows = globalFiltered(scopedRows('listing', 'listing_all', 'listing'));
+  const rows=globalFiltered(scopedRows('listing','listing_all','listing'));
+  const summary=listingSummary(rows);
+  const categoryOptions=[...LISTING_TOKEN_CATEGORIES, ...(rows.some(r=>listingCategory(r)==='Pending')?['Pending']:[])];
   return `
-    ${ruleGuide('listing')}
-    <div class="filter-bar">
-      <div class="section-label" style="padding:0">Listing · 最新一批（${esc(DATA.overview.batch_date)}）共 ${rows.length} 条（含下架）</div>
-      <div class="filter-group" id="listingSourceFilter">
-        <button class="filter-btn active" data-src="all">全部</button>
-        ${SOURCES.map(s => `<button class="filter-btn" data-src="${s}">${s}</button>`).join('')}
-      </div>
+    <div class="section-label">Listing & Delisting Overview · ${esc(DATA.overview.batch_date)}</div>
+    <div class="overview-grid listing-summary-grid">
+      <div class="stat-card"><div class="stat-label">New Spot Listing</div><div class="stat-value accent">${summary.spot}</div></div>
+      <div class="stat-card"><div class="stat-label">New Futures Listing</div><div class="stat-value accent">${summary.perpetual}</div></div>
+      <div class="stat-card"><div class="stat-label">Delisting</div><div class="stat-value danger">${summary.delisting}</div></div>
+      <div class="stat-card"><div class="stat-label">Affected Exchange</div><div class="stat-value">${summary.exchanges}</div></div>
     </div>
-    <div class="table-wrap">
-      <table class="data-table">
-        <thead><tr><th style="width:90px">Exchange</th><th>Markets</th><th>Event</th><th style="width:100px">Type</th><th class="td-time">Publish date</th><th style="width:86px">Status</th></tr></thead>
-        <tbody id="listingBody"></tbody>
-      </table>
+    <div class="listing-distributions">
+      ${groupedStackedChart('Category × Exchange',rows,listingCategory,{exclude:['Pending']})}
+      ${groupedStackedChart('Listing Type × Exchange',rows,listingType,{order:['Spot','Perpetual','Spot & Perpetual']})}
     </div>
-  `;
+    <div class="section-label">Listing & Delisting Detail · Newest First</div>
+    <div class="filter-bar listing-filter-bar">
+      <select class="global-select" id="listingSource"><option value="all">All Exchanges</option>${SOURCES.map(s=>`<option value="${s}">${s}</option>`).join('')}</select>
+      <select class="global-select" id="listingType"><option value="all">All Listing Types</option><option>Spot</option><option>Perpetual</option></select>
+      <select class="global-select" id="listingStatus"><option value="all">All Statuses</option><option>New Listing</option><option>Delisted</option></select>
+      <select class="global-select" id="listingCategory"><option value="all">All Categories</option>${categoryOptions.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('')}</select>
+      <select class="global-select" id="listingLocale"><option value="all">All Languages</option>${Object.keys(LOCALE_LABEL).map(l=>`<option value="${l}">${l}</option>`).join('')}</select>
+      <input class="search-input" id="listingKeyword" type="search" placeholder="Token / trading pair / keyword">
+    </div>
+    <div class="search-summary" id="listingSummary"></div>
+    <div class="table-wrap"><table class="data-table"><thead><tr><th>Exchange</th><th>Token</th><th>Listing Type</th><th>Status</th><th>Category</th><th>Markets</th><th>Launch Date</th><th>View Detail</th></tr></thead><tbody id="listingBody"></tbody></table></div>`;
 }
 
 function renderListingBody() {
-  const rows = globalFiltered(scopedRows('listing', 'listing_all', 'listing'));
-  const filtered = listingState.source === 'all' ? rows : rows.filter(r => r.source === listingState.source);
-  const sorted = ruleSort(filtered, 'listing');
-  document.getElementById('listingBody').innerHTML = sorted.length
-    ? sorted.map(renderListingRow).join('')
-    : `<tr><td colspan="6" class="table-empty">无匹配数据</td></tr>`;
+  const rows=listingFilteredRows();
+  document.getElementById('listingSummary').textContent=`共 ${rows.length} 条 Listing & Delisting 记录`;
+  document.getElementById('listingBody').innerHTML=rows.length?rows.map(listingDetailRow).join(''):`<tr><td colspan="8" class="table-empty">无匹配数据</td></tr>`;
+  document.querySelectorAll('[data-listing-expand]').forEach(btn=>btn.addEventListener('click',()=>{
+    const uid=btn.dataset.listingExpand;
+    listingState.expanded.has(uid)?listingState.expanded.delete(uid):listingState.expanded.add(uid);
+    renderListingBody();
+  }));
 }
 
 function wireListingPane() {
-  listingState.source = 'all';
-  document.getElementById('listingSourceFilter').addEventListener('click', e => {
-    const t = e.target.closest('[data-src]');
-    if (!t) return;
-    document.querySelectorAll('#listingSourceFilter .filter-btn').forEach(x => x.classList.remove('active'));
-    t.classList.add('active');
-    listingState.source = t.dataset.src;
-    renderListingBody();
-  });
+  const bindings=[['listingSource','source'],['listingType','type'],['listingStatus','status'],['listingCategory','category'],['listingLocale','locale']];
+  bindings.forEach(([id,key])=>document.getElementById(id).addEventListener('change',e=>{listingState[key]=e.target.value;renderListingBody();}));
+  document.getElementById('listingKeyword').addEventListener('input',e=>{listingState.keyword=e.target.value;renderListingBody();});
+  wireDistributionCharts();
   renderListingBody();
 }
 
@@ -1416,27 +1572,77 @@ function wireListingPane() {
 
 const MARKET_TABS = [
   { key: 'EN', label: 'EN', locales: ['EN'] },
-  { key: 'KR', label: 'KR', locales: ['KR'] },
   { key: 'FR', label: 'FR', locales: ['FR'] },
   { key: 'SEA', label: 'SEA (VN+ID)', locales: ['VN', 'ID'] },
 ];
 
+function filteredMarketRegions() {
+  const rows = globalFiltered([
+    ...scopedRows('campaign', 'campaign_all', 'campaign'),
+    ...scopedRows('product', 'product_all', 'product'),
+    ...scopedRows('listing', 'listing_all', 'listing'),
+    ...scopedRows('announcements', 'announcements_all', 'other'),
+  ]);
+  const groups = new Map();
+  rows.forEach(row => {
+    if (!row.group_id) return;
+    const group = groups.get(row.group_id) || {
+      group_id: row.group_id,
+      source: row.source,
+      title: row.title || '(无标题)',
+      locales: new Set(),
+      exclusive: false,
+      post_time: row.post_time || '',
+      row,
+    };
+    rowMarkets(row).forEach(locale => group.locales.add(locale));
+    group.exclusive ||= Boolean(row.is_region_exclusive);
+    if ((row.post_time || '') > group.post_time) {
+      group.post_time = row.post_time || '';
+      group.title = row.title || group.title;
+      group.row = row;
+    }
+    groups.set(row.group_id, group);
+  });
+  return [...groups.values()]
+    .map(group => ({ ...group, locales: [...group.locales].sort() }))
+    .sort((a, b) => b.locales.length - a.locales.length || b.post_time.localeCompare(a.post_time));
+}
+
 function marketSection(category, label, rows) {
-  const top = ruleSort(rows, category === 'listing' ? 'listing' : category).slice(0, 5);
   return `
-    <div class="market-section">
-      <div class="market-section-head"><span>${esc(label)}</span><span style="color:var(--text-muted);font-weight:400">${rows.length} 条</span></div>
-      <div class="market-section-body">
-        ${top.length ? top.map(r => `
-          <div class="market-item">
-            <span class="tag tag-${r.diff_tag}" style="margin-right:6px">${esc(DIFF_LABEL[r.diff_tag] || r.diff_tag)}</span>
-            <span class="market-item-title">${sourceLink(r, r.title)}</span>
-            ${mockBadge(r.is_mock)}
-          </div>
-        `).join('') : `<div class="market-empty">本地区最新一批无数据</div>`}
-      </div>
+    <div class="stat-card">
+      <div class="stat-label">${esc(label)}</div>
+      <div class="stat-value ${category==='listing'?'warn':'accent'}">${rows.length}</div>
+      <div class="stat-delta">当前市场 · 当前筛选范围</div>
     </div>
   `;
+}
+
+function marketRegionDetail(g) {
+  const r=g.row||{};
+  const category=CATEGORY_LABEL[r.category]||r.category||'其他';
+  const isListing=r.category==='listing'||r.category==='delisting';
+  const comparisonLabel=r.comparison_status==='analyzed'
+    ? (DIFF_LABEL[r.diff_tag]||r.diff_type||'不适用')
+    : '尚未分析';
+  const comparisonDetail=r.comparison_status==='analyzed'
+    ? (r.diff_detail||r.zmx_capability_desc||'')
+    : '该条尚未被任何一次竞品分析运行覆盖，不是“确认无差异”。';
+  const counterpart=r.zmx_counterpart;
+  const comparison=`<div class="market-detail-content"><strong>${esc(comparisonLabel)}</strong>${esc(comparisonDetail)}</div>${counterpart?.url?`<a class="variant-link" href="${esc(counterpart.url)}" target="_blank" rel="noopener noreferrer">Open Zoomex evidence ↗</a>`:''}`;
+  const listingFacts=isListing
+    ? `${detailField('Token',r.token_symbol||'—')}${detailField('Listing Type',listingType(r))}${detailField('Status',listingStatus(r))}${detailField('Category',listingCategory(r))}`
+    : '';
+  if(isListing) return `<tr class="detail-expand-row"><td colspan="8"><div class="listing-detail-grid market-listing-detail market-detail-grid">
+    <div>${listingFacts}${detailField('Markets',g.locales.join(' / '))}${detailField('Publish Date',formatDate(r.post_time||g.post_time))}</div>
+    <div><div class="detail-label">Sources</div>${sourceLink(r,'Open announcement ↗')}${variantLinks(r)}</div>
+  </div></td></tr>`;
+  return `<tr class="detail-expand-row"><td colspan="8"><div class="listing-detail-grid market-detail-grid">
+    <div class="market-detail-section"><div class="market-detail-field"><div class="market-detail-label">Basic Information</div><div class="market-detail-content">${detailField('Category',category)}${detailField('Markets',g.locales.join(' / '))}${detailField('Publish Date',formatDate(r.post_time||g.post_time))}</div></div></div>
+    <div class="market-detail-section"><div class="market-detail-field"><div class="market-detail-label">AI Summary</div><div class="market-detail-content">${esc(r.description||r.feature||'待分析')}</div></div><div class="market-detail-field"><div class="market-detail-label">Zoomex Comparison</div>${comparison}</div></div>
+    <div class="market-detail-section"><div class="market-detail-field"><div class="market-detail-label">Sources</div><div class="market-detail-content">${sourceLink(r,'Open announcement ↗')}${variantLinks(r)}</div></div></div>
+  </div></td></tr>`;
 }
 
 function renderMarketsPane() {
@@ -1445,25 +1651,40 @@ function renderMarketsPane() {
   const campaignRows = globalFiltered(scopedRows('campaign', 'campaign_all', 'campaign')).filter(inLocales);
   const productRows = globalFiltered(scopedRows('product', 'product_all', 'product')).filter(inLocales);
   const listingRows = globalFiltered(scopedRows('listing', 'listing_all', 'listing')).filter(inLocales);
-  const region = DATA.markets.regions;
+  const region = filteredMarketRegions().filter(group=>{
+    if(!group.locales.some(locale=>tab.locales.includes(locale))) return false;
+    const category=group.row?.category||'other';
+    if(marketsState.category==='listing') return category==='listing'||category==='delisting';
+    return marketsState.category==='all'||category===marketsState.category;
+  });
+  const scopeLabel = state.dateFrom || state.dateTo
+    ? `${state.dateFrom || '最早'} → ${state.dateTo || '最新'}`
+    : `最新批次 · ${DATA.meta.batch_date}`;
   return `
     <div class="market-tabs" id="marketTabs">
       ${MARKET_TABS.map(m => `<div class="market-tab" data-market="${m.key}">${esc(m.label)}</div>`).join('')}
     </div>
 
-    <div class="section-label">${esc(tab.label)} · 最新一批明细（复用 Campaign/Product/Listing 卡片组件，按地区过滤）</div>
+    <div class="section-label">${esc(tab.label)} · ${esc(scopeLabel)}明细（按顶部全局条件同步筛选）</div>
     <div class="market-summary-grid">
       ${marketSection('campaign', 'Campaign', campaignRows)}
       ${marketSection('product', 'Product', productRows)}
       ${marketSection('listing', 'Listing（含下架）', listingRows)}
     </div>
 
-    <div class="section-label">跨地区公告对比 · group 粒度（全部历史）</div>
+    <div class="section-label">跨地区公告对比 · group 粒度（当前全局筛选结果）</div>
+    <div class="filter-bar market-category-filter" aria-label="跨地区公告类目筛选">
+      <div class="filter-group">
+        ${[
+          ['all','全部'],['campaign','Campaign'],['product','Product'],['listing','Listing & Delisting'],['other','其他']
+        ].map(([value,label])=>`<button class="filter-btn ${marketsState.category===value?'active':''}" type="button" data-market-category="${value}" aria-pressed="${marketsState.category===value}">${label}</button>`).join('')}
+      </div>
+    </div>
     <div class="table-wrap">
       <table class="region-table">
-        <thead><tr><th>标题</th><th>来源</th><th>EN</th><th>FR</th><th>VN</th><th>ID</th><th>独占</th></tr></thead>
+        <thead><tr><th>标题</th><th>来源</th><th>EN</th><th>FR</th><th>VN</th><th>ID</th><th>独占</th><th>View Detail</th></tr></thead>
         <tbody>
-          ${region.length ? region.map(g => `
+          ${region.length ? region.map(g => {const expanded=marketsState.expanded.has(g.group_id);return `
             <tr>
               <td class="td-title">${esc(g.title)}</td>
               <td><span class="source-pill">${esc(g.source)}</span></td>
@@ -1472,8 +1693,9 @@ function renderMarketsPane() {
               <td>${g.locales.includes('VN') ? '<span class="locale-dot vn"></span>' : ''}</td>
               <td>${g.locales.includes('ID') ? '<span class="locale-dot id"></span>' : ''}</td>
               <td>${g.exclusive ? `<span class="excl-badge">${esc(g.locales[0])} only</span>` : ''}</td>
+              <td><button class="filter-btn" type="button" data-market-expand="${esc(g.group_id)}" aria-expanded="${expanded}">${expanded?'收起':'View Detail'}</button></td>
             </tr>
-          `).join('') : `<tr><td colspan="7" class="table-empty">无数据</td></tr>`}
+            ${expanded?marketRegionDetail(g):''}`}).join('') : `<tr><td colspan="8" class="table-empty">无数据</td></tr>`}
         </tbody>
       </table>
     </div>
@@ -1488,6 +1710,15 @@ function wireMarketsPane() {
     renderActivePane();
   });
   document.querySelectorAll('.market-tab').forEach(x => x.classList.toggle('active', x.dataset.market === marketsState.market));
+  document.querySelectorAll('[data-market-category]').forEach(button=>button.addEventListener('click',()=>{
+    marketsState.category=button.dataset.marketCategory;
+    renderActivePane();
+  }));
+  document.querySelectorAll('[data-market-expand]').forEach(button=>button.addEventListener('click',()=>{
+    const id=button.dataset.marketExpand;
+    marketsState.expanded.has(id)?marketsState.expanded.delete(id):marketsState.expanded.add(id);
+    renderActivePane();
+  }));
 }
 
 /* ==================== Search ==================== */
@@ -1500,21 +1731,19 @@ function searchFilteredRows() {
   const rangeDays = { '30d': 30, '90d': 90, '365d': 365 }[searchState.range];
   const q = searchState.query.trim().toLowerCase();
   return rows.filter(r => {
+    if (!dateMatches(r, r.category)) return false;
     if (searchState.locale !== 'all' && !rowMarkets(r).includes(searchState.locale)) return false;
     if (searchState.source !== 'all' && r.source !== searchState.source) return false;
     if (searchState.category !== 'all' && r.category !== searchState.category) return false;
-    if (searchState.diffType !== 'all' && (r.diff_type ? { 'ZMX缺失': 'missing', 'ZMX玩法不同': 'diff', 'ZMX已有': 'same', '混合': 'mixed', '不适用': 'na' }[r.diff_type] : 'na') !== searchState.diffType) return false;
+    if (searchState.diffType !== 'all' && (r.diff_tag || 'na') !== searchState.diffType) return false;
     const date = r.post_time ? r.post_time.slice(0, 10) : null;
     if (rangeDays && (!date || daysBetween(date, anchor) > rangeDays)) return false;
-    if (searchState.dateFrom && (!date || date < searchState.dateFrom)) return false;
-    if (searchState.dateTo && (!date || date > searchState.dateTo)) return false;
     if (q && !r.title.toLowerCase().includes(q)) return false;
     return true;
   });
 }
 
 function renderSearchPane() {
-  const idx = DATA.search_index;
   return `
     <div class="search-toolbar">
       <div class="search-filter-row">
@@ -1528,10 +1757,6 @@ function renderSearchPane() {
         <button class="filter-btn" data-f="range" data-v="30d">近 30 天</button>
         <button class="filter-btn" data-f="range" data-v="90d">近 90 天</button>
         <button class="filter-btn" data-f="range" data-v="365d">近 1 年</button>
-        <label class="date-control">From <input class="date-input" id="searchDateFrom" type="date" min="${esc(idx.date_min)}" max="${esc(idx.date_max)}" value="${esc(searchState.dateFrom)}"></label>
-        <label class="date-control">To <input class="date-input" id="searchDateTo" type="date" min="${esc(idx.date_min)}" max="${esc(idx.date_max)}" value="${esc(searchState.dateTo)}"></label>
-        <button class="filter-btn" id="clearDates">清除日期</button>
-        <span style="font-size:11px;color:var(--text-muted);margin-left:4px">数据跨度 ${esc(idx.date_min)} ~ ${esc(idx.date_max)}</span>
       </div>
       <div class="search-filter-row">
         <span class="search-filter-label">来源</span>
@@ -1547,7 +1772,7 @@ function renderSearchPane() {
       <div class="search-filter-row">
         <span class="search-filter-label">差异</span>
         <button class="filter-btn active" data-f="diffType" data-v="all">全部</button>
-        ${Object.entries(DIFF_LABEL).filter(([k]) => k !== 'pending').map(([k, v]) => `<button class="filter-btn" data-f="diffType" data-v="${k}">${esc(v)}</button>`).join('')}
+        ${DIFF_FILTER_TAGS.map(k => `<button class="filter-btn" data-f="diffType" data-v="${k}">${esc(DIFF_LABEL[k])}</button>`).join('')}
         <input type="text" class="search-input" id="searchQuery" placeholder="搜索标题…">
       </div>
     </div>
@@ -1574,7 +1799,7 @@ function renderSearchTable() {
     `共 <strong>${filtered.length}</strong> 条匹配结果（全量共 ${DATA.search_index.total} 条）`;
 
   document.getElementById('searchBody').innerHTML = pageRows.length ? pageRows.map(r => {
-    const diffTag = r.diff_type ? { 'ZMX缺失': 'missing', 'ZMX玩法不同': 'diff', 'ZMX已有': 'same', '混合': 'mixed', '不适用': 'na' }[r.diff_type] || 'na' : 'na';
+    const diffTag = r.diff_tag || 'na';
     return `
     <tr>
       <td><span class="source-pill">${esc(r.source)}</span></td>
@@ -1626,15 +1851,6 @@ function wireSearchPane() {
       searchState.page = 1;
       renderSearchTable();
     }, 200);
-  });
-  ['From','To'].forEach(which => document.getElementById(`searchDate${which}`).addEventListener('change', e => {
-    searchState[`date${which}`] = e.target.value;
-    searchState.range = 'all';
-    searchState.page = 1;
-    renderSearchTable();
-  }));
-  document.getElementById('clearDates').addEventListener('click', () => {
-    searchState.dateFrom = ''; searchState.dateTo = ''; searchState.page = 1; renderActivePane();
   });
   document.getElementById('downloadCsv').addEventListener('click', () => {
     const fields = ['source','locale','category','title','post_time','status','diff_type','priority','url'];

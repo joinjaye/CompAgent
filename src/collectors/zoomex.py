@@ -148,10 +148,11 @@ class ZoomexCollector(BaseCollector):
             source=self.source_name,
             locale=self.locale,
             article_id=article_id,
-            # Zoomex 详情页 URL 规则只在 EN 确认过一个真实样例
-            # （help.zoomex.com/en/article/3858，Phase 1 侦察记录），其它 locale 的
-            # path segment 没有逐个验证过，按"不允许猜测数据"的约束先留空。
-            url=None,
+            # 2026-07-22 五个 locale 全部用 Playwright 实测验证过（见 sources.yaml
+            # 各 locale 块 url_locale 字段注释）：help.zoomex.com/{url_locale}/
+            # article/{id} 客户端重定向到 www.zoomex.com/{url_locale}/help/
+            # article/{id}，直接存重定向后的规范 URL，省一次跳转。
+            url=f"https://www.zoomex.com/{self.config['url_locale']}/help/article/{article_id}",
             title=item.title,
             content=item.content,
             post_time=item.post_time,

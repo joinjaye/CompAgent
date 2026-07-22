@@ -41,6 +41,14 @@ from src.analysis.llm import (
     validate_business_judgment,
     validate_fact_extraction,
 )
+from src.analysis.listing import (
+    LISTING_BATCH_SIZE,
+    LISTING_CLASSIFICATION_VERSION,
+    build_listing_classification_prompt,
+    derive_listing_facts,
+    listing_cache_key,
+    validate_listing_classification,
+)
 from src.analysis.prompts import build_business_judgment_prompt, build_fact_extraction_prompt
 from src.analysis.staged import calculate_priority, comparison_cache_key, extraction_cache_key, preprocess_article, recall_candidates
 from src.analysis.zmx_catalog import get_catalog_digest, select_relevant_catalog
@@ -50,7 +58,8 @@ from src.db.operations import get_content_history, utcnow_iso
 logger = logging.getLogger(__name__)
 
 DEFAULT_SOURCES = ("Bitunix", "Weex")  # 竞品源；Zoomex 是基线，不作为被分析对象
-ANALYZED_CATEGORIES = frozenset({"campaign", "product"})
+ANALYZED_CATEGORIES = frozenset({"campaign", "product", "listing", "delisting"})
+LISTING_CATEGORIES = frozenset({"listing", "delisting"})
 
 # event_type -> change_kind（campaign 独有字段，跟旧版 v2 prompt 的语义一致：
 # reward=奖励规模/形式变化，rule=规则或门槛变化，other=其它变化）。只有
@@ -249,6 +258,7 @@ def run(
     provider: Optional[str] = None,
     max_calls: Optional[int] = None,
     max_tokens: Optional[int] = None,
+    include_unchanged: bool = False,
 ) -> RunReport:
     """provider/max_calls/max_tokens 显式传参时覆盖 config/analysis.yaml 的
     llm.provider / llm.max_calls_per_run / llm.max_tokens_per_run（CLI
@@ -269,14 +279,14 @@ def run(
     prompt_versions = cfg.get("prompt_versions", {})
     article_facts_version = prompt_versions.get("article_facts", "article-facts-v1")
     business_judgment_version = prompt_versions.get("business_judgment", "business-judgment-v1")
+    listing_category_version = prompt_versions.get("listing_category", LISTING_CLASSIFICATION_VERSION)
     combined_prompt_version = f"{article_facts_version}+{business_judgment_version}"
 
     report = RunReport()
-    keys = list_batch_keys(conn, sources, batch_date)
+    keys = list_batch_keys(conn, sources, batch_date, include_unchanged=include_unchanged)
     if categories:
         keys = [k for k in keys if k.category in categories]
-    # Listing/Delisting 只做确定性汇总和详情展示，不产出 insight，也不加载 LLM
-    # 凭证。这样仅有上/下币数据的一天可以零 LLM 调用完成全流程。
+    # Campaign/Product 走事实抽取 + ZMX 对比；Listing/Delisting 只让 LLM 判断币种赛道。
     keys = [k for k in keys if k.category in ANALYZED_CATEGORIES]
 
     credentials = None
@@ -305,13 +315,19 @@ def run(
         return raw, tokens_used
 
     for key in keys:
-        rows = get_batch_rows(conn, key.source, key.category, key.locale, batch_date)
+        rows = get_batch_rows(
+            conn, key.source, key.category, key.locale, batch_date,
+            include_unchanged=include_unchanged,
+        )
         if not rows:
             continue
         related_uids = [r["uid"] for r in rows]
         insight_id = key.id
 
-        derived_from_id = can_derive_from_en(conn, key.source, key.category, key.locale, batch_date)
+        derived_from_id = can_derive_from_en(
+            conn, key.source, key.category, key.locale, batch_date,
+            include_unchanged=include_unchanged,
+        )
         if derived_from_id:
             en_insight = get_insight(conn, derived_from_id)
             en_articles = json.loads(en_insight["articles_analysis"] or "[]")
@@ -330,6 +346,78 @@ def run(
                     zmx_evidence_uids=json.loads(en_insight["zmx_evidence_uids"] or "[]"),
                     prompt_version=en_insight["prompt_version"], llm_tokens_used=0,
                 )
+            continue
+
+        # Listing/Delisting：单次批量调用只产出币种赛道分类。Token、交易对、
+        # Spot/Perpetual、上下架状态和上线时间均由确定性规则派生，不做 ZMX 对比。
+        if key.category in LISTING_CATEGORIES:
+            if dry_run:
+                print(f"=== {key.source}/{key.category}/{key.locale} batch={batch_date} ===")
+                print(f"articles={len(rows)} prompt_version={listing_category_version} mode=listing-category-only")
+                report.batches.append(f"{key.source}/{key.category}/{key.locale} (dry-run)")
+                continue
+            articles_analysis = []
+            listing_tokens = 0
+            classification_incomplete = False
+            for offset in range(0, len(rows), LISTING_BATCH_SIZE):
+                chunk = rows[offset:offset + LISTING_BATCH_SIZE]
+                cache_key = listing_cache_key(
+                    chunk, model=credentials.model, provider=provider,
+                    prompt_version=listing_category_version,
+                )
+                cached = get_cached_response(conn, cache_key)
+                if cached is not None:
+                    raw = cached
+                    report.cache_hits += 1
+                else:
+                    if _budget_exhausted():
+                        classification_incomplete = True
+                        break
+                    system, user = build_listing_classification_prompt(chunk)
+                    raw, tokens_used = _call(
+                        system, user,
+                        max_tokens_this_call=max_tokens_per_call.get("listing_category", 1200),
+                    )
+                    listing_tokens += tokens_used
+                    set_cached_response(conn, cache_key, raw)
+                result = validate_listing_classification(
+                    raw, expected_indices=set(range(1, len(chunk) + 1)),
+                )
+                if not result.valid or result.issues:
+                    report.validation_failed += 1
+                for i, row in enumerate(chunk, start=1):
+                    articles_analysis.append({
+                        "uid": row["uid"],
+                        "token_category": result.categories.get(i, "Other"),
+                        "classification_confidence": result.confidences.get(i, 0.0),
+                        **derive_listing_facts(
+                            row["title"], row["content"], key.category,
+                            source=row["source"], raw_category=row["raw_category"],
+                        ),
+                    })
+            if classification_incomplete:
+                report.skipped_budget_cap += 1
+                report.batches.append(
+                    f"{key.source}/{key.category}/{key.locale} (skipped: budget cap reached, cached chunks retained)"
+                )
+                continue
+            category_counts: dict[str, int] = {}
+            for article in articles_analysis:
+                label = article["token_category"]
+                category_counts[label] = category_counts.get(label, 0) + 1
+            summary = "本批次币种分类：" + "、".join(
+                f"{label} {count} 条" for label, count in sorted(category_counts.items(), key=lambda x: (-x[1], x[0]))
+            )
+            upsert_insight(
+                conn, insight_id=insight_id, batch_date=batch_date, source=key.source,
+                category=key.category, locale=key.locale, related_uids=related_uids,
+                is_locale_derived=False, derived_from_id=None, summary=summary,
+                articles_analysis=articles_analysis, zmx_diff=None, diff_type="不适用",
+                priority=None, zmx_evidence_uids=[], prompt_version=listing_category_version,
+                llm_tokens_used=listing_tokens,
+            )
+            report.analyzed += 1
+            report.batches.append(f"{key.source}/{key.category}/{key.locale}")
             continue
 
         old_content_map = _build_old_content_map(conn, rows)
@@ -424,8 +512,13 @@ def run(
         judgment = validate_business_judgment(
             raw3, expected_indices=set(facts_by_index.keys()), candidates_by_index=candidates_by_index,
         )
-        if not judgment.valid:
+        if not judgment.valid or judgment.issues:
             report.validation_failed += 1
+        if judgment.issues:
+            logger.warning(
+                "Stage3 业务判断校验发现问题 %s/%s/%s: %s",
+                key.source, key.category, key.locale, judgment.issues,
+            )
         judgment_by_index = {item.index: item for item in judgment.items}
 
         # ---------------- 合并：逐条组装 + 批次级聚合 ----------------
@@ -447,7 +540,16 @@ def run(
             )
 
             top_candidates = candidates_by_index.get(i, [])
-            zmx_mechanism_type = top_candidates[0].mechanism_type if top_candidates else None
+            # 不能把“召回池第一项”当成实际匹配类型。召回候选只是供 Stage3 判断的
+            # 搜索结果；只有 Stage3 明确引用的 evidence 才能建立 Zoomex 对照。
+            # 否则会出现 gap=缺失、却从第一条无关候选（例如 bot）带出 Zoomex 内容。
+            evidence_uids = item.zmx_evidence_uids if item else []
+            evidence_uid_set = set(evidence_uids)
+            matched_candidate = next(
+                (candidate for candidate in top_candidates if candidate.uid in evidence_uid_set),
+                None,
+            )
+            zmx_mechanism_type = matched_candidate.mechanism_type if matched_candidate else None
 
             change_kind = None
             if key.category == "campaign" and row["status"] == "changed":
@@ -511,6 +613,12 @@ def main() -> None:
                               "达到这个调用次数后跳过剩余批次（不算失败，留到下次重跑）")
     parser.add_argument("--max-tokens", type=int,
                         help="本进程累计 token 熔断；达到后不再发起新调用")
+    parser.add_argument("--include-unchanged", action="store_true",
+                         help="连 status=unchanged 的公告也纳入批次（默认只看 new/changed）。"
+                              "用于补跑那些当天 daily 增量没跑、之后 fetched_at 已经滚到"
+                              "更晚日期、导致按原 batch_date 再也查不到的历史遗留批次——"
+                              "这些公告的 status 早已变回 unchanged，只有连 unchanged 一起"
+                              "扫才能重新捞到它们。")
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -522,6 +630,7 @@ def main() -> None:
         report = run(
             conn, batch_date=args.date, sources=sources, categories=categories, dry_run=args.dry_run,
             provider=args.provider, max_calls=args.max_calls, max_tokens=args.max_tokens,
+            include_unchanged=args.include_unchanged,
         )
         if not args.dry_run:
             conn.commit()

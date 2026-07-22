@@ -35,18 +35,19 @@ class BatchKey:
 
 
 def list_batch_keys(
-    conn: sqlite3.Connection, sources: tuple[str, ...], batch_date: str
+    conn: sqlite3.Connection, sources: tuple[str, ...], batch_date: str, *, include_unchanged: bool = False,
 ) -> list[BatchKey]:
     """枚举当天有 status IN (new, changed) 公告、且 category != 'other' 的全部
     (source, category, locale) 组合，同一 source×category 内 EN 排最前——
     can_derive_from_en() 依赖 EN 批次先算完并已写入 insights。
     """
     placeholders = ",".join("?" * len(sources))
+    status_clause = "status IN ('new', 'changed', 'unchanged')" if include_unchanged else "status IN ('new', 'changed')"
     rows = conn.execute(
         f"""
         SELECT DISTINCT source, category, locale
         FROM announcements
-        WHERE status IN ('new', 'changed')
+        WHERE {status_clause}
               AND date(fetched_at) = ?
               AND source IN ({placeholders})
               AND category IS NOT NULL AND category != 'other'
@@ -61,13 +62,15 @@ def list_batch_keys(
 
 
 def get_batch_uids(
-    conn: sqlite3.Connection, source: str, category: str, locale: str, batch_date: str
+    conn: sqlite3.Connection, source: str, category: str, locale: str, batch_date: str,
+    *, include_unchanged: bool = False,
 ) -> list[str]:
+    status_clause = "status IN ('new', 'changed', 'unchanged')" if include_unchanged else "status IN ('new', 'changed')"
     rows = conn.execute(
-        """
+        f"""
         SELECT uid FROM announcements
         WHERE source = ? AND category = ? AND locale = ?
-              AND status IN ('new', 'changed') AND date(fetched_at) = ?
+              AND {status_clause} AND date(fetched_at) = ?
               AND duplicate_of IS NULL
         ORDER BY uid
         """,
@@ -77,13 +80,15 @@ def get_batch_uids(
 
 
 def get_batch_rows(
-    conn: sqlite3.Connection, source: str, category: str, locale: str, batch_date: str
+    conn: sqlite3.Connection, source: str, category: str, locale: str, batch_date: str,
+    *, include_unchanged: bool = False,
 ) -> list[sqlite3.Row]:
+    status_clause = "status IN ('new', 'changed', 'unchanged')" if include_unchanged else "status IN ('new', 'changed')"
     return conn.execute(
-        """
+        f"""
         SELECT * FROM announcements
         WHERE source = ? AND category = ? AND locale = ?
-              AND status IN ('new', 'changed') AND date(fetched_at) = ?
+              AND {status_clause} AND date(fetched_at) = ?
               AND duplicate_of IS NULL
         ORDER BY uid
         """,
@@ -107,7 +112,8 @@ def _group_ids_for_uids(conn: sqlite3.Connection, uids: list[str]) -> set[str]:
 
 
 def can_derive_from_en(
-    conn: sqlite3.Connection, source: str, category: str, locale: str, batch_date: str
+    conn: sqlite3.Connection, source: str, category: str, locale: str, batch_date: str,
+    *, include_unchanged: bool = False,
 ) -> Optional[str]:
     """返回可复用的 EN 批次 insight id；不满足复用条件返回 None。
 
@@ -124,7 +130,9 @@ def can_derive_from_en(
     if en_insight is None:
         return None
 
-    current_uids = get_batch_uids(conn, source, category, locale, batch_date)
+    current_uids = get_batch_uids(
+        conn, source, category, locale, batch_date, include_unchanged=include_unchanged,
+    )
     if not current_uids:
         return None
 

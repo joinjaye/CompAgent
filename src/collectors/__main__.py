@@ -214,9 +214,16 @@ def main() -> None:
             "对 --force-full 无效。"
         ),
     )
+    parser.add_argument(
+        "--date",
+        default=None,
+        help="仅采集该 UTC 日期发布或更新的数据（YYYY-MM-DD）；与 --lookback-days 互斥。",
+    )
     parser.add_argument("--db-path", default=str(DEFAULT_DB_PATH))
     parser.add_argument("--sources-path", default=str(DEFAULT_SOURCES_PATH))
     args = parser.parse_args()
+    if args.date and args.lookback_days is not None:
+        parser.error("--date 与 --lookback-days 不能同时使用")
 
     with open(args.sources_path, encoding="utf-8") as f:
         sources = yaml.safe_load(f)["sources"]
@@ -233,7 +240,10 @@ def main() -> None:
             if collector.category:
                 label += f"/{collector.category}"
             logger.info("开始采集 %s", label)
-            stats = collector.run(conn, force_full=args.force_full, lookback_days=args.lookback_days)
+            stats = collector.run(
+                conn, force_full=args.force_full, lookback_days=args.lookback_days,
+                collection_date=args.date,
+            )
             all_stats.append(stats)
             logger.info(
                 "完成 %s：new=%d changed=%d unchanged=%d failed=%d skipped_by_date=%d",

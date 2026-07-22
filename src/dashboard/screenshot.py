@@ -1,8 +1,8 @@
-"""Playwright 无头浏览器截图：从渲染好的看板页面（`docs/index.html`，本地文件、本地
-`http.server`、或线上 GitHub Pages URL 均可，只要能访问到同目录下的
-`data/dashboard.json`）截取每个 locale 的"推送视图"（`?view=push&locale=<X>` 触发
-的紧凑页面，见 docs/index.html 的 `renderPushView()`），供 src/sinks/feishu_bot.py
-推送到对应飞书群。
+"""Playwright 无头浏览器截图。
+
+常规群推送使用 capture_overview()：打开看板、显式选择顶部“最新批次”，截取
+Overview 全页并交给 src/sinks/feishu_bot.py 发送到 EN 群。旧的
+capture_push_views() 保留给历史/调试用途，不进入常规每日 Pipeline。
 
 2026-07-20 架构变更：从"打开一次看板首页 + 依次点击 locale tab 截全页图"改成
 "逐个 locale 各自导航到推送视图 URL 再截图"——这是 Phase 7 看板从 locale-first
@@ -36,6 +36,32 @@ DEFAULT_TIMEOUT_MS = 20000
 # docs/index.html 顶部注释），理论上标记出现即代表渲染完成；这里仍然保留一个
 # 很短的额外等待，纯粹是给图片解码/布局收敛留一点安全边际，不是在猜测动画时长。
 POST_READY_SETTLE_MS = 150
+
+
+def capture_overview(base_url: str, out_dir: Path | str,
+                     *, timeout_ms: int = DEFAULT_TIMEOUT_MS) -> Path:
+    """打开常规看板首页，仅截取默认的 Overview tab 全页。"""
+    out_dir = Path(out_dir)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out_path = out_dir / "overview.png"
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        try:
+            page = browser.new_page(viewport={"width": VIEWPORT_WIDTH, "height": VIEWPORT_HEIGHT})
+            page.goto(base_url, wait_until="networkidle", timeout=timeout_ms)
+            page.wait_for_selector(
+                '.category-tab[data-tab="overview"].active', state="visible", timeout=timeout_ms,
+            )
+            # 推送必须使用顶部全局筛选的“最新批次”，不依赖页面初始状态或浏览器残留。
+            page.locator("#latestSnapshot").click()
+            page.wait_for_selector("#latestSnapshot.active", state="visible", timeout=timeout_ms)
+            page.wait_for_selector("text=Competitive Insight", state="visible", timeout=timeout_ms)
+            page.wait_for_timeout(POST_READY_SETTLE_MS)
+            page.screenshot(path=str(out_path), full_page=True)
+        finally:
+            browser.close()
+    logger.info("Overview 截图完成：%s", out_path)
+    return out_path
 
 
 def capture_push_views(base_url: str, locales: list[str], out_dir: Path | str,

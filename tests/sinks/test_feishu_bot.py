@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -278,6 +279,56 @@ def test_send_image_via_bot_failure_raises(monkeypatch):
 
 
 # ============================================================
+# 日报摘要卡片
+# ============================================================
+
+
+def test_build_daily_card_contains_three_summaries_and_four_links():
+    digest = SimpleNamespace(
+        daily_summary="综合总结两句话。整体变化清晰。",
+        campaign_summary="活动总结两句话。奖励保持稳定。",
+        product_summary="产品总结两句话。能力变化有限。",
+    )
+    env = {
+        "FEISHU_BITABLE_BASE_URL": "https://tenant.larksuite.com/base",
+        "FEISHU_CAMPAIGN_APP_TOKEN": "base_campaign", "FEISHU_CAMPAIGN_TABLE_ID": "tbl_campaign",
+        "FEISHU_PRODUCT_APP_TOKEN": "base_product", "FEISHU_PRODUCT_TABLE_ID": "tbl_product",
+        "FEISHU_LISTING_APP_TOKEN": "base_listing", "FEISHU_LISTING_TABLE_ID": "tbl_listing",
+        "DASHBOARD_PUBLIC_URL": "https://example.com/dashboard/",
+    }
+    card = bot.build_daily_card(
+        "2026-07-22", digest, env, "http://127.0.0.1:8765", overview_image_key="img_overview",
+    )
+    payload = json.dumps(card, ensure_ascii=False)
+    assert "综合总结两句话" in payload
+    assert "活动总结两句话" in payload
+    assert "产品总结两句话" in payload
+    assert "base_campaign?table=tbl_campaign" in payload
+    assert "base_product?table=tbl_product" in payload
+    assert "base_listing?table=tbl_listing" in payload
+    assert "https://example.com/dashboard/" in payload
+    assert "img_overview" in payload
+    image_index = next(i for i, element in enumerate(card["elements"]) if element.get("tag") == "img")
+    action_indexes = [i for i, element in enumerate(card["elements"]) if element.get("tag") == "action"]
+    assert image_index > max(action_indexes)
+    assert card["header"]["template"] == "blue"
+
+
+def test_send_card_via_webhook_uses_interactive_payload(monkeypatch):
+    captured = {}
+
+    def fake_fetch(url, *, method="GET", headers=None, body=None, timeout=None, max_retries=None):
+        captured["url"] = url
+        captured["payload"] = json.loads(body.decode())
+        return json.dumps({"code": 0, "msg": "success"})
+
+    monkeypatch.setattr(bot, "fetch", fake_fetch)
+    bot.send_card_via_webhook("https://open.larksuite.com/open-apis/bot/v2/hook/test", {"elements": []})
+    assert captured["payload"]["msg_type"] == "interactive"
+    assert captured["payload"]["card"] == {"elements": []}
+
+
+# ============================================================
 # push_dashboard_screenshots：编排层
 # ============================================================
 
@@ -316,10 +367,7 @@ def _fake_push_targets(tmp_path, mapping: dict[str, str]) -> Path:
 
 
 def test_dry_run_captures_screenshots_but_calls_no_feishu_api(tmp_path, monkeypatch, db_path):
-    monkeypatch.setattr(
-        bot, "capture_push_views",
-        lambda url, locales, out_dir, **kw: _fake_screenshots(tmp_path, locales),
-    )
+    monkeypatch.setattr(bot, "capture_overview", lambda url, out_dir, **kw: _fake_screenshots(tmp_path, ["EN"])["EN"])
 
     def _boom(*a, **k):
         raise AssertionError("dry_run 不应该调用任何飞书 API")
@@ -330,28 +378,21 @@ def test_dry_run_captures_screenshots_but_calls_no_feishu_api(tmp_path, monkeypa
     report = bot.push_dashboard_screenshots("http://fake", db_path=db_path, dry_run=True)
     assert report.pushed == 0
     assert report.failed == 0
-    # EN 配了 chat_name -> dry-run 里应该出现"会推送"的详情；其余 4 个没配置 -> skipped
-    assert report.skipped == 4
+    assert report.skipped == 0
     assert any("EN" in d and "会上传" in d for d in report.details)
 
 
 def test_missing_chat_name_is_skipped_not_failed(tmp_path, monkeypatch, db_path):
-    monkeypatch.setattr(
-        bot, "capture_push_views",
-        lambda url, locales, out_dir, **kw: _fake_screenshots(tmp_path, locales),
-    )
+    monkeypatch.setattr(bot, "capture_overview", lambda url, out_dir, **kw: _fake_screenshots(tmp_path, ["EN"])["EN"])
     monkeypatch.setattr(bot, "PUSH_TARGETS_PATH", _fake_push_targets(tmp_path, {}))
 
     report = bot.push_dashboard_screenshots("http://fake", db_path=db_path, dry_run=True)
-    assert report.skipped == 5
+    assert report.skipped == 1
     assert report.failed == 0
 
 
-def test_real_run_pushes_via_bot_and_logs_sync_log(tmp_path, monkeypatch, db_path):
-    monkeypatch.setattr(
-        bot, "capture_push_views",
-        lambda url, locales, out_dir, **kw: _fake_screenshots(tmp_path, locales),
-    )
+def test_real_run_pushes_one_merged_card_via_app_and_logs_sync_log(tmp_path, monkeypatch, db_path):
+    monkeypatch.setattr(bot, "capture_overview", lambda url, out_dir, **kw: _fake_screenshots(tmp_path, ["EN"])["EN"])
     monkeypatch.setattr(bot, "load_env", lambda: {
         "FEISHU_APP_ID": "app-x", "FEISHU_APP_SECRET": "secret-x",
     })
@@ -368,35 +409,39 @@ def test_real_run_pushes_via_bot_and_logs_sync_log(tmp_path, monkeypatch, db_pat
                 "data": {"has_more": False, "page_token": "", "items": [{"chat_id": "oc_en", "name": "CompAgent_EN"}]},
             })
         assert url.endswith("/im/v1/messages?receive_id_type=chat_id")
+        payload = json.loads(body.decode())
+        assert payload["receive_id"] == "oc_en"
+        assert payload["msg_type"] == "interactive"
+        card = json.loads(payload["content"])
+        image = next(element for element in card["elements"] if element.get("tag") == "img")
+        assert image["img_key"] == "img_key_1"
         return json.dumps({"code": 0})
 
     monkeypatch.setattr(bot, "fetch", fake_fetch)
 
     report = bot.push_dashboard_screenshots("http://fake", db_path=db_path, batch_date="2026-07-15", dry_run=False)
-    assert report.pushed == 1  # 只有 EN 配置了 chat_name 且能在群列表里解析出 chat_id
-    assert report.skipped == 4
+    assert report.pushed == 1
+    assert report.cards_pushed == 1
+    assert report.images_pushed == 1
+    assert report.skipped == 0
     assert report.failed == 0
 
     conn = sqlite3.connect(str(db_path))
     rows = conn.execute("SELECT target, record_id, action, status FROM sync_log ORDER BY target").fetchall()
     conn.close()
     targets = {r[0]: (r[2], r[3]) for r in rows}
-    assert targets["bot_EN"] == ("create", "success")
-    assert targets["bot_FR"] == ("skip", "success")
+    assert targets["bot_card_EN"] == ("create", "success")
     assert rows[0][1].endswith("2026-07-15")  # record_id 带上了 batch_date
 
 
 def test_chat_not_found_is_skipped_not_failed(tmp_path, monkeypatch, db_path):
     """配了 chat_name，但机器人没有加入这个群（或群名不匹配）——`list_bot_chats()`
     查不到对应 chat_id，应该 skip，不是 failed（跟 EN-Asia 目前的真实状态一致）。"""
-    monkeypatch.setattr(
-        bot, "capture_push_views",
-        lambda url, locales, out_dir, **kw: _fake_screenshots(tmp_path, locales),
-    )
+    monkeypatch.setattr(bot, "capture_overview", lambda url, out_dir, **kw: _fake_screenshots(tmp_path, ["EN"])["EN"])
     monkeypatch.setattr(bot, "load_env", lambda: {
         "FEISHU_APP_ID": "app-x", "FEISHU_APP_SECRET": "secret-x",
     })
-    monkeypatch.setattr(bot, "PUSH_TARGETS_PATH", _fake_push_targets(tmp_path, {"EN-Asia": "CompAgent_EN-Asia"}))
+    monkeypatch.setattr(bot, "PUSH_TARGETS_PATH", _fake_push_targets(tmp_path, {"EN": "CompAgent_EN"}))
 
     def fake_fetch(url, *, method="GET", headers=None, body=None, timeout=None, max_retries=None):
         if "tenant_access_token" in url:
@@ -413,37 +458,33 @@ def test_chat_not_found_is_skipped_not_failed(tmp_path, monkeypatch, db_path):
     report = bot.push_dashboard_screenshots("http://fake", db_path=db_path, dry_run=False)
     assert report.pushed == 0
     assert report.failed == 0
-    assert report.skipped == 5
-    assert any("EN-Asia" in d and "未加入" in d for d in report.details)
+    assert report.skipped == 1
+    assert any("EN" in d and "未加入" in d for d in report.details)
 
     conn = sqlite3.connect(str(db_path))
     row = conn.execute(
-        "SELECT status, error FROM sync_log WHERE target='bot_EN-Asia'"
+        "SELECT status, error FROM sync_log WHERE target='bot_card_EN'"
     ).fetchone()
     conn.close()
     assert row == ("success", "chat_not_found")  # skip 动作本身是 success，error 字段记录跳过原因
 
 
 def test_screenshot_failure_for_one_locale_is_skipped(tmp_path, monkeypatch, db_path):
-    def _partial_screenshots(url, locales, out_dir, **kw):
-        result = _fake_screenshots(tmp_path, locales)
-        del result["FR"]  # 模拟 FR 截图失败
-        return result
+    def _failed_overview(*args, **kwargs):
+        raise RuntimeError("overview screenshot failed")
 
-    monkeypatch.setattr(bot, "capture_push_views", _partial_screenshots)
+    monkeypatch.setattr(bot, "capture_overview", _failed_overview)
     monkeypatch.setattr(bot, "load_env", lambda: {
         "FEISHU_APP_ID": "app-x", "FEISHU_APP_SECRET": "secret-x",
     })
     monkeypatch.setattr(
         bot, "PUSH_TARGETS_PATH",
-        _fake_push_targets(tmp_path, {"EN": "CompAgent_EN", "FR": "CompAgent_FR"}),
+        _fake_push_targets(tmp_path, {"EN": "CompAgent_EN"}),
     )
 
     def fake_fetch(url, *, method="GET", headers=None, body=None, timeout=None, max_retries=None):
         if "tenant_access_token" in url:
             return json.dumps({"code": 0, "tenant_access_token": "tok-1", "expire": 7200})
-        if url.endswith("/im/v1/images"):
-            return json.dumps({"code": 0, "data": {"image_key": "img_key_1"}})
         if "/im/v1/chats" in url:
             return json.dumps({
                 "code": 0,
@@ -455,11 +496,18 @@ def test_screenshot_failure_for_one_locale_is_skipped(tmp_path, monkeypatch, db_
                     ],
                 },
             })
+        assert url.endswith("/im/v1/messages?receive_id_type=chat_id")
+        payload = json.loads(body.decode())
+        assert payload["msg_type"] == "interactive"
+        card = json.loads(payload["content"])
+        assert not any(element.get("tag") == "img" for element in card["elements"])
         return json.dumps({"code": 0})
 
     monkeypatch.setattr(bot, "fetch", fake_fetch)
 
     report = bot.push_dashboard_screenshots("http://fake", db_path=db_path, dry_run=False)
-    assert report.pushed == 1  # EN 成功
-    assert report.skipped == 4  # FR（截图失败）+ VN/ID/EN-Asia（无 chat_name）
-    assert any("FR" in d and "截图失败" in d for d in report.details)
+    assert report.pushed == 1
+    assert report.cards_pushed == 1
+    assert report.images_pushed == 0
+    assert report.skipped == 0
+    assert any("EN" in d and "纯文本降级" in d for d in report.details)

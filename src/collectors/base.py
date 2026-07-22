@@ -120,7 +120,8 @@ class BaseCollector(ABC):
         ISO8601，见 fetch_list 的约定，这里不需要再转）。"""
 
     def run(
-        self, conn: sqlite3.Connection, *, force_full: bool = False, lookback_days: Optional[int] = None
+        self, conn: sqlite3.Connection, *, force_full: bool = False,
+        lookback_days: Optional[int] = None, collection_date: Optional[str] = None,
     ) -> RunStats:
         """跑一轮采集并落库。
 
@@ -148,6 +149,13 @@ class BaseCollector(ABC):
             since = state["high_watermark"] if state else None
 
         cutoff = None
+        cutoff_end = None
+        if collection_date is not None and not force_full:
+            day = datetime.strptime(collection_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
+            cutoff = day.strftime("%Y-%m-%dT%H:%M:%SZ")
+            cutoff_end = (day + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            if since is None or since < cutoff:
+                since = cutoff
         if lookback_days is not None and not force_full:
             cutoff = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime(
                 "%Y-%m-%dT%H:%M:%SZ"
@@ -162,11 +170,11 @@ class BaseCollector(ABC):
             stats.failed += 1
             return stats
 
-        if cutoff is not None and self.strategy == "full_scan":
+        if cutoff is not None and (collection_date is not None or self.strategy == "full_scan"):
             kept = []
             for raw in items:
                 item_date = raw.update_time or raw.post_time
-                if item_date is None or item_date >= cutoff:
+                if item_date is not None and item_date >= cutoff and (cutoff_end is None or item_date < cutoff_end):
                     kept.append(raw)
                 else:
                     stats.skipped_by_date += 1

@@ -52,8 +52,13 @@ SYSTEM_BUSINESS_JUDGMENT = """\
 外部事实。只判断业务影响、以及与给定候选目录条目的差异。
 baseline_not_found 只表示没有找到匹配的 Zoomex 能力目录候选，不得表述为已确认产品
 缺失（目录本身覆盖 Zoomex 全量历史，但候选是词项重叠召回的，召回不到不等于目录里
-真的没有）。不产出任何行动建议/负责人/时限——这些由下游规则程序化派生，不是你的
-职责。输出必须是合法 JSON。"""
+真的没有）。gap_type 与 reason 必须自洽：reason 中一旦点名具体候选（如"候选 z2"）
+并描述其与本文的异同，就说明确实在跟某个候选做比较，gap_type 不得再判
+baseline_not_found/not_applicable，必须从 confirmed_gap/different_mechanism/covered
+里选一个，并把该候选序号写进 zmx_evidence；反过来，若 gap_type 判定为
+baseline_not_found/not_applicable，reason 只能泛述"候选类型均不匹配"，不得点名
+任何具体候选序号。不产出任何行动建议/负责人/时限——这些由下游规则程序化派生，
+不是你的职责。输出必须是合法 JSON。"""
 
 
 def build_fact_extraction_prompt(
@@ -147,8 +152,10 @@ def build_business_judgment_prompt(
         "input:\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
         + "\noutput_schema:\n" + json.dumps(output, ensure_ascii=False, separators=(",", ":"))
         + "\n每个 i 恰好返回一次。无候选时 gap_type=baseline_not_found；"
-        "不得直接断言 confirmed_gap。不产出 output_schema 之外的任何字段"
-        "（尤其不产出行动建议/负责人/时限，这些由下游规则派生）。"
+        "不得直接断言 confirmed_gap。reason 点名某个候选序号时，zmx_evidence 必须"
+        "包含该序号且 gap_type 不得为 baseline_not_found/not_applicable。不产出"
+        "output_schema 之外的任何字段（尤其不产出行动建议/负责人/时限，这些由下游"
+        "规则派生）。"
     )
     return BuiltPrompt(system=SYSTEM_BUSINESS_JUDGMENT, user=user)
 
@@ -295,7 +302,7 @@ def build_catalog_extraction_prompt(
 
 
 # ============================================================
-# daily-digest-v1
+# daily-digest-v4
 #
 # 不同于上面四套（每个 category×locale 一批公告 → 一次分析），这一套的输入不是
 # 公告原文，而是「当天这个 locale 已经产出的全部批次分析结果」（batch_summary +
@@ -304,36 +311,43 @@ def build_catalog_extraction_prompt(
 # ============================================================
 
 SYSTEM_DAILY_DIGEST = (
-    "你是竞品情报平台的日报编辑，负责把当天各个类目已经产出的批次分析结果综合成一段"
-    "给运营/产品团队看的每日简报。你不会看到原始公告正文，只看到每个批次已经写好的"
-    "summary 和 ZMX 差异结论，你的任务是提炼、串联、突出重点，不是重新分析公告本身。"
+    "你是加密交易所竞品情报平台的日报编辑，负责把当前批次各平台、类目和市场的分析结果"
+    "综合成给运营/产品团队看的极简 Insight。你不会看到完整原始公告，只能使用批次摘要和"
+    "结构化信号；你的任务是归纳共同特征与差异，不是逐条复述，也不能把公告数当成用户数。"
     "输出必须是合法 JSON，不包含任何 markdown 标记或解释文字。"
 )
 
 USER_DAILY_DIGEST_TEMPLATE = """\
 【日期】{BATCH_DATE}
-【地区】{LOCALE}
+【市场范围】{LOCALE}
 【本日已产出批次数】{BATCH_COUNT}
 
 【本日批次列表】
 {BATCHES_BLOCK}
 （每条格式：
-[index] 来源：source | 类目：category | 公告数：n | diff_type | priority
+[index] 来源：source | 市场：locale | 类目：category | 公告数：n | diff_type | priority
 摘要：batch_summary
+结构化信号：signals
 ZMX 对比：zmx_diff（如有）
 ）
 
 【分析任务】
 请输出以下结构的 JSON：
 {
-  "daily_summary": "3-5 句话的当日综述，串联今天各类目/来源里最重要的信号，指出运营/产品团队今天最该关注什么。禁止逐条复述每个批次，要综合归纳出跨批次的规律或对比（例如「今天多个竞品集中冲刺活动，Bitunix/BingX 均以 USDT 奖池为主，但只有 Lbank 在下架侧有动作」这类归纳性判断，不是把每条 batch_summary 抄一遍）。",
-  "priority_focus": "一句话点出今天最优先应该看的 1-2 条，引用具体来源和类目。"
+  "daily_summary": "严格 2-4 句话的整体综述。按有信息才写的原则覆盖：活动侧的主要玩法/奖励特点；产品侧的主要能力或更新特点；市场侧的活跃区域或区域差异；最后概括整体以新增、内容调整还是上下币为主。不要重复页面上已经单独展示的领先平台数字。",
+  "campaign_summary": "严格 2-4 句话的 Campaign 专项总结，综合说明活动类型、重点市场、主要玩法、奖励趋势和整体特点。没有可靠奖励变化时如实说明，不得编造金额或趋势。",
+  "product_summary": "严格 2-4 句话的产品核心能力与内容总结，综合说明主要产品能力、重点市场、新产品与功能/规则更新的结构，以及整体产品变化特点。",
+  "priority_focus": null
 }
 
 【强制规则】
 1. 只能基于【本日批次列表】里提供的信息做归纳，不能编造列表之外的公告或结论
-2. daily_summary 必须综合多条批次，不是简单罗列或直接复制某一条 batch_summary
-3. 整个输出必须是合法 JSON
+2. 三个 summary 都必须各自是 2-4 个完整句子，综合多条批次，不能逐条列平台流水账
+3. 活动、产品、市场某一维度没有可靠信号时直接省略，禁止写“暂无”来凑句数
+4. 同一业务事件可能有多个语言版本；只做定性归纳，不把跨语言 article_count 相加后声称为全局唯一事件数
+5. 不输出行动建议、优先级建议或 Follow-up
+6. “未检索到同类”时只概括没有直接可比能力，不复述被判定为不相关的候选名称、类型或内容
+7. 整个输出必须是合法 JSON
 """
 
 
@@ -345,9 +359,10 @@ def build_batches_block(batches: list[dict]) -> str:
     parts = []
     for i, b in enumerate(batches, start=1):
         lines = [
-            f"[{i}] 来源：{b['source']} | 类目：{b['category']} | 公告数：{b['article_count']} | "
+            f"[{i}] 来源：{b['source']} | 市场：{b.get('locale') or 'ALL'} | 类目：{b['category']} | 公告数：{b['article_count']} | "
             f"diff_type：{b.get('diff_type') or '（无）'} | priority：{b.get('priority') or '（无）'}",
             f"摘要：{b.get('summary') or '（无）'}",
+            f"结构化信号：{b.get('signals') or '（无）'}",
         ]
         if b.get("zmx_diff"):
             lines.append(f"ZMX 对比：{b['zmx_diff']}")

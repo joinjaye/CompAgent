@@ -60,20 +60,19 @@ CATEGORIES = ["campaign", "product", "listing", "delisting"]
 DIFF_TYPE_TAG = {
     "ZMX缺失": "missing",
     "ZMX玩法不同": "diff",
-    "ZMX已有": "same",
-    "混合": "mixed",
+    "ZMX已有": "broad",
+    "混合": "na",
     "不适用": "na",
 }
-# 排序权重：ZMX缺失最紧急，"已有"/"不适用"（含从未产出逐条分析的老数据/其它噪音）垫底。
-DIFF_TYPE_SORT_ORDER = {"missing": 0, "diff": 1, "mixed": 2, "same": 3, "na": 3}
+# 看板只使用四类：缺失、机制不同、同类型粗粒度、不适用。
+DIFF_TYPE_SORT_ORDER = {"missing": 0, "diff": 1, "broad": 2, "na": 3}
 PRIORITY_SORT_ORDER = {"高": 0, "中": 1, "低": 2}
 
 # 每个 category 里"这条公告到底讲了什么"的描述性字段名不同。campaign/product 的
 # 字段名是 Phase②（staged.py 接入）Stage1 事实抽取产出的字段（mechanism/feature，
 # 取代了 Phase②之前的 mechanics/feature_description——旧字段名仍在
-# _load_article_index 里做兼容读取，不是这里要处理的事）；listing/delisting 是更早
-# 的历史遗留字段名，这两个类目现在完全不产出 insights（Phase 4 v3 政策收紧后
-# 只分析 campaign/product），只在展示极老的历史数据时可能用到。
+# _load_article_index 里做兼容读取，不是这里要处理的事）。listing/delisting 现在有
+# 独立的轻量币种赛道分类，但不使用这里的描述性字段，也不参与 ZMX 对比。
 _DESCRIPTIVE_FIELD_BY_CATEGORY = {
     "campaign": "mechanism",
     "product": "feature",
@@ -125,13 +124,8 @@ def _clean_title(title: Optional[str]) -> str:
     return html.unescape(re.sub(r"<[^>]+>", "", title)).strip() or "(无标题)"
 
 
-def _format_time(iso_ts: Optional[str]) -> str:
-    if not iso_ts:
-        return "--:--"
-    try:
-        return iso_ts.split("T")[1][:5]
-    except IndexError:
-        return "--:--"
+def _format_date(iso_ts: Optional[str]) -> str:
+    return iso_ts[:10] if iso_ts else "—"
 
 
 def _diff_sort_key(diff_type: Optional[str]) -> int:
@@ -228,7 +222,7 @@ def _split_time_window(value: Optional[str]) -> tuple[Optional[str], Optional[st
 
 
 def _listing_kind_from_title(title: Optional[str], category: str) -> Optional[str]:
-    """Listing/Delisting 不调用 LLM；仅在标题有明确证据时做确定性归约。"""
+    """Listing Type 不交给 LLM；仅在标题有明确证据时做确定性归约。"""
     if category != "listing" or not title:
         return None
     has_perp = bool(_PERP_RE.search(title))
@@ -329,6 +323,11 @@ def _load_article_index(conn: sqlite3.Connection) -> dict[str, dict]:
                 "feature": a.get("feature") or a.get("feature_description"),
                 "token_symbol": a.get("token_symbol"),
                 "launch_time": a.get("launch_time"),
+                "trading_pair": a.get("trading_pair"),
+                "listing_type": a.get("listing_type"),
+                "listing_status": a.get("listing_status"),
+                "token_category": a.get("token_category"),
+                "classification_confidence": a.get("classification_confidence"),
                 "is_mock": is_mock,
                 "is_locale_derived": is_locale_derived,
             }
@@ -339,15 +338,42 @@ def _load_zmx_catalog_index(conn: sqlite3.Connection) -> dict[tuple[str, str], d
     """(category, mechanism_type) -> Zoomex 能力目录条目。在导出时现查，不在写入
     articles_analysis 时冗余存一份——目录可能在竞品分析之后单独重新 rollup，导出
     应该反映目录的当前状态，不是分析当时的快照（SQLite 是唯一真相源）。
+
+    2026-07-22 新增 capability_url：粗粒度匹配（diff_tag='broad'）之前只有文字
+    描述、没有可跳转链接——`example_uids`（rollup 时最多存 3 条同 mechanism_type
+    的 Zoomex 公告 uid）取第一条，join announcements 拿真实 url，供前端"同类型
+    参考"卡片也能点进去看原文，跟 zmx_counterpart（具体匹配）的链接是同一种体验，
+    只是语义上明确是"粗粒度示例"而不是"逐篇比对的对应文章"。
     """
     rows = _dict_rows(conn.execute(
-        "SELECT category, mechanism_type, exists_flag, capability_desc, typical_reward FROM zmx_catalog_entry"
+        "SELECT category, mechanism_type, exists_flag, capability_desc, typical_reward, example_uids FROM zmx_catalog_entry"
     ))
+    first_example_uid_by_key: dict[tuple[str, str], str] = {}
+    all_example_uids: set[str] = set()
+    for r in rows:
+        try:
+            uids = json.loads(r["example_uids"] or "[]")
+        except (TypeError, json.JSONDecodeError):
+            uids = []
+        if uids:
+            first_example_uid_by_key[(r["category"], r["mechanism_type"])] = uids[0]
+            all_example_uids.add(uids[0])
+
+    url_by_uid: dict[str, str] = {}
+    if all_example_uids:
+        placeholders = ",".join("?" * len(all_example_uids))
+        for a in _dict_rows(conn.execute(
+            f"SELECT uid, url FROM announcements WHERE uid IN ({placeholders})", list(all_example_uids),
+        )):
+            if a["url"]:
+                url_by_uid[a["uid"]] = a["url"]
+
     return {
         (r["category"], r["mechanism_type"]): {
             "exists_flag": r["exists_flag"],
             "capability_desc": r["capability_desc"],
             "typical_reward": r["typical_reward"],
+            "capability_url": url_by_uid.get(first_example_uid_by_key.get((r["category"], r["mechanism_type"]), "")),
         }
         for r in rows
     }
@@ -506,9 +532,9 @@ def build_category_section(
     zmx_counterpart_index = zmx_counterpart_index or {}
     out = []
     for r in rows:
-        # Listing/Delisting 自本版起不做任何 LLM 分析或 ZMX 比较；即使数据库里
-        # 留有旧版本 insight，也不得继续展示过期的 priority/diff/follow_up。
-        art = {} if category in ("listing", "delisting") else article_index.get(r["uid"], {})
+        # Listing/Delisting 只读取新版币种分类和确定性事实字段；仍不读取或展示
+        # 历史版本的 ZMX 比较、priority、follow_up。
+        art = article_index.get(r["uid"], {})
         start_date, end_date = _split_time_window(art.get("time_window"))
         description = art.get("description")
         item = {
@@ -536,15 +562,15 @@ def build_category_section(
             "feature": art.get("feature"),
             "token_symbol": art.get("token_symbol"),
             "launch_time": art.get("launch_time"),
-            "diff_type": art.get("diff_type"),
-            "diff_tag": DIFF_TYPE_TAG.get(art.get("diff_type") or "", "na"),
-            "diff_detail": art.get("diff_detail"),
-            "priority": art.get("priority"),
-            "priority_reason": art.get("priority_reason"),
-            "action_type": art.get("action_type"),
-            "owner": art.get("owner"),
-            "follow_up": art.get("follow_up"),
-            "change_kind": art.get("change_kind"),
+            "diff_type": None if category in ("listing", "delisting") else art.get("diff_type"),
+            "diff_tag": "na" if category in ("listing", "delisting") else DIFF_TYPE_TAG.get(art.get("diff_type") or "", "na"),
+            "diff_detail": None if category in ("listing", "delisting") else art.get("diff_detail"),
+            "priority": None if category in ("listing", "delisting") else art.get("priority"),
+            "priority_reason": None if category in ("listing", "delisting") else art.get("priority_reason"),
+            "action_type": None if category in ("listing", "delisting") else art.get("action_type"),
+            "owner": None if category in ("listing", "delisting") else art.get("owner"),
+            "follow_up": None if category in ("listing", "delisting") else art.get("follow_up"),
+            "change_kind": None if category in ("listing", "delisting") else art.get("change_kind"),
             "listing_kind": (
                 _listing_kind_from_title(r["title"], category)
                 if category in ("listing", "delisting")
@@ -553,6 +579,20 @@ def build_category_section(
             "is_mock": art.get("is_mock", False),
             "is_locale_derived": art.get("is_locale_derived", False),
         }
+        if category in ("listing", "delisting"):
+            item.update({
+                "token_category": art.get("token_category"),
+                "classification_confidence": art.get("classification_confidence"),
+                "trading_pair": art.get("trading_pair"),
+                "listing_type": art.get("listing_type") or (
+                    "Perpetual" if _listing_kind_from_title(r["title"], "listing") == "perp"
+                    else "Spot" if _listing_kind_from_title(r["title"], "listing") == "spot"
+                    else None
+                ),
+                "listing_status": art.get("listing_status") or (
+                    "Delisted" if category == "delisting" else "New Listing"
+                ),
+            })
         if category in ("campaign", "product"):
             mechanism_type = art.get("mechanism_type")
             catalog_entry = zmx_catalog_index.get((category, mechanism_type)) if mechanism_type else None
@@ -560,10 +600,42 @@ def build_category_section(
             item["zmx_mechanism_type"] = mechanism_type
             item["zmx_exists"] = catalog_entry["exists_flag"] if catalog_entry else None
             item["zmx_capability_desc"] = catalog_entry["capability_desc"] if catalog_entry else None
+            item["zmx_capability_url"] = catalog_entry["capability_url"] if catalog_entry else None
             item["zmx_counterpart"] = zmx_counterpart_index.get(counterpart_uid) if counterpart_uid else None
-            # analyzed = 这条公告有真实的 Stage1/Stage3 逐条分析结果（不管结论是不是
-            # "不适用"）；pending = 还没被任何一次分析运行覆盖过，不是"确认没有差异"。
-            item["comparison_status"] = "analyzed" if art else "pending"
+            # analyzed = 这条公告有真实的 Stage1/Stage3 逐条分析结果；pending = 还没被
+            # 任何一次分析运行覆盖过。Campaign/Product 的 analyzed 记录不允许显示为 na：
+            # 无候选同样属于“未检索到同类”。
+            item["comparison_status"] = "analyzed" if art.get("diff_type") else "pending"
+            # 2026-07-22 真实数据发现：diff_tag="na" 且 zmx_exists="yes" 会自相矛盾——
+            # "na" 来自 Stage3 逐篇比对（只在本批次窄召回的候选里找，没找到就说"不
+            # 适用"），"exists=yes" 来自 Zoomex 目录按 mechanism_type 标签做的全量历史
+            # 匹配（这条公告自己也被打了同一个 mechanism_type 标签）——两者是不同粒度
+            # 的信号，共存并不矛盾，但前端只显示"未进行对比"会让人看着右侧明明有
+            # Zoomex 内容却说"没比过"。只在 exists_flag="yes"（精确标签命中，不是
+            # "partial" 近似匹配——那个本身就标注了"建议人工核对"，置信度不够）且没有
+            # 具体 zmx_counterpart 时，把展示用的 diff_tag 降级改成 "broad"（粗粒度
+            # 同类型），不改写 diff_type/diff_detail——那两个字段仍然如实保留 Stage3
+            # 自己的逐篇结论，供追溯。
+            if item["diff_tag"] == "na" and item["zmx_exists"] == "yes" and not item["zmx_counterpart"]:
+                item["diff_tag"] = "broad"
+            # 2026-07-22：反过来，diff_tag="na" 且 exists_flag="no" 时，"未进行对比"
+            # 同样不准确——"no" 不是"没查"，是 rollup 覆盖 Zoomex 全量历史后确认这个
+            # mechanism_type 真的一次都没出现过（run_rollup() 的定义，见
+            # src/analysis/zmx_catalog.py），这是比 Stage3 单批次窄召回更强的"确认
+            # 缺失"证据，应该升级成 "missing"（未检索到同类）而不是继续显示"没比过"。
+            # exists_flag 为 None（mechanism_type 没打上标签，或标签在 rollup 里
+            # 还没有对应条目）时保持 "na"——那才是真正"不知道"的情况。
+            elif item["diff_tag"] == "na" and item["comparison_status"] == "analyzed":
+                item["diff_tag"] = "missing"
+            # “未检索到同类”必须是一个干净的空对照状态。即使历史分析错误地保留了
+            # 某个召回候选的 mechanism_type，也不允许继续向前端泄露无关的 Zoomex
+            # capability/counterpart；差异理由仍保留，用于说明为何没有匹配。
+            if item["diff_tag"] == "missing":
+                item["zmx_mechanism_type"] = None
+                item["zmx_exists"] = None
+                item["zmx_capability_desc"] = None
+                item["zmx_capability_url"] = None
+                item["zmx_counterpart"] = None
         if category == "product":
             item["product_category"] = _product_category(r["title"], art.get("feature") or description)
             item["update_kind"] = _product_update_kind(r["title"], r["status"])
@@ -585,7 +657,7 @@ def build_overview(
         values = _dedupe_business_rows(rows)
         count_new = sum(1 for r in values if r["status"] == "new")
         count_changed = sum(1 for r in values if r["status"] == "changed")
-        diff_breakdown = {"missing": 0, "diff": 0, "same": 0, "mixed": 0, "na": 0}
+        diff_breakdown = {"missing": 0, "diff": 0, "broad": 0, "na": 0}
         for r in values:
             diff_breakdown[r["diff_tag"]] = diff_breakdown.get(r["diff_tag"], 0) + 1
         return {
@@ -598,8 +670,8 @@ def build_overview(
     chips = {
         "campaign": chip_from_rows(campaign_rows),
         "product": chip_from_rows(product_rows),
-        "listing": chip_from_rows(listing_only_rows),
-        "announcement": chip_from_rows(delisting_rows + other_rows),
+        "listing": chip_from_rows(listing_only_rows + delisting_rows),
+        "announcement": chip_from_rows(other_rows),
     }
 
     def business_priority(r: dict) -> str:
@@ -659,10 +731,11 @@ def build_overview(
             "category": r["category"],
             "priority": r["business_priority"],
             "title": r["title"],
-            "one_line_summary": (r["description"] or r["follow_up"] or "")[:160],
+            # Action / Follow-up 暂不参与可视化摘要；没有事实描述时保持为空。
+            "one_line_summary": (r["description"] or "")[:160],
             "diff_type": r["diff_type"],
             "diff_tag": r["diff_tag"],
-            "time": _format_time(r["post_time"]),
+            "time": _format_date(r["post_time"]),
             "url": r["url"],
             "is_mock": r["is_mock"],
         }
@@ -771,7 +844,8 @@ def build_markets(conn: sqlite3.Connection) -> dict:
     return {"regions": regions}
 
 
-def build_search_index(conn: sqlite3.Connection, article_index: dict[str, dict]) -> dict:
+def build_search_index(conn: sqlite3.Connection, article_index: dict[str, dict],
+                       diff_tags: Optional[dict[tuple[str, str], str]] = None) -> dict:
     """全部历史的扁平投影，只给 Search tab 用——字段刻意窄（不含正文/content），
     需要看全文的话点 url 回源站。跟 build_markets/build_trend 一样"整段下发，
     前端筛"，不做服务端分页/筛选。"""
@@ -783,8 +857,10 @@ def build_search_index(conn: sqlite3.Connection, article_index: dict[str, dict])
         )
     )
     out = []
+    diff_tags = diff_tags or {}
     for r in rows:
         art = article_index.get(r["uid"], {})
+        group_key = r["group_id"] or r["uid"]
         out.append({
             "uid": r["uid"],
             "group_id": r["group_id"],
@@ -795,6 +871,9 @@ def build_search_index(conn: sqlite3.Connection, article_index: dict[str, dict])
             "post_time": r["post_time"],
             "status": r["status"],
             "diff_type": art.get("diff_type"),
+            "diff_tag": diff_tags.get(
+                (r["source"], group_key), DIFF_TYPE_TAG.get(art.get("diff_type") or "", "na")
+            ),
             "priority": art.get("priority"),
             "url": r["url"],
         })
@@ -815,17 +894,24 @@ def build_daily_digest(conn: sqlite3.Connection, as_of_date: str) -> dict:
     source='llm'；否则 source='fallback'，前端据此显示"LLM 生成"或"占位符"角标，
     不让占位文案冒充真实分析结论。
 
-    Scoping：daily_digest.py 是按 locale 生成的（"这个 locale 今天整体发生了什么"），
-    但新版看板 Overview 是跨 locale 的单一入口，不再有逐 locale 的今日 Summary
-    位置——这里固定取 EN（每个竞品都覆盖的市场，最具代表性），不是遍历全部
-    locale 各生成一份再拼接。
+    Scoping：新版 Overview 是跨 locale 的单一入口，因此读取 daily-digest-v2 的 ALL
+    市场缓存；各语言批次只作为定性信号，Prompt 明确禁止把跨语言数量直接相加。
     """
     from src.analysis.daily_digest import peek_cached_digest
 
-    result = peek_cached_digest(conn, "EN", as_of_date)
+    result = peek_cached_digest(conn, "ALL", as_of_date)
     if result and result.generated:
-        return {"source": "llm", "summary": result.daily_summary, "priority_focus": result.priority_focus}
-    return {"source": "fallback", "summary": None, "priority_focus": None}
+        return {
+            "source": "llm", "daily_summary": result.daily_summary,
+            "summary": result.daily_summary,
+            "campaign_summary": result.campaign_summary,
+            "product_summary": result.product_summary,
+            "priority_focus": result.priority_focus,
+        }
+    return {
+        "source": "fallback", "daily_summary": None, "summary": None, "campaign_summary": None,
+        "product_summary": None, "priority_focus": None,
+    }
 
 
 def build_dashboard_data(db_path: str) -> dict:
@@ -937,7 +1023,10 @@ def build_dashboard_data(db_path: str) -> dict:
         "announcements": other_rows,
         "announcements_all": announcement_all_rows,
         "markets": build_markets(conn),
-        "search_index": build_search_index(conn, article_index),
+        "search_index": build_search_index(conn, article_index, {
+            (row["source"], row.get("group_id") or row["uid"]): row["diff_tag"]
+            for row in campaign_all_rows + product_all_rows
+        }),
         "quality": {
             "product_comparison": {
                 "total_events": len(campaign_rows) + len(product_rows),

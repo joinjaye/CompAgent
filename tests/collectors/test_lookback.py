@@ -116,6 +116,30 @@ def test_full_scan_filters_old_items_by_lookback(conn):
     assert stats.total == 1
 
 
+def test_full_scan_collection_date_keeps_only_that_utc_day(conn):
+    items = [
+        RawItem(article_id="before", title="before", post_time="2026-07-20T23:59:59Z"),
+        RawItem(article_id="today", title="today", post_time="2026-07-21T12:00:00Z"),
+        RawItem(article_id="after", title="after", post_time="2026-07-22T00:00:00Z"),
+        RawItem(article_id="undated", title="undated", post_time=None),
+    ]
+    collector = _FakeFullScanCollector("EN", {"strategy": "full_scan"}, items=items)
+
+    stats = collector.run(conn, collection_date="2026-07-21")
+
+    assert stats.new == 1
+    assert stats.skipped_by_date == 3
+    assert conn.execute("SELECT article_id FROM announcements").fetchone()[0] == "today"
+
+
+def test_watermark_collection_date_seeds_exact_utc_day_start(conn):
+    collector = _FakeWatermarkCollector("EN", {"strategy": "watermark"}, items=[])
+
+    collector.run(conn, collection_date="2026-07-21")
+
+    assert collector.received_since == "2026-07-21T00:00:00Z"
+
+
 def test_full_scan_keeps_all_items_without_lookback_days(conn):
     """回归安全网：不传 lookback_days 时，旧条目照常处理，不做任何日期过滤。"""
     items = [RawItem(article_id="old-1", title="old", post_time=OLD_TIME)]
