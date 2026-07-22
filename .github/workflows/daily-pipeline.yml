@@ -59,18 +59,21 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: data/competitor_intel.db
-          key: competitor-db-${{ github.run_id }}-${{ github.run_attempt }}
+          # v2 starts from the complete 2026-07-22 local baseline. Keep the
+          # namespace versioned so an obsolete cache can never shadow a newer
+          # tracked seed after a baseline replacement.
+          key: competitor-db-v2-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
-            competitor-db-
+            competitor-db-v2-
 
       - name: Initialize database when cache is empty
         shell: bash
         run: |
           if [[ ! -s "$DB_PATH" ]]; then
-            seed="data/backups/competitor_intel_pre_2026-07-21.db"
+            seed="data/backups/competitor_intel_current_seed.db"
             if [[ -s "$seed" ]]; then
               cp "$seed" "$DB_PATH"
-              echo "Initialized database from tracked historical baseline."
+              echo "Initialized database from tracked complete baseline."
             fi
           fi
           # The tracked baseline predates schema v4. Migrate before init_db creates
@@ -113,7 +116,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: data/competitor_intel.db
-          key: competitor-db-${{ github.run_id }}-${{ github.run_attempt }}
+          key: competitor-db-v2-${{ github.run_id }}-${{ github.run_attempt }}
 
       - name: Upload Overview screenshot and logs
         if: always()
