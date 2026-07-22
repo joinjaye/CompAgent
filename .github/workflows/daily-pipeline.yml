@@ -25,6 +25,9 @@ jobs:
       DASHBOARD_OUT: docs/data/dashboard.json
       SCREENSHOT_DIR: data/daily_screenshots
       LLM_PROVIDER: cursor_agent
+      # Cursor SDK local sandbox is unavailable on GitHub-hosted Linux runners.
+      # The agent still runs in the isolated empty cwd and receives the no-tools prompt.
+      CURSOR_SANDBOX_ENABLED: "0"
       ENV_FILE: ${{ secrets.ENV_FILE }}
 
     steps:
