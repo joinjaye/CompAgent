@@ -26,13 +26,28 @@ COMPETITOR_BUDGET=$(((LLM_MAX_TOKENS - BASELINE_BUDGET) / 5))
 BASELINE_LOCALE_BUDGET=$((BASELINE_BUDGET / 5))
 COMPETITOR_PROCESS_BUDGET=$((COMPETITOR_BUDGET / 3))
 COMPETITORS="Bitunix,Weex,BingX,Phemex,Lbank"
+IFS=',' read -r -a SOURCES <<< "$COMPETITORS"
 
 mkdir -p data/backups
 cp "$DB_PATH" "data/backups/competitor_intel_pre_${BATCH_DATE}.db"
 
-"$PYTHON" -m src.collectors \
+# 竞品数据是日报主体：任一竞品采集失败都中止流程，避免发送不完整日报。
+for source in "${SOURCES[@]}"; do
+  "$PYTHON" -m src.collectors \
+    --source "$source" \
+    --date "$BATCH_DATE" \
+    --db-path "$DB_PATH"
+done
+
+# Zoomex 是对比基线。其 API 会拒绝部分云机房 IP（GitHub-hosted Runner 当前返回
+# HTTP 403）；此时保留最近一次成功采集形成的能力目录继续分析，并在日志中明确降级。
+# 本地/自托管环境请求成功时仍会照常更新当天 Zoomex 数据。
+if ! "$PYTHON" -m src.collectors \
+  --source Zoomex \
   --date "$BATCH_DATE" \
-  --db-path "$DB_PATH"
+  --db-path "$DB_PATH"; then
+  echo "WARNING: Zoomex 当天采集失败；本批次继续使用数据库中最近一次成功的 Zoomex 能力基线。" >&2
+fi
 
 "$PYTHON" -m src.pipeline --db "$DB_PATH" group-check \
   --sources "${COMPETITORS},Zoomex"
@@ -54,7 +69,6 @@ done
 # rollup 不调用 LLM，纯 SQL 聚合，跑一次覆盖 campaign/product 两个类目即可
 "$PYTHON" -m src.analysis.zmx_catalog rollup --db "$DB_PATH"
 
-IFS=',' read -r -a SOURCES <<< "$COMPETITORS"
 for source in "${SOURCES[@]}"; do
   # Cursor bridge 已验证单进程稳定窗口为 2 次调用；跑三轮可覆盖最多 6 个非派生批次，
   # 后续轮次对已完成批次走缓存，不重复计费。
