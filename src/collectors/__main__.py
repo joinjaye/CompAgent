@@ -176,8 +176,9 @@ def _build_collectors(
     category_filter: Optional[str],
 ) -> list[BaseCollector]:
     collectors: list[BaseCollector] = []
+    source_filter_key = source_filter.lower() if source_filter else None
     for source_key, locales in sources.items():
-        if source_filter and source_key != source_filter:
+        if source_filter_key and source_key.lower() != source_filter_key:
             continue
         builder = COLLECTOR_BUILDERS.get(source_key)
         if builder is None:
