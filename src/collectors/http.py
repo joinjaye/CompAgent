@@ -24,7 +24,7 @@ DEFAULT_USER_AGENT = (
     "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
 DEFAULT_TIMEOUT_S = 15
-MAX_RETRIES = 3
+MAX_RETRIES = 5
 BACKOFF_BASE_S = 1.0
 
 
@@ -43,8 +43,8 @@ def fetch(
 ) -> str:
     """发起一次 HTTP 请求，返回响应正文（str）。
 
-    网络错误 / 5xx 按指数退避重试（最多 max_retries 次）；4xx 判定为客户端错误，
-    重试无意义，直接抛出。
+    网络错误 / 5xx / 429 按退避策略重试（最多 max_retries 次）；其余 4xx 判定为
+    客户端错误，直接抛出。429 优先使用服务端 Retry-After 秒数。
     """
     req_headers = {"User-Agent": DEFAULT_USER_AGENT, **(headers or {})}
     last_error: Optional[Exception] = None
@@ -54,14 +54,23 @@ def fetch(
             with urllib.request.urlopen(request, timeout=timeout, context=_SSL_CONTEXT) as resp:
                 return resp.read().decode("utf-8", errors="replace")
         except urllib.error.HTTPError as e:
-            if 400 <= e.code < 500:
+            if e.code == 429:
+                last_error = e
+            elif 400 <= e.code < 500:
                 raise HttpError(f"{method} {url} -> HTTP {e.code}（客户端错误，不重试）") from e
-            last_error = e
+            else:
+                last_error = e
         except urllib.error.URLError as e:
             last_error = e
 
         if attempt < max_retries - 1:
-            delay = BACKOFF_BASE_S * (2**attempt)
+            retry_after = None
+            if isinstance(last_error, urllib.error.HTTPError) and last_error.code == 429:
+                try:
+                    retry_after = float(last_error.headers.get("Retry-After", ""))
+                except (TypeError, ValueError):
+                    retry_after = None
+            delay = retry_after if retry_after is not None else BACKOFF_BASE_S * (2**attempt)
             logger.warning(
                 "请求失败（第 %d/%d 次），%.1fs 后重试：%s %s",
                 attempt + 1, max_retries, delay, url, last_error,
