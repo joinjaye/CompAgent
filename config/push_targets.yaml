@@ -12,5 +12,5 @@
 
 targets:
   EN:
-    chat_name: "CompAgent_EN"
-    name: "竞品情报-EN"
+    chat_name: "竞品运营动态"
+    name: "竞品运营动态"
