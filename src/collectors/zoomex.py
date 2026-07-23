@@ -45,7 +45,7 @@ from typing import Any, Optional
 from src.collectors.base import BaseCollector, NormalizedAnnouncement, RawItem
 from src.collectors.http import fetch_json, rate_limit_seconds
 from src.collectors.timeutil import ms_to_iso
-from src.db.operations import compute_uid
+from src.db.operations import compute_uid, get_collector_source_version
 from src.parsers.slate_json import parse_content as parse_slate_content
 from src.parsers.zoomex import get_total_count, parse_detail_response, parse_list_response
 
@@ -111,10 +111,7 @@ class ZoomexCollector(BaseCollector):
         if item.article_id is None:
             return True
         uid = compute_uid(self.source_name, self.locale, str(item.article_id))
-        row = conn.execute(
-            "SELECT update_time FROM announcements WHERE uid = ?", (uid,)
-        ).fetchone()
-        return row is None or row["update_time"] != item.update_time
+        return get_collector_source_version(conn, uid) != item.update_time
 
     def fetch_detail(self, item: RawItem) -> RawItem:
         cfg = self.config

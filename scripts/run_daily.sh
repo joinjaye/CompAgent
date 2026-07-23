@@ -18,7 +18,8 @@ PYTHON="$PYTHON" DB_PATH="$DB_PATH" DASHBOARD_OUT="$DASHBOARD_OUT" BATCH_DATE="$
 "$PYTHON" -m src.sinks.feishu_business_tables \
   --db-path "$DB_PATH" \
   --date "$BATCH_DATE" \
-  --table all
+  --table all \
+  --scope date
 
 SERVER_LOG="$(mktemp -t compagent-dashboard.XXXXXX.log)"
 "$PYTHON" -m http.server "$DASHBOARD_PORT" --directory docs >"$SERVER_LOG" 2>&1 &

@@ -220,7 +220,10 @@ def main() -> None:
     parser.add_argument(
         "--date",
         default=None,
-        help="仅采集该 UTC 日期发布或更新的数据（YYYY-MM-DD）；与 --lookback-days 互斥。",
+        help=(
+            "下游批次日期（YYYY-MM-DD），不再用于抓取前过滤。采集器先读取源端可见窗口，"
+            "再按 uid/content_hash 入库去重；与 --lookback-days 互斥。"
+        ),
     )
     parser.add_argument("--db-path", default=str(DEFAULT_DB_PATH))
     parser.add_argument("--sources-path", default=str(DEFAULT_SOURCES_PATH))

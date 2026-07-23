@@ -98,7 +98,9 @@ a { color: inherit; }
 
 /* ---------- stat / chip cards ---------- */
 .overview-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; padding: 0 1.5rem; }
-@media (max-width: 860px) { .overview-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+.campaign-metrics-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (max-width: 1100px) { .campaign-metrics-grid { grid-template-columns: repeat(3, minmax(0,1fr)); } }
+@media (max-width: 860px) { .overview-grid,.campaign-metrics-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
 .stat-card {
   background: var(--surface-1); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 0.85rem 1rem; box-shadow: var(--shadow-card); transition: border-color 0.15s var(--ease);
@@ -130,7 +132,7 @@ a { color: inherit; }
 .insight-head { display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:12px; }
 .insight-title { display:flex; align-items:center; gap:9px; color:var(--text-primary); font-size:14px; font-weight:700; }.insight-title-mark { width:28px; height:28px; display:grid; place-items:center; border:1px solid rgba(91,157,238,.35); border-radius:8px; color:var(--hue-campaign); background:rgba(91,157,238,.12); font-size:12px; }
 .insight-scope { color:var(--text-muted); font-size:11px; margin-top:3px; font-weight:400; }
-.insight-leaders { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; margin-bottom:12px; }
+.insight-leaders { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:9px; margin-bottom:12px; }
 .insight-leader { min-height:92px; padding:11px 12px; border:1px solid var(--border); border-radius:10px; background:rgba(13,27,45,.7); position:relative; overflow:hidden; }
 .insight-leader:after { content:""; position:absolute; inset:auto 0 0; height:2px; background:var(--leader-color,var(--hue-campaign)); opacity:.85; }
 .insight-leader-label { color:var(--text-muted); font-size:10.5px; margin-bottom:9px; }.insight-leader-value { display:flex; align-items:baseline; justify-content:space-between; gap:8px; }.insight-leader-source { color:var(--text-primary); font-size:16px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }.insight-leader-count { color:var(--leader-color,var(--hue-campaign)); font-family:var(--font-mono); font-size:18px; font-weight:700; }.insight-leader-count small { font-size:9px; color:var(--text-muted); font-weight:500; margin-left:3px; }
@@ -141,6 +143,7 @@ a { color: inherit; }
 .platform-stack-head { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:15px; flex-wrap:wrap; }.platform-stack-note { color:var(--text-muted); font-size:10.5px; margin-top:3px; }
 .platform-stack-legend { display:flex; gap:6px; flex-wrap:wrap; }.platform-stack-toggle { min-height:34px; display:inline-flex; align-items:center; gap:7px; padding:5px 9px; border:1px solid var(--border); border-radius:8px; color:var(--text-secondary); background:var(--surface-2); cursor:default; font:inherit; font-size:11px; transition:opacity .15s var(--ease),border-color .15s var(--ease),color .15s var(--ease); }.platform-stack-toggle:hover,.platform-stack-toggle:focus-visible { color:var(--text-primary); border-color:var(--border-strong); outline:none; }.platform-stack-swatch { width:9px; height:9px; border-radius:3px; background:var(--stack-color); }
 .platform-stack-chart { display:grid; gap:11px; }.platform-stack-row { display:grid; grid-template-columns:82px minmax(0,1fr) 38px; align-items:center; gap:10px; min-height:30px; }.platform-stack-source { color:var(--text-secondary); font-size:11.5px; font-weight:650; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.platform-stack-track { height:22px; display:flex; align-items:stretch; border-radius:6px; background:var(--surface-3); overflow:hidden; position:relative; }.platform-stack-segment { min-width:0; display:flex; align-items:center; justify-content:center; color:#07111e; font-family:var(--font-mono); font-size:9px; font-weight:800; cursor:default; transition:width .3s var(--ease),filter .15s var(--ease),opacity .15s var(--ease); }.platform-stack-segment:hover { filter:brightness(1.16); }.platform-stack-card[data-active-series] .platform-stack-segment { opacity:.18; }.platform-stack-card[data-active-series="campaign"] .platform-stack-segment[data-stack-series="campaign"],.platform-stack-card[data-active-series="product"] .platform-stack-segment[data-stack-series="product"],.platform-stack-card[data-active-series="listing"] .platform-stack-segment[data-stack-series="listing"] { opacity:1; }.platform-stack-segment:first-child { border-radius:6px 0 0 6px; }.platform-stack-segment:last-child { border-radius:0 6px 6px 0; }.platform-stack-total { color:var(--text-muted); text-align:right; font-family:var(--font-mono); font-size:11px; }.platform-stack-empty { padding:22px; text-align:center; color:var(--text-muted); font-size:12px; border:1px dashed var(--border); border-radius:8px; }.platform-stack-tooltip { position:absolute; z-index:8; display:none; min-width:165px; padding:8px 10px; border:1px solid var(--border-strong); border-radius:8px; background:rgba(7,17,31,.96); box-shadow:0 10px 28px rgba(0,0,0,.34); color:var(--text-secondary); font-size:11px; line-height:1.55; pointer-events:none; transform:translate(10px,-50%); }.platform-stack-tooltip.show { display:block; }.platform-stack-tooltip strong { display:block; color:var(--text-primary); margin-bottom:2px; }
+@media (max-width:980px) { .insight-leaders{grid-template-columns:repeat(2,minmax(0,1fr))} }
 @media (max-width:720px) { .insight-shell{margin:0 1rem}.insight-leaders{grid-template-columns:1fr}.insight-leader{min-height:72px}.insight-head{align-items:flex-start;flex-direction:column;gap:8px} }
 @media (max-width:720px) { .platform-stack-card{margin:0 1rem;padding:.8rem}.platform-stack-row{grid-template-columns:64px minmax(0,1fr) 30px;gap:7px}.platform-stack-source{font-size:10.5px} }
 .trend-card { margin:0 1.5rem; padding:1rem 1rem .85rem; background:linear-gradient(145deg,rgba(91,157,238,.055),transparent 48%),var(--surface-1); border:1px solid var(--border); border-radius:var(--radius); overflow:hidden; }
@@ -334,6 +337,8 @@ a { color: inherit; }
 .search-summary { padding: 0 1.5rem; font-size: 12px; color: var(--text-muted); }
 .search-summary strong { color: var(--text-primary); }
 .pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 12px 1.5rem; font-size: 12px; color: var(--text-secondary); }
+.business-table-footer { display:flex; align-items:center; justify-content:flex-end; gap:12px; padding:12px 1.5rem; }
+.business-table-footer .pagination { flex:1; padding:0; }
 .page-btn { min-height: 36px; background: var(--surface-2); border: 1px solid var(--border); color: var(--text-secondary); border-radius: var(--radius-sm); padding: 7px 14px; font-size: 12px; transition: all 0.12s var(--ease); }
 .page-btn:hover:not(:disabled) { border-color: var(--border-strong); color: var(--text-primary); }
 .page-btn:disabled { opacity: 0.35; cursor: default; }
@@ -341,9 +346,16 @@ a { color: inherit; }
 .search-query-row .search-input { width: min(100%, 520px); flex: 0 1 520px; }
 .table-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:0 1.5rem; margin-top:4px; }
 .table-toolbar .search-summary { padding:0; }
+.bitable-link { min-height:44px; display:inline-flex; align-items:center; gap:7px; padding:9px 14px; border:1px solid var(--border-strong); border-radius:var(--radius-sm); color:var(--text-primary); background:var(--surface-2); font-size:12px; font-weight:650; text-decoration:none; white-space:nowrap; transition:background .18s var(--ease),border-color .18s var(--ease),color .18s var(--ease); }
+.bitable-link:hover { background:var(--surface-3); border-color:var(--hue-campaign); color:#fff; }
+.bitable-link:focus-visible { outline:2px solid var(--hue-campaign); outline-offset:3px; }
+.bitable-link svg { width:15px; height:15px; flex:none; }
 @media (max-width:640px) {
   .table-toolbar { padding:0 1rem; align-items:flex-start; flex-direction:column; }
   .pagination { padding-left:1rem; padding-right:1rem; }
+  .business-table-footer { padding:12px 1rem; flex-wrap:wrap; }
+  .business-table-footer .pagination { min-width:100%; padding:0; flex-wrap:wrap; }
+  .business-table-footer .bitable-link { margin-left:auto; }
 }
 
 .loading, .load-error { padding: 4rem 1.25rem; text-align: center; color: var(--text-muted); font-size: 13px; }
@@ -587,6 +599,15 @@ tr.detail-row td { background:var(--surface-2); padding:14px 16px; }
         <div class="guide-rule"><strong>Listing 只整理事实</strong><span>不做 ZMX 对比、AI 总结或高/中/低优先级。</span></div>
       </div>
     </section>
+    <section class="guide-section"><h3 class="guide-section-title">时间字段与活动状态</h3>
+      <div class="guide-rule-grid">
+        <div class="guide-rule"><strong>抓取日期 · fetched_at</strong><span>系统首次抓到该内容的时间，首次入库后保持不变；历史缺失值使用已有时间作近似补齐。</span></div>
+        <div class="guide-rule"><strong>更新日期 · update_time</strong><span>系统检测到正文内容发生变化的时间。首次抓取不算更新；内容未变时保持原值，未发生过变更可为空。</span></div>
+        <div class="guide-rule"><strong>发布日期 · post_time</strong><span>来源平台公布文章或活动页面的时间；与系统何时发现它无关，源端缺失时以首次抓取时间近似。</span></div>
+        <div class="guide-rule"><strong>Listing 生效时间</strong><span>effective_time_from_article，由程序从上下币文章正文确定性识别，通常表示开放交易、上线或下架生效时间，不是 AI 推测。</span></div>
+      </div>
+      <div class="guide-warning" style="margin-top:8px"><strong>活动状态采用独立生命周期口径：</strong>开始时间晚于批次日为 Upcoming；开始时间不晚于批次日且结束时间不早于批次日为 Ongoing；结束时间早于批次日为 Ended。New / Updated 表示本次采集变化，不会覆盖生命周期，因此一条活动可以同时是 New 和 Ongoing。</div>
+    </section>
     <section class="guide-section"><h3 class="guide-section-title">ZMX 差异标签</h3><div class="guide-diff-list">
       <div class="guide-diff" style="--diff-color:var(--status-critical)"><i></i><strong>未检索到同类</strong><span>未在 ZMX 基线内容中形成匹配。</span></div>
       <div class="guide-diff" style="--diff-color:var(--status-warning)"><i></i><strong>已有同类 · 机制不同</strong><span>已有可比案例，但奖励、门槛或规则有实质差异。</span></div>
@@ -655,6 +676,14 @@ function paginationMarkup(id, page, totalRows) {
 function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
+function businessTableLink(category, label) {
+  const url = DATA.meta.business_table_urls?.[category];
+  if (!url) return '';
+  return `<a class="bitable-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer" aria-label="${esc(label)}（在新窗口打开）">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 5h5v5M19 5l-8 8"/><path d="M12 6H7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-5"/></svg>
+    <span>${esc(label)}</span>
+  </a>`;
+}
 function mockBadge(isMock) { return isMock ? `<span class="tag tag-mock">模拟</span>` : ''; }
 function priorityClass(p) { return p === '高' ? 'priority-high' : p === '中' ? 'priority-medium' : 'priority-low'; }
 function priorityRank(p) { return PRIORITY_ORDER[p] ?? 3; }
@@ -670,12 +699,14 @@ function campaignRuleRank(row) {
   return 2;
 }
 function campaignDisplayStatus(row) {
-  const today = DATA.meta.batch_date;
   if (row.status === 'changed') return 'Updated';
-  if (row.status === 'new' && formatDate(row.post_time) === today) return 'New';
+  return 'New';
+}
+function campaignLifecycleStatus(row) {
+  const today = DATA.meta.batch_date;
   if (row.start_date && row.start_date > today) return 'Upcoming';
   if (row.end_date && row.end_date < today) return 'Ended';
-  if (row.start_date || row.end_date) return 'Ongoing';
+  if ((!row.start_date || row.start_date <= today) && (!row.end_date || row.end_date >= today) && (row.start_date || row.end_date)) return 'Ongoing';
   return 'Date unknown';
 }
 function campaignRows() { return globalFiltered(scopedRows('campaign', 'campaign_all', 'campaign')); }
@@ -991,7 +1022,9 @@ function insightModel() {
   const countBy=(rows,key='source')=>rows.reduce((m,r)=>{const v=typeof key==='function'?key(r):r[key];if(v)m[v]=(m[v]||0)+1;return m},{});
   const leader=counts=>{const entries=Object.entries(counts).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));return entries.length?{source:entries[0][0],count:entries[0][1]}:null};
   const campaignNew=campaign.filter(r=>r.status==='new');
-  const productNew=product.filter(r=>r.status==='new' && (r.update_kind==='New Product'||!r.update_kind));
+  const productNew=product.filter(r=>r.update_kind==='New Product');
+  const productChanges=product.filter(r=>r.update_kind!=='New Product');
+  const campaignChanges=campaign.filter(r=>r.status==='changed');
   const rewardChanges=campaign.filter(r=>r.change_kind==='reward');
   const topValue=(rows,key)=>leader(countBy(rows,key));
   const topCampaignType=topValue(campaign.filter(r=>r.mechanism_type),r=>r.mechanism_type);
@@ -999,7 +1032,10 @@ function insightModel() {
   const marketCounts={};
   all.forEach(r=>rowMarkets(r).forEach(locale=>{marketCounts[locale]=(marketCounts[locale]||0)+1;}));
   const marketRanking=Object.entries(marketCounts).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0]));
-  const leaders={new_campaigns:leader(countBy(campaignNew)),new_products:leader(countBy(productNew)),reward_changes:leader(countBy(rewardChanges))};
+  const leaders={
+    new_campaigns:leader(countBy(campaignNew)),campaign_changes:leader(countBy(campaignChanges)),
+    new_products:leader(countBy(productNew)),product_changes:leader(countBy(productChanges))
+  };
   const total=all.length, changed=all.filter(r=>r.status==='changed').length;
   const sentences=[];
   if(total) {
@@ -1028,7 +1064,8 @@ function todaysInsightMarkup(ov) {
   const leaderCards=[
     ['新增活动最多',model.leaders.new_campaigns,'var(--hue-campaign)'],
     ['新增产品最多',model.leaders.new_products,'var(--hue-product)'],
-    ['奖励变化最多',model.leaders.reward_changes,'var(--hue-listing)']
+    ['活动变更最多',model.leaders.campaign_changes,'var(--hue-listing)'],
+    ['产品变更最多',model.leaders.product_changes,'var(--hue-product)']
   ];
   const scope=state.dateFrom||state.dateTo?`${state.dateFrom||'最早'} → ${state.dateTo||'最新'}`:`最新批次 · ${DATA.meta.batch_date}`;
   let narrative='';
@@ -1430,9 +1467,10 @@ function renderCategoryPane(category) {
   const label = category === 'campaign' ? 'Campaign' : 'Product';
   const newCount = category === 'product' ? rows.filter(r => r.update_kind === 'New Product').length : latestRows.filter(r => r.status === 'new').length;
   const updatedCount = category === 'product' ? rows.filter(r => r.update_kind !== 'New Product').length : latestRows.filter(r => r.status === 'changed').length;
-  const ongoingCount = category === 'campaign' ? rows.filter(r => campaignDisplayStatus(r) === 'Ongoing').length : 0;
+  const ongoingCount = category === 'campaign' ? rows.filter(r => campaignLifecycleStatus(r) === 'Ongoing').length : 0;
+  const upcomingCount = category === 'campaign' ? rows.filter(r => campaignLifecycleStatus(r) === 'Upcoming').length : 0;
   const endingSoonCount = category === 'campaign' ? rows.filter(r => {
-    if (!r.end_date || campaignDisplayStatus(r) !== 'Ongoing') return false;
+    if (!r.end_date || campaignLifecycleStatus(r) !== 'Ongoing') return false;
     const days = daysBetween(DATA.meta.batch_date, r.end_date);
     return days >= 0 && days <= 3;
   }).length : 0;
@@ -1442,9 +1480,10 @@ function renderCategoryPane(category) {
     : [...new Set(rows.map(r => r.update_kind).filter(Boolean))].sort();
   return `
     <div id="${category}Insight">${categoryInsightMarkup(category, rows)}</div>
-    <div class="overview-grid" style="margin-top:1rem">
+    <div class="overview-grid ${category === 'campaign' ? 'campaign-metrics-grid' : ''}" style="margin-top:1rem">
       <div class="stat-card"><div class="stat-label">New ${esc(label)}</div><div class="stat-value accent">${newCount}</div></div>
       <div class="stat-card"><div class="stat-label">Updated ${esc(label)}</div><div class="stat-value warn">${updatedCount}</div></div>
+      ${category === 'campaign' ? `<div class="stat-card"><div class="stat-label">Upcoming Campaign</div><div class="stat-value accent">${upcomingCount}</div></div>` : ''}
       <div class="stat-card"><div class="stat-label">${category === 'product' ? 'Affected Exchange' : 'Ongoing Campaign'}</div><div class="stat-value">${category === 'product' ? new Set(rows.map(r => r.source)).size : ongoingCount}</div></div>
       <div class="stat-card"><div class="stat-label">${category === 'product' ? 'Affected Category' : 'Ending Soon · ≤3 days'}</div><div class="stat-value warn">${category === 'product' ? new Set(rows.map(r => r.product_category || 'Others')).size : endingSoonCount}</div></div>
     </div>
@@ -1475,14 +1514,19 @@ function renderCategoryPane(category) {
       </div>
     </div>
     ${category === 'campaign' ? renderCampaignUpdates(rows) : ''}
-    <div class="section-label">${category === 'campaign' ? 'Campaign List' : 'New Product / Product Update'}</div>
+    <div class="table-toolbar">
+      <div class="section-label" style="padding:0">${category === 'campaign' ? 'Campaign List' : 'New Product / Product Update'}</div>
+    </div>
     <div class="table-wrap"><table class="data-table">
       <thead>${category === 'campaign'
         ? '<tr><th>Exchange</th><th>Activity</th><th>Type</th><th>Reward</th><th>Timeline</th><th>Markets</th><th>AI Summary</th><th>Zoomex Comparison</th><th>Sources</th></tr>'
         : '<tr><th>Exchange</th><th>Product / Update</th><th>Category</th><th>Change Type</th><th>Markets</th><th>AI Summary</th><th>Zoomex Comparison</th><th>Sources</th></tr>'}
       </thead><tbody id="${category}Body"></tbody>
     </table></div>
-    <div id="${category}Pagination"></div>
+    <div class="business-table-footer">
+      <div id="${category}Pagination"></div>
+      ${businessTableLink(category, `${label} 多维表格`)}
+    </div>
   `;
 }
 
@@ -1494,7 +1538,11 @@ function renderCategoryBody(category) {
   let filtered = st.source === 'all' ? rows : rows.filter(r => r.source === st.source);
   if (category === 'campaign') {
     if (st.type !== 'all') filtered = filtered.filter(r => (r.mechanism_type || '') === st.type);
-    if (st.status !== 'all') filtered = filtered.filter(r => campaignDisplayStatus(r) === st.status);
+    if (st.status !== 'all') filtered = filtered.filter(r =>
+      ['New','Updated'].includes(st.status)
+        ? campaignDisplayStatus(r) === st.status
+        : campaignLifecycleStatus(r) === st.status
+    );
     if (st.reward === 'known') filtered = filtered.filter(r => Boolean(r.reward_range));
     if (st.reward === 'unknown') filtered = filtered.filter(r => !r.reward_range);
   } else {
@@ -1534,7 +1582,7 @@ function renderCategoryBody(category) {
       </tr>` : `
       <tr>
         <td><span class="source-pill">${esc(r.source)}</span></td>
-        <td class="td-title"><button class="row-expand-toggle" data-expand="${esc(r.uid)}">${expanded ? '▾' : '▸'} ${esc(r.title)}</button><br><span class="status-chip ${r.status}">${esc(STATUS_LABEL[r.status] || r.status)}</span></td>
+        <td class="td-title"><button class="row-expand-toggle" data-expand="${esc(r.uid)}">${expanded ? '▾' : '▸'} ${esc(r.title)}</button><br><span class="status-chip ${r.update_kind === 'New Product' ? 'new' : 'changed'}">${esc(r.update_kind === 'New Product' ? '新增产品' : '产品变更')}</span></td>
         <td><span class="tag tag-product">${esc(r.product_category || 'Others')}</span></td><td>${esc(r.update_kind || '—')}</td>
         <td>${marketChips(r)}</td><td><div class="cell-copy">${esc(r.feature || r.description || '待分析')}</div></td>
         <td><span class="tag tag-${r.diff_tag || 'na'}">${esc(DIFF_LABEL[r.diff_tag] || '未进行对比')}</span></td><td>${variantLinks(r)}</td>
@@ -1690,7 +1738,9 @@ function renderListingPane() {
       ${groupedStackedChart('Category × Exchange',rows,listingCategory,{exclude:['Pending']})}
       ${groupedStackedChart('Listing Type × Exchange',rows,listingType,{order:['Spot','Perpetual','Spot & Perpetual']})}
     </div>
-    <div class="section-label">Listing & Delisting Detail · Newest First</div>
+    <div class="table-toolbar">
+      <div class="section-label" style="padding:0">Listing & Delisting Detail · Newest First</div>
+    </div>
     <div class="filter-bar listing-filter-bar">
       <select class="global-select" id="listingSource"><option value="all">All Exchanges</option>${SOURCES.map(s=>`<option value="${s}">${s}</option>`).join('')}</select>
       <select class="global-select" id="listingType"><option value="all">All Listing Types</option><option>Spot</option><option>Perpetual</option></select>
@@ -1701,7 +1751,10 @@ function renderListingPane() {
     </div>
     <div class="search-summary" id="listingSummary"></div>
     <div class="table-wrap"><table class="data-table"><thead><tr><th>Exchange</th><th>Token</th><th>Listing Type</th><th>Status</th><th>Category</th><th>Markets</th><th>Launch Date</th><th>View Detail</th></tr></thead><tbody id="listingBody"></tbody></table></div>
-    <div id="listingPagination"></div>`;
+    <div class="business-table-footer">
+      <div id="listingPagination"></div>
+      ${businessTableLink('listing', 'Listing & Delisting 多维表格')}
+    </div>`;
 }
 
 function renderListingBody() {

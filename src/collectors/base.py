@@ -14,7 +14,12 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from src.db.operations import get_crawl_state, set_crawl_state, upsert_announcement
+from src.db.operations import (
+    get_crawl_state,
+    set_collector_source_version,
+    set_crawl_state,
+    upsert_announcement,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +53,8 @@ class NormalizedAnnouncement:
     content: Optional[str] = None
     post_time: Optional[str] = None
     update_time: Optional[str] = None
+    activity_start_time: Optional[str] = None
+    activity_end_time: Optional[str] = None
     category: Optional[str] = None
     raw_category: Optional[str] = None
     group_id: Optional[str] = None
@@ -149,13 +156,9 @@ class BaseCollector(ABC):
             since = state["high_watermark"] if state else None
 
         cutoff = None
-        cutoff_end = None
-        if collection_date is not None and not force_full:
-            day = datetime.strptime(collection_date, "%Y-%m-%d").replace(tzinfo=timezone.utc)
-            cutoff = day.strftime("%Y-%m-%dT%H:%M:%SZ")
-            cutoff_end = (day + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
-            if since is None or since < cutoff:
-                since = cutoff
+        # collection_date 只标识下游批次，不再用于采集前过滤。所有源先抓取其可见窗口，
+        # 再由数据库 uid/content_hash 统一判断新增、变化和重复，避免早班任务永久漏掉
+        # 当天稍后发布的内容，也避免把活动开始时间误当发布时间过滤。
         if lookback_days is not None and not force_full:
             cutoff = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).strftime(
                 "%Y-%m-%dT%H:%M:%SZ"
@@ -170,11 +173,11 @@ class BaseCollector(ABC):
             stats.failed += 1
             return stats
 
-        if cutoff is not None and (collection_date is not None or self.strategy == "full_scan"):
+        if cutoff is not None and self.strategy == "full_scan":
             kept = []
             for raw in items:
                 item_date = raw.update_time or raw.post_time
-                if item_date is not None and item_date >= cutoff and (cutoff_end is None or item_date < cutoff_end):
+                if item_date is not None and item_date >= cutoff:
                     kept.append(raw)
                 else:
                     stats.skipped_by_date += 1
@@ -201,11 +204,14 @@ class BaseCollector(ABC):
                     content=ann.content,
                     post_time=ann.post_time,
                     update_time=ann.update_time,
+                    activity_start_time=ann.activity_start_time,
+                    activity_end_time=ann.activity_end_time,
                     category=ann.category,
                     raw_category=ann.raw_category,
                     source_endpoint=ann.source_endpoint,
                     group_id=ann.group_id,
                 )
+                set_collector_source_version(conn, result.uid, raw.update_time)
                 if result.status == "new":
                     stats.new += 1
                 elif result.status == "changed":

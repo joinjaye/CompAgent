@@ -62,7 +62,8 @@ def test_fetch_list_maps_fields_and_sends_lang_header(monkeypatch):
     assert captured["headers"]["ex-language"] == "en-US"
     item = next(i for i in items if i.article_id == "event-10002315")
     assert item.title == "TENDIES, BRIAN Listing Carnival"
-    assert item.post_time == "2026-07-17T12:00:00Z"
+    assert item.post_time is None
+    assert item.extra["start_time_ms"] == 1784289600000
     assert item.content == "Share $10,000 Rewards"  # 只是列表页 subtitle，规则正文由 fetch_detail 追加
     assert item.extra["code"] == "10002315-tendies-brian-listing"
 

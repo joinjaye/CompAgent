@@ -41,9 +41,14 @@ def _insert_insight(conn, *, id_, source, category, locale, summary, zmx_diff=No
     conn.commit()
 
 
-def test_no_batches_returns_not_generated(conn):
+def test_no_batches_returns_deterministic_empty_day_digest(conn):
     result = generate_daily_digest(conn, "EN", BATCH_DATE, dry_run=True)
-    assert result.generated is False
+    assert result.generated is True
+    assert result.from_cache is False
+    assert result.tokens_used == 0
+    assert result.daily_summary
+    assert result.campaign_summary
+    assert result.product_summary
     assert "no_batches_for_locale_date" in result.issues
 
 

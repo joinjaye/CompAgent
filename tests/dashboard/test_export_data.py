@@ -18,6 +18,7 @@ from src.analysis.run import upsert_insight
 from src.dashboard.export_data import (
     _derive_follow_up,
     _format_zmx_reward,
+    build_business_table_links,
     build_daily_digest,
     build_dashboard_data,
 )
@@ -29,6 +30,20 @@ BATCH_DATE = "2026-07-15"
 
 def test_format_zmx_reward_accepts_numeric_amount():
     assert _format_zmx_reward(100, "USDT", "coupon") == "100 USDT（coupon）"
+
+
+def test_business_table_links_prefer_explicit_url_and_build_fallback():
+    links = build_business_table_links({
+        "FEISHU_BITABLE_BASE_URL": "https://tenant.example/base/",
+        "FEISHU_CAMPAIGN_TABLE_URL": "https://explicit.example/campaign",
+        "FEISHU_PRODUCT_APP_TOKEN": "product-app",
+        "FEISHU_PRODUCT_TABLE_ID": "product-table",
+    })
+    assert links == {
+        "campaign": "https://explicit.example/campaign",
+        "product": "https://tenant.example/base/product-app?table=product-table",
+        "listing": "",
+    }
 
 
 @pytest.fixture()
@@ -52,8 +67,13 @@ def _insert(conn, *, source, locale, article_id, category, status_hint="new",
         fetched_at=f"{BATCH_DATE}T01:00:00Z", category=category, group_id=group_id,
         is_region_exclusive=is_region_exclusive,
     )
-    conn.execute("UPDATE announcements SET category = ?, status = ? WHERE uid = ?",
-                 (category, status_hint, result.uid))
+    conn.execute(
+        """UPDATE announcements
+           SET category = ?, status = ?,
+               update_time = CASE WHEN ? = 'changed' THEN fetched_at ELSE update_time END
+           WHERE uid = ?""",
+        (category, status_hint, status_hint, result.uid),
+    )
     return result.uid
 
 
@@ -79,7 +99,7 @@ def test_all_top_level_keys_present(conn, db_path):
         assert key in data, key
 
 
-def test_all_sections_include_history_for_client_side_date_filters(conn, db_path):
+def test_all_sections_are_limited_to_daily_scope(conn, db_path):
     product_uid = _insert(conn, source="Bitunix", locale="EN", article_id="p", category="product")
     listing_uid = _insert(conn, source="Bitunix", locale="EN", article_id="l", category="listing")
     conn.execute(
@@ -91,9 +111,9 @@ def test_all_sections_include_history_for_client_side_date_filters(conn, db_path
 
     data = build_dashboard_data(str(db_path))
     assert data["product"] == []
-    assert {row["uid"] for row in data["product_all"]} == {product_uid}
+    assert data["product_all"] == []
     assert data["listing"] == []
-    assert {row["uid"] for row in data["listing_all"]} == {listing_uid}
+    assert data["listing_all"] == []
 
 
 def test_search_index_rows_have_only_specified_fields_no_content_leak(conn, db_path):
@@ -280,7 +300,7 @@ def test_overview_highlights_are_global_top_five_and_max_two_per_exchange(conn, 
     assert sum(h["source"] == "Phemex" for h in highlights) == 1
 
 
-def test_stale_first_seen_campaign_is_not_promoted_as_p1(conn, db_path):
+def test_stale_first_seen_campaign_backfill_is_not_in_current_highlights(conn, db_path):
     uid = _insert(
         conn, source="Bitunix", locale="EN", article_id="old", category="campaign",
         title="<p>Historical Campaign</p>",
@@ -289,9 +309,9 @@ def test_stale_first_seen_campaign_is_not_promoted_as_p1(conn, db_path):
         "UPDATE announcements SET post_time='2024-01-01T00:00:00Z' WHERE uid=?", (uid,)
     )
     conn.commit()
-    highlight = build_dashboard_data(str(db_path))["overview"]["highlights"][0]
-    assert highlight["priority"] == "P7"
-    assert highlight["title"] == "Historical Campaign"
+    data = build_dashboard_data(str(db_path))
+    assert data["overview"]["highlights"] == []
+    assert data["campaign_all"] == []
 
 
 def test_first_seen_product_update_uses_p5_not_p4(conn, db_path):

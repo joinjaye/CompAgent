@@ -117,9 +117,10 @@ def test_reinsert_same_content_is_unchanged_and_does_not_duplicate(conn):
     assert count == 1
 
     row = get_announcement(conn, first.uid)
-    assert row["status"] == "unchanged"
-    # fetched_at 应更新为最新一次抓取时间
-    assert row["fetched_at"] == "2026-07-11T01:00:00Z"
+    assert row["status"] == "new"
+    # 首次抓取保持不变；首次入库不等于内容更新，因此更新时间为空。
+    assert row["fetched_at"] == "2026-07-10T01:00:00Z"
+    assert row["update_time"] is None
 
     # 内容未变，不应产生历史记录
     assert get_content_history(conn, first.uid) == []
@@ -173,6 +174,8 @@ def test_content_change_is_detected_and_archived_to_history(conn):
     row = get_announcement(conn, first.uid)
     assert row["content"] == "Prize pool: 500000 USDT"
     assert row["content_hash"] == compute_content_hash("Prize pool: 500000 USDT")
+    assert row["fetched_at"] == "2026-07-10T00:00:00Z"
+    assert row["update_time"] == "2026-07-12T00:00:00Z"
     # 变更后应重新进入待推送状态
     assert row["push_status"] == "pending"
 

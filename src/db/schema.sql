@@ -1,4 +1,4 @@
--- 竞品情报平台 SQLite schema（schema 版本 v4，见 CLAUDE.md「Phase 4 完成情况」；
+-- 竞品情报平台 SQLite schema（schema 版本 v5；
 -- zmx_summary/zmx_catalog_entry 是纯新增的表，不改动任何既有表的列/约束，不需要走
 -- migrate 脚本，见 CLAUDE.md「Zoomex Capability Catalog」小节。v3 -> v4：
 -- announcements 新增 duplicate_of 列，见 scripts/migrate_v4.py）
@@ -31,9 +31,11 @@ CREATE TABLE IF NOT EXISTS announcements (
                                               -- listing/delisting/other 是 Phase 3 的事，见
                                               -- config/category_mapping.yaml
     content_hash         TEXT,               -- SHA256(content)，变更检测用
-    post_time            TEXT,               -- 发布时间，UTC ISO8601
-    update_time          TEXT,               -- 源端更新时间（如有），UTC ISO8601
-    fetched_at           TEXT,               -- 本次抓取时间，UTC ISO8601
+    post_time            TEXT,               -- 内容发布时间（源端），UTC ISO8601
+    update_time          TEXT,               -- 内容更新时间：仅 content_hash 变化时覆盖
+    fetched_at           TEXT,               -- 首次抓取时间：插入后永不覆盖
+    activity_start_time  TEXT,               -- 活动开始时间（仅活动类），UTC ISO8601
+    activity_end_time    TEXT,               -- 活动结束时间（仅活动类），UTC ISO8601
     status               TEXT NOT NULL DEFAULT 'new'
                          CHECK (status IN ('new', 'changed', 'unchanged')),
     category             TEXT
@@ -79,6 +81,14 @@ CREATE TABLE IF NOT EXISTS content_history (
 
 CREATE INDEX IF NOT EXISTS idx_content_history_uid
     ON content_history (uid);
+
+-- 采集器内部版本游标（不属于业务时间模型）。例如 Zoomex 列表的 gmtUpdatedAt
+-- 仅用于判断是否需要重新请求详情，不再写入 announcements.update_time。
+CREATE TABLE IF NOT EXISTS collector_item_state (
+    uid             TEXT PRIMARY KEY REFERENCES announcements (uid) ON DELETE CASCADE,
+    source_version  TEXT,
+    observed_at     TEXT
+);
 
 -- ============================================================
 -- insights（分析层 / 批次级汇总分析表，Phase 4 起 schema v3）

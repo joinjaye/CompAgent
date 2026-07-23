@@ -47,7 +47,8 @@ def test_fetch_list_maps_fields_from_real_fixture(monkeypatch):
     world_cup = next(i for i in items if i.article_id == 138)
     assert world_cup.title == "World Cup Gold Rush: Predict & win a share in $10M"
     assert "Airdrop" in world_cup.content
-    assert world_cup.post_time == "2026-06-09T02:00:00Z"  # +08:00 -> UTC 转换正确
+    assert world_cup.post_time is None
+    assert world_cup.extra["start_time_raw"] == "2026-06-09T10:00:00.000+08:00"
 
 
 def test_fetch_list_dedups_across_pages(monkeypatch):

@@ -37,9 +37,27 @@ def test_builds_three_tables_from_only_selected_day_new_changed(tmp_path):
 
     assert [r["uid"] for r in rows["campaign"]]
     assert len(rows["campaign"]) == len(rows["product"]) == len(rows["listing"]) == 1
+    assert rows["product"][0]["status"] == "new"
     assert "ai_summary" not in rows["listing"][0]
     assert "zmx_comparison" not in rows["listing"][0]
     assert all(name not in {"ai_summary", "zmx_comparison"} for name, _ in LISTING_FIELD_SPECS)
+    conn.close()
+
+
+def test_product_table_status_uses_business_update_kind(tmp_path):
+    conn = _conn(tmp_path)
+    upsert_announcement(
+        conn, source="Bitunix", locale="EN", article_id="p-update",
+        title="Adjustment to Funding Rate Settlement Frequency", content="body",
+        category="product", post_time="2026-07-21T01:00:00Z",
+        fetched_at="2026-07-21T01:00:00Z", group_id="g-p-update",
+    )
+    conn.commit()
+
+    row = build_business_rows(conn, "2026-07-21")["product"][0]
+
+    assert row["change_type"] == "Rule Updated"
+    assert row["status"] == "updated"
     conn.close()
 
 

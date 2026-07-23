@@ -68,9 +68,13 @@ class LbankEventsCollector(BaseCollector):
                     article_id=f"{_ARTICLE_ID_PREFIX}{entry['id']}",
                     title=entry.get("title"),
                     content=entry.get("subtitle") or "",
-                    post_time=ms_to_iso(entry.get("start_time_ms")),
+                    post_time=None,
                     url=entry.get("route_url"),
-                    extra={"code": entry.get("code"), "end_time_ms": entry.get("end_time_ms")},
+                    extra={
+                        "code": entry.get("code"),
+                        "start_time_ms": entry.get("start_time_ms"),
+                        "end_time_ms": entry.get("end_time_ms"),
+                    },
                 )
             )
         return raw_items
@@ -111,7 +115,9 @@ class LbankEventsCollector(BaseCollector):
 
     def normalize(self, item: RawItem) -> NormalizedAnnouncement:
         content_text = html_to_text(item.content) if item.content else ""
-        period = _format_period(item.post_time, ms_to_iso(item.extra.get("end_time_ms")))
+        activity_start = ms_to_iso(item.extra.get("start_time_ms"))
+        activity_end = ms_to_iso(item.extra.get("end_time_ms"))
+        period = _format_period(activity_start, activity_end)
         if period:
             content_text = f"{content_text}\n\n{period}" if content_text else period
         return NormalizedAnnouncement(
@@ -123,6 +129,8 @@ class LbankEventsCollector(BaseCollector):
             content=content_text,
             post_time=item.post_time,
             update_time=None,
+            activity_start_time=activity_start,
+            activity_end_time=activity_end,
             category=None,
             raw_category=self.category,
             group_id=f"lbank_{item.article_id}",

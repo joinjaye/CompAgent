@@ -56,8 +56,12 @@ class BitunixActivityCollector(BaseCollector):
                     article_id=f"{_ARTICLE_ID_PREFIX}{entry['id']}",
                     title=entry.get("title"),
                     content=content,
-                    post_time=entry.get("start_time"),
+                    post_time=None,
                     url=f"https://www.bitunix.com{url}" if url else None,
+                    extra={
+                        "activity_start_time": entry.get("start_time"),
+                        "activity_end_time": entry.get("end_time"),
+                    },
                 )
             )
         return raw_items
@@ -73,6 +77,8 @@ class BitunixActivityCollector(BaseCollector):
             content=content_text,
             post_time=item.post_time,
             update_time=None,
+            activity_start_time=item.extra.get("activity_start_time"),
+            activity_end_time=item.extra.get("activity_end_time"),
             category=None,  # 走 Phase 3 pipeline 前不分类；raw_category 已经直接是 campaign 语义
             raw_category=self.category,
             group_id=f"bitunix_{item.article_id}",

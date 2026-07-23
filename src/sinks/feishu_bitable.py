@@ -289,7 +289,9 @@ def _extract_number_field(value: Any) -> Any:
     return value
 
 
-def _build_fields(row: sqlite3.Row, field_specs: list[tuple[str, int]]) -> dict[str, Any]:
+def _build_fields(
+    row: sqlite3.Row, field_specs: list[tuple[str, int]], *, clear_missing_text: bool = False,
+) -> dict[str, Any]:
     """DB 行 -> 飞书 record 的 fields dict。NULL 列直接不写入这个 key（而不是写 null），
     避免依赖飞书对 null 值的具体处理行为。空字符串同样跳过——实测飞书不会把写入的空
     字符串 Text 字段持久化成一个"空但存在"的值，读回来就是 None，如果这里仍然把它当
@@ -299,6 +301,8 @@ def _build_fields(row: sqlite3.Row, field_specs: list[tuple[str, int]]) -> dict[
     for name, ftype in field_specs:
         val = row[name]
         if val is None:
+            if clear_missing_text and ftype == FIELD_TYPE_TEXT:
+                fields[name] = ""
             continue
         if ftype == FIELD_TYPE_CHECKBOX:
             fields[name] = bool(val)
@@ -320,6 +324,9 @@ def _record_needs_update(
         have = existing_fields.get(name)
         if ftype == FIELD_TYPE_TEXT:
             have = _extract_text_field(have)
+            # 写空字符串是飞书 Text 字段的清空操作；清空后读回为 None。
+            if want == "":
+                want = None
         elif ftype == FIELD_TYPE_CHECKBOX:
             have = bool(have) if have is not None else False
             want = bool(want) if want is not None else False
@@ -517,6 +524,7 @@ class SyncReport:
     updated: int = 0
     skipped: int = 0
     failed: int = 0
+    deleted: int = 0
     dry_run_rows: int = 0
     batches: list[str] = field(default_factory=list)
 
@@ -533,6 +541,7 @@ def _sync_table(
     creds: FeishuCredentials,
     dry_run: bool,
     log_actions: bool = True,
+    clear_missing_text: bool = False,
 ) -> SyncReport:
     report = SyncReport()
     if not rows:
@@ -551,7 +560,7 @@ def _sync_table(
     to_create: list[tuple[str, dict[str, Any]]] = []
     for row in rows:
         key = row[key_column]
-        desired = _build_fields(row, field_specs)
+        desired = _build_fields(row, field_specs, clear_missing_text=clear_missing_text)
         existing = existing_by_key.get(key)
         if existing is None:
             to_create.append((key, desired))

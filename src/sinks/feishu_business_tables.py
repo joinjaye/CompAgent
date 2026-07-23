@@ -22,11 +22,13 @@ from src.sinks.feishu_bitable import (
     FIELD_TYPE_TEXT,
     SyncReport,
     _chunks,
+    _index_existing_records,
     _request,
     _sync_table,
     ensure_fields,
     get_table_fields,
     load_env,
+    rename_field,
 )
 
 
@@ -35,7 +37,8 @@ COMMON_FIELDS = [
     ("source", FIELD_TYPE_TEXT), ("markets", FIELD_TYPE_TEXT),
     ("category", FIELD_TYPE_TEXT), ("status", FIELD_TYPE_TEXT),
     ("title", FIELD_TYPE_TEXT), ("url", FIELD_TYPE_TEXT),
-    ("post_time", FIELD_TYPE_TEXT), ("update_time", FIELD_TYPE_TEXT),
+    ("fetched_at", FIELD_TYPE_TEXT), ("update_time", FIELD_TYPE_TEXT),
+    ("post_time", FIELD_TYPE_TEXT),
 ]
 CAMPAIGN_FIELD_SPECS = COMMON_FIELDS + [
     ("activity_type", FIELD_TYPE_TEXT), ("reward", FIELD_TYPE_TEXT),
@@ -51,7 +54,7 @@ PRODUCT_FIELD_SPECS = COMMON_FIELDS + [
 LISTING_FIELD_SPECS = COMMON_FIELDS + [
     ("token", FIELD_TYPE_TEXT), ("trading_pair", FIELD_TYPE_TEXT),
     ("listing_type", FIELD_TYPE_TEXT), ("listing_status", FIELD_TYPE_TEXT),
-    ("token_category", FIELD_TYPE_TEXT), ("launch_time", FIELD_TYPE_TEXT),
+    ("token_category", FIELD_TYPE_TEXT), ("effective_time_from_article", FIELD_TYPE_TEXT),
 ]
 
 DIFF_LABELS = {
@@ -100,7 +103,9 @@ def load_business_credentials() -> BusinessTableCredentials:
     )
 
 
-def _source_rows(conn: sqlite3.Connection, category: str, date: str) -> list[dict[str, Any]]:
+def _source_rows(
+    conn: sqlite3.Connection, category: str, date: str, *, latest_only: bool = True,
+) -> list[dict[str, Any]]:
     article_index = _load_article_index(conn)
     catalog = _load_zmx_catalog_index(conn)
     counterpart_uids = {
@@ -111,13 +116,19 @@ def _source_rows(conn: sqlite3.Connection, category: str, date: str) -> list[dic
     return _merge_localized_rows(build_category_section(
         conn, category, date, article_index,
         zmx_catalog_index=catalog, zmx_counterpart_index=counterparts,
+        latest_only=latest_only,
     ))
 
 
-def build_business_rows(conn: sqlite3.Connection, date: str) -> dict[str, list[dict[str, Any]]]:
-    campaign = _source_rows(conn, "campaign", date)
-    product = _source_rows(conn, "product", date)
-    listing = _source_rows(conn, "listing", date) + _source_rows(conn, "delisting", date)
+def build_business_rows(
+    conn: sqlite3.Connection, date: str, *, full_history: bool = False,
+) -> dict[str, list[dict[str, Any]]]:
+    latest_only = not full_history
+    campaign = _source_rows(conn, "campaign", date, latest_only=latest_only)
+    product = _source_rows(conn, "product", date, latest_only=latest_only)
+    listing = _source_rows(conn, "listing", date, latest_only=latest_only) + _source_rows(
+        conn, "delisting", date, latest_only=latest_only,
+    )
 
     def common(row: dict[str, Any]) -> dict[str, Any]:
         return {
@@ -125,7 +136,8 @@ def build_business_rows(conn: sqlite3.Connection, date: str) -> dict[str, list[d
             "source": row.get("source"), "markets": " / ".join(row.get("markets") or []),
             "category": row.get("category"), "status": row.get("status"),
             "title": row.get("title"), "url": row.get("url"),
-            "post_time": row.get("post_time"), "update_time": row.get("update_time"),
+            "fetched_at": row.get("fetched_at"), "update_time": row.get("update_time"),
+            "post_time": row.get("post_time"),
         }
 
     return {
@@ -134,14 +146,18 @@ def build_business_rows(conn: sqlite3.Connection, date: str) -> dict[str, list[d
             "start_date": r.get("start_date"), "end_date": r.get("end_date"),
             "ai_summary": r.get("description"), "zmx_comparison": DIFF_LABELS.get(r.get("diff_tag"), "未进行对比"),
             "zmx_detail": r.get("diff_detail")} for r in campaign],
-        "product": [{**common(r), "product_category": r.get("product_category"),
+        "product": [{**common(r),
+            # Product 表对业务用户展示产品语义，不暴露“首次被采集到”的底层
+            # status=new。调整/升级类公告即使首次抓到，也应标为 updated。
+            "status": "new" if r.get("update_kind") == "New Product" else "updated",
+            "product_category": r.get("product_category"),
             "feature": r.get("feature"), "change_type": r.get("update_kind") or r.get("change_kind"),
             "ai_summary": r.get("description"), "zmx_comparison": DIFF_LABELS.get(r.get("diff_tag"), "未进行对比"),
             "zmx_detail": r.get("diff_detail")} for r in product],
         "listing": [{**common(r), "token": r.get("token_symbol"),
             "trading_pair": r.get("trading_pair"), "listing_type": r.get("listing_type"),
             "listing_status": r.get("listing_status"), "token_category": r.get("token_category"),
-            "launch_time": r.get("launch_time")} for r in listing],
+            "effective_time_from_article": r.get("launch_time")} for r in listing],
     }
 
 
@@ -154,19 +170,47 @@ def _table_config(creds: BusinessTableCredentials) -> dict[str, tuple[str, str, 
 
 
 def sync_business_tables(conn: sqlite3.Connection, creds: BusinessTableCredentials, date: str,
-                         table: str = "all", dry_run: bool = False) -> dict[str, SyncReport]:
-    rows_by_table = build_business_rows(conn, date)
+                         table: str = "all", dry_run: bool = False,
+                         full_history: bool = False, prune: bool = False) -> dict[str, SyncReport]:
+    rows_by_table = build_business_rows(conn, date, full_history=full_history)
     reports: dict[str, SyncReport] = {}
     for name, (app_token, table_id, specs) in _table_config(creds).items():
         if table not in ("all", name):
             continue
+        # 旧字段名 launch_time 容易被理解成平台记录时间。它实际是从公告正文
+        # 确定性提取的交易开放/生效时间；原地改名可保留历史单元格数据。
+        if name == "listing" and not dry_run:
+            fields = get_table_fields(app_token, table_id, creds)
+            by_name = {field["field_name"]: field for field in fields}
+            if "launch_time" in by_name and "effective_time_from_article" not in by_name:
+                old = by_name["launch_time"]
+                rename_field(
+                    app_token, table_id, old["field_id"],
+                    "effective_time_from_article", old["type"], creds,
+                )
         reports[name] = _sync_table(
             conn, rows_by_table[name], key_column="uid", field_specs=specs,
             app_token=app_token, table_id=table_id,
             target=f"bitable_{name}", creds=creds, dry_run=dry_run,
             # 三表同步是外部幂等写；不因另一个分析进程暂时持有 SQLite 写锁而中断。
             log_actions=False,
+            clear_missing_text=True,
         )
+        if prune and not dry_run:
+            existing = _index_existing_records(app_token, table_id, "uid", creds)
+            desired_uids = {row["uid"] for row in rows_by_table[name]}
+            stale_ids = [
+                item["record_id"] for uid, item in existing.items() if uid not in desired_uids
+            ]
+            for batch in _chunks(stale_ids, BATCH_CREATE_SIZE):
+                _request(
+                    "POST",
+                    f"/bitable/v1/apps/{app_token}/tables/{table_id}/records/batch_delete",
+                    app_id=creds.app_id, app_secret=creds.app_secret,
+                    json_body={"records": batch},
+                )
+                time.sleep(0.6)
+            reports[name].deleted = len(stale_ids)
     return reports
 
 
@@ -210,6 +254,10 @@ def main() -> None:
     parser.add_argument("--db-path", default=str(DEFAULT_DB_PATH))
     parser.add_argument("--date", required=True)
     parser.add_argument("--table", choices=["campaign", "product", "listing", "all"], default="all")
+    parser.add_argument("--scope", choices=["date", "all"], default="date",
+                        help="date=只同步指定批次；all=回写全部历史业务记录")
+    parser.add_argument("--prune", action="store_true",
+                        help="删除不在本次同步范围内的远端记录（daily 表仅保留当天）")
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--reset-schema", action="store_true")
     parser.add_argument("--confirm-reset", default="")
@@ -223,13 +271,17 @@ def main() -> None:
         reset_business_tables(creds)
     conn = connect(args.db_path)
     try:
-        reports = sync_business_tables(conn, creds, args.date, args.table, args.dry_run)
+        reports = sync_business_tables(
+            conn, creds, args.date, args.table, args.dry_run,
+            full_history=args.scope == "all",
+            prune=args.prune,
+        )
         if not args.dry_run:
             conn.commit()
     finally:
         conn.close()
     for name, report in reports.items():
-        print(f"{name}: created={report.created} updated={report.updated} skipped={report.skipped} failed={report.failed} dry_run_rows={report.dry_run_rows}")
+        print(f"{name}: created={report.created} updated={report.updated} skipped={report.skipped} deleted={report.deleted} failed={report.failed} dry_run_rows={report.dry_run_rows}")
         if report.failed:
             raise SystemExit(1)
 

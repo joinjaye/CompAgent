@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import html
 import json
+import os
 import re
 import sqlite3
 
@@ -45,6 +46,8 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Optional
+
+from src.sinks.feishu_bot import _table_url, load_env
 
 # 竞品与语言范围——照抄 CLAUDE.md「竞品与语言范围」表，不是猜测值。
 COMPETITORS: dict[str, list[str]] = {
@@ -55,6 +58,7 @@ COMPETITORS: dict[str, list[str]] = {
     "Lbank": ["EN", "VN", "ID"],
 }
 BASELINE_SOURCE = "Zoomex"
+DISPLAY_START_DATE = os.environ.get("DASHBOARD_DATA_START_DATE", "2026-07-23")
 CATEGORIES = ["campaign", "product", "listing", "delisting"]
 
 DIFF_TYPE_TAG = {
@@ -81,6 +85,25 @@ _DESCRIPTIVE_FIELD_BY_CATEGORY = {
 }
 
 OVERVIEW_HIGHLIGHTS_CAP = 12
+EVENT_TIME_SQL = "CASE WHEN status = 'changed' THEN update_time ELSE fetched_at END"
+
+
+def build_business_table_links(env: Optional[dict[str, str]] = None) -> dict[str, str]:
+    """生成看板三张业务表入口；显式 URL 优先，否则由 Base/App Token/Table ID 组成。"""
+    env = env if env is not None else load_env()
+    base_url = env.get("FEISHU_BITABLE_BASE_URL", "https://zoomex.larksuite.com/base")
+    return {
+        category: env.get(f"FEISHU_{prefix}_TABLE_URL") or _table_url(
+            base_url,
+            env.get(f"FEISHU_{prefix}_APP_TOKEN"),
+            env.get(f"FEISHU_{prefix}_TABLE_ID"),
+        )
+        for category, prefix in (
+            ("campaign", "CAMPAIGN"),
+            ("product", "PRODUCT"),
+            ("listing", "LISTING"),
+        )
+    }
 
 
 def _dedupe_business_rows(rows: list[dict]) -> list[dict]:
@@ -234,7 +257,7 @@ def _listing_kind_from_title(title: Optional[str], category: str) -> Optional[st
 
 def _resolve_as_of_date(conn: sqlite3.Connection) -> str:
     row = conn.execute(
-        f"SELECT MAX(date(fetched_at)) FROM announcements WHERE source != '{BASELINE_SOURCE}'"
+        f"SELECT MAX(date({EVENT_TIME_SQL})) FROM announcements WHERE source != '{BASELINE_SOURCE}'"
     ).fetchone()
     if row and row[0]:
         return row[0]
@@ -242,13 +265,7 @@ def _resolve_as_of_date(conn: sqlite3.Connection) -> str:
 
 
 def _resolve_generated_at(conn: sqlite3.Connection) -> str:
-    """跟 _resolve_as_of_date 同源但不做 date() 截断——meta.generated_at 需要完整
-    时间戳，不只是日期。"""
-    row = conn.execute(
-        f"SELECT MAX(fetched_at) FROM announcements WHERE source != '{BASELINE_SOURCE}'"
-    ).fetchone()
-    if row and row[0]:
-        return row[0]
+    """静态快照实际生成时间；不再误用“首次抓取时间”的最大值。"""
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
@@ -499,6 +516,7 @@ def build_category_section(
     zmx_catalog_index: Optional[dict[tuple[str, str], dict]] = None,
     zmx_counterpart_index: Optional[dict[str, dict]] = None,
     latest_only: bool = True,
+    start_date: Optional[str] = None,
 ) -> list[dict]:
     """最新一批（as_of_date 当天、status IN new/changed）某个 category 的逐条公告，
     一行一篇公告，按 uid join 到 Phase 4 的逐条分析结果（找不到就是中性默认）。
@@ -518,10 +536,25 @@ def build_category_section(
     Zoomex 基线还是有 90 天窗口限制时的权宜之计，继续跟新管线的真实
     diff_type/zmx_counterpart 同屏显示只会造成两套结论互相矛盾。
     """
-    latest_clause = "AND date(fetched_at) = ? AND status IN ('new', 'changed')" if latest_only else ""
-    params = (category, as_of_date) if latest_only else (category,)
+    if latest_only:
+        latest_clause = (
+            f"""AND date({EVENT_TIME_SQL}) = ? AND status IN ('new', 'changed')
+                AND (status = 'changed' OR post_time IS NULL OR date(post_time) >= date(?, '-2 days'))"""
+        )
+        params = (category, as_of_date, as_of_date)
+    elif start_date:
+        latest_clause = (
+            f"""AND date({EVENT_TIME_SQL}) >= ? AND status IN ('new', 'changed')
+                AND (status = 'changed' OR post_time IS NULL
+                     OR date(post_time) >= date({EVENT_TIME_SQL}, '-2 days'))"""
+        )
+        params = (category, start_date)
+    else:
+        latest_clause = ""
+        params = (category,)
     rows = _dict_rows(conn.execute(
-        f"""SELECT uid, group_id, source, locale, title, post_time, update_time, status,
+        f"""SELECT uid, group_id, source, locale, title, post_time, update_time, fetched_at,
+                   activity_start_time, activity_end_time, status,
                    url, is_region_exclusive
             FROM announcements
             WHERE source != '{BASELINE_SOURCE}' AND category = ? AND duplicate_of IS NULL {latest_clause}
@@ -546,6 +579,9 @@ def build_category_section(
             "title": _clean_title(r["title"]),
             "post_time": r["post_time"],
             "update_time": r["update_time"],
+            "fetched_at": r["fetched_at"],
+            "activity_start_time": r["activity_start_time"],
+            "activity_end_time": r["activity_end_time"],
             "status": r["status"],
             "url": r["url"],
             "is_region_exclusive": bool(r["is_region_exclusive"]),
@@ -557,8 +593,8 @@ def build_category_section(
                 _reward_summary(description) if category == "campaign" else None
             ),
             "target_users": art.get("target_users"),
-            "start_date": art.get("start_date") or start_date,
-            "end_date": art.get("end_date") or end_date,
+            "start_date": r["activity_start_time"] or art.get("start_date") or start_date,
+            "end_date": r["activity_end_time"] or art.get("end_date") or end_date,
             "feature": art.get("feature"),
             "token_symbol": art.get("token_symbol"),
             "launch_time": art.get("launch_time"),
@@ -653,10 +689,16 @@ def build_overview(
 ) -> dict:
     """构建去重后的 Daily Summary、按业务价值排序的 Highlights 和 Daily Insight。"""
 
-    def chip_from_rows(rows: list[dict]) -> dict:
+    def chip_from_rows(rows: list[dict], *, product: bool = False) -> dict:
         values = _dedupe_business_rows(rows)
-        count_new = sum(1 for r in values if r["status"] == "new")
-        count_changed = sum(1 for r in values if r["status"] == "changed")
+        # Product 的“新增/变更”是业务语义，不等同于采集状态。首次抓到一篇
+        # “Adjustment/Update”公告时 status=new，但它仍然是产品更新而非新产品。
+        count_new = sum(1 for r in values if (
+            r.get("update_kind") == "New Product" if product else r["status"] == "new"
+        ))
+        count_changed = len(values) - count_new if product else sum(
+            1 for r in values if r["status"] == "changed"
+        )
         diff_breakdown = {"missing": 0, "diff": 0, "broad": 0, "na": 0}
         for r in values:
             diff_breakdown[r["diff_tag"]] = diff_breakdown.get(r["diff_tag"], 0) + 1
@@ -669,7 +711,7 @@ def build_overview(
 
     chips = {
         "campaign": chip_from_rows(campaign_rows),
-        "product": chip_from_rows(product_rows),
+        "product": chip_from_rows(product_rows, product=True),
         "listing": chip_from_rows(listing_only_rows + delisting_rows),
         "announcement": chip_from_rows(other_rows),
     }
@@ -743,14 +785,17 @@ def build_overview(
     ]
     campaign_new_by_source: dict[str, int] = {}
     product_new_by_source: dict[str, int] = {}
-    reward_changes_by_source: dict[str, int] = {}
+    campaign_changes_by_source: dict[str, int] = {}
+    product_changes_by_source: dict[str, int] = {}
     for r in highlights_pool:
         if r["category"] == "campaign" and r["status"] == "new":
             campaign_new_by_source[r["source"]] = campaign_new_by_source.get(r["source"], 0) + 1
-        if r["category"] == "product" and r["status"] == "new":
+        if r["category"] == "product" and r.get("update_kind") == "New Product":
             product_new_by_source[r["source"]] = product_new_by_source.get(r["source"], 0) + 1
-        if r.get("change_kind") == "reward":
-            reward_changes_by_source[r["source"]] = reward_changes_by_source.get(r["source"], 0) + 1
+        if r["category"] == "campaign" and r["status"] == "changed":
+            campaign_changes_by_source[r["source"]] = campaign_changes_by_source.get(r["source"], 0) + 1
+        if r["category"] == "product" and r.get("update_kind") != "New Product":
+            product_changes_by_source[r["source"]] = product_changes_by_source.get(r["source"], 0) + 1
 
     def leader(values: dict[str, int]) -> Optional[dict]:
         if not values:
@@ -760,8 +805,9 @@ def build_overview(
 
     leaders = {
         "new_campaigns": leader(campaign_new_by_source),
+        "campaign_changes": leader(campaign_changes_by_source),
         "new_products": leader(product_new_by_source),
-        "reward_changes": leader(reward_changes_by_source),
+        "product_changes": leader(product_changes_by_source),
     }
     total_changes = sum(c["today"] for c in chips.values())
     return {
@@ -775,21 +821,26 @@ def build_overview(
     }
 
 
-def build_trend(conn: sqlite3.Connection) -> dict:
+def build_trend(conn: sqlite3.Connection, start_date: Optional[str] = None) -> dict:
     """全部历史（不限 as_of_date）按天 x category 的公告计数，前端自己切
     7d/30d/全部——跟 search_index 一样"整段下发，交给前端筛"的思路，不为每种
     时间窗口单独查库。"""
     placeholders = ",".join("?" * len(CATEGORIES))
+    date_clause = f"AND date({EVENT_TIME_SQL}) >= ?" if start_date else ""
+    params = (*CATEGORIES, start_date) if start_date else CATEGORIES
     rows = _dict_rows(
         conn.execute(
-            f"""SELECT date(fetched_at) as d, category,
+            f"""SELECT date({EVENT_TIME_SQL}) as d, category,
                        COUNT(DISTINCT COALESCE(group_id, uid)) as n
                 FROM announcements
                 WHERE source != '{BASELINE_SOURCE}' AND category IN ({placeholders})
                   AND status IN ('new', 'changed') AND duplicate_of IS NULL
+                  AND (status = 'changed' OR post_time IS NULL
+                       OR date(post_time) >= date({EVENT_TIME_SQL}, '-2 days'))
+                  {date_clause}
                 GROUP BY d, category
                 ORDER BY d""",
-            CATEGORIES,
+            params,
         )
     )
     dates = sorted({r["d"] for r in rows if r["d"]})
@@ -803,17 +854,28 @@ def build_trend(conn: sqlite3.Connection) -> dict:
     }
 
 
-def build_markets(conn: sqlite3.Connection) -> dict:
+def build_markets(conn: sqlite3.Connection, start_date: Optional[str] = None) -> dict:
     """跨地区矩阵：每个 group_id（跨语言归组）在哪些 locale 出现过、是否被标记为
     地区独占——覆盖全部历史（不限 as_of_date），不是只看最新一批。按 locale 切片
     的视图是前端对 campaign/product/listing/search_index 的客户端再过滤，这里不
     重复导出，避免同一份数据在 JSON 里出现两遍。"""
+    date_clause = (
+        f"""AND date({EVENT_TIME_SQL}) >= ?
+            AND status IN ('new', 'changed')
+            AND (status = 'changed' OR post_time IS NULL
+                 OR date(post_time) >= date({EVENT_TIME_SQL}, '-2 days'))"""
+        if start_date else ""
+    )
     rows = _dict_rows(
         conn.execute(
-            f"""SELECT group_id, source, locale, title, is_region_exclusive, post_time
+            f"""SELECT group_id, source, locale, title, is_region_exclusive, post_time,
+                       update_time, fetched_at, status
                 FROM announcements
                 WHERE source != '{BASELINE_SOURCE}' AND group_id IS NOT NULL AND duplicate_of IS NULL
+                  AND status IN ('new', 'changed')
+                  {date_clause}
                 ORDER BY post_time DESC"""
+            , (start_date,) if start_date else ()
         )
     )
     groups: dict[str, dict] = {}
@@ -845,15 +907,26 @@ def build_markets(conn: sqlite3.Connection) -> dict:
 
 
 def build_search_index(conn: sqlite3.Connection, article_index: dict[str, dict],
-                       diff_tags: Optional[dict[tuple[str, str], str]] = None) -> dict:
+                       diff_tags: Optional[dict[tuple[str, str], str]] = None,
+                       start_date: Optional[str] = None) -> dict:
     """全部历史的扁平投影，只给 Search tab 用——字段刻意窄（不含正文/content），
     需要看全文的话点 url 回源站。跟 build_markets/build_trend 一样"整段下发，
     前端筛"，不做服务端分页/筛选。"""
+    date_clause = (
+        f"""AND date({EVENT_TIME_SQL}) >= ?
+            AND status IN ('new', 'changed')
+            AND (status = 'changed' OR post_time IS NULL
+                 OR date(post_time) >= date({EVENT_TIME_SQL}, '-2 days'))"""
+        if start_date else ""
+    )
     rows = _dict_rows(
         conn.execute(
-            f"""SELECT uid, group_id, source, locale, category, title, post_time, status, url
+            f"""SELECT uid, group_id, source, locale, category, title, post_time,
+                       update_time, fetched_at, status, url
                 FROM announcements WHERE source != '{BASELINE_SOURCE}' AND duplicate_of IS NULL
-                ORDER BY post_time DESC"""
+                  {date_clause}
+                ORDER BY post_time DESC""",
+            (start_date,) if start_date else (),
         )
     )
     out = []
@@ -919,6 +992,9 @@ def build_dashboard_data(db_path: str) -> dict:
     conn.row_factory = sqlite3.Row
 
     as_of_date = _resolve_as_of_date(conn)
+    # 测试/历史快照可能早于正式上线日；此时以快照自身日期为下限。生产数据从
+    # 2026-07-23 起持续累积，不把上线前历史重新带回看板。
+    display_start_date = min(DISPLAY_START_DATE, as_of_date)
     generated_at = _resolve_generated_at(conn)
     article_index = _load_article_index(conn)
     zmx_catalog_index = _load_zmx_catalog_index(conn)
@@ -937,17 +1013,23 @@ def build_dashboard_data(db_path: str) -> dict:
         )
 
     campaign_rows = _merge_localized_rows(_section("campaign"))
-    campaign_all_rows = _merge_localized_rows(_section("campaign", latest_only=False))
+    campaign_all_rows = _merge_localized_rows(
+        _section("campaign", latest_only=False, start_date=display_start_date)
+    )
     product_rows = _merge_localized_rows(_section("product"))
-    product_all_rows = _merge_localized_rows(_section("product", latest_only=False))
+    product_all_rows = _merge_localized_rows(
+        _section("product", latest_only=False, start_date=display_start_date)
+    )
     listing_only_rows = _merge_localized_rows(_section("listing"))
     delisting_rows = _merge_localized_rows(_section("delisting"))
     other_rows = _merge_localized_rows(_section("other"))
     listing_all_rows = (
-        _merge_localized_rows(_section("listing", latest_only=False))
-        + _merge_localized_rows(_section("delisting", latest_only=False))
+        _merge_localized_rows(_section("listing", latest_only=False, start_date=display_start_date))
+        + _merge_localized_rows(_section("delisting", latest_only=False, start_date=display_start_date))
     )
-    announcement_all_rows = _merge_localized_rows(_section("other", latest_only=False))
+    announcement_all_rows = _merge_localized_rows(
+        _section("other", latest_only=False, start_date=display_start_date)
+    )
     listing_rows = listing_only_rows + delisting_rows
 
     # Phase⑤：Follow-up 是规则派生，不是 AI 产出（Phase②起 run.py 不再让 LLM
@@ -979,11 +1061,18 @@ def build_dashboard_data(db_path: str) -> dict:
     source_coverage = {}
     for source, locs in COMPETITORS.items():
         n_today = conn.execute(
-            "SELECT COUNT(*) FROM announcements WHERE source=? AND date(fetched_at)=?",
-            (source, as_of_date),
+            f"""SELECT COUNT(*) FROM announcements
+                WHERE source=? AND date({EVENT_TIME_SQL})=?
+                  AND (status = 'changed' OR post_time IS NULL OR date(post_time) >= date(?, '-2 days'))""",
+            (source, as_of_date, as_of_date),
         ).fetchone()[0]
         n_total = conn.execute(
-            "SELECT COUNT(*) FROM announcements WHERE source=?", (source,)
+            f"""SELECT COUNT(*) FROM announcements WHERE source=?
+                AND date({EVENT_TIME_SQL}) >= ?
+                AND status IN ('new', 'changed')
+                AND (status='changed' OR post_time IS NULL
+                     OR date(post_time) >= date({EVENT_TIME_SQL}, '-2 days'))""",
+            (source, display_start_date),
         ).fetchone()[0]
         source_coverage[source] = {
             "locales": locs,
@@ -1010,10 +1099,11 @@ def build_dashboard_data(db_path: str) -> dict:
             "zoomex_baseline_total": zoomex_total,
             "zoomex_product_baseline_total": zmx_summary_product_total,
             "source_coverage": source_coverage,
+            "business_table_urls": build_business_table_links(),
         },
         "overview": overview,
         "daily_digest": daily_digest,
-        "trend": build_trend(conn),
+        "trend": build_trend(conn, display_start_date),
         "campaign": campaign_rows,
         "campaign_all": campaign_all_rows,
         "product": product_rows,
@@ -1022,11 +1112,11 @@ def build_dashboard_data(db_path: str) -> dict:
         "listing_all": listing_all_rows,
         "announcements": other_rows,
         "announcements_all": announcement_all_rows,
-        "markets": build_markets(conn),
+        "markets": build_markets(conn, display_start_date),
         "search_index": build_search_index(conn, article_index, {
             (row["source"], row.get("group_id") or row["uid"]): row["diff_tag"]
             for row in campaign_all_rows + product_all_rows
-        }),
+        }, start_date=display_start_date),
         "quality": {
             "product_comparison": {
                 "total_events": len(campaign_rows) + len(product_rows),

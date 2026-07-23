@@ -116,7 +116,7 @@ def test_full_scan_filters_old_items_by_lookback(conn):
     assert stats.total == 1
 
 
-def test_full_scan_collection_date_keeps_only_that_utc_day(conn):
+def test_collection_date_does_not_filter_before_database_dedup(conn):
     items = [
         RawItem(article_id="before", title="before", post_time="2026-07-20T23:59:59Z"),
         RawItem(article_id="today", title="today", post_time="2026-07-21T12:00:00Z"),
@@ -127,17 +127,19 @@ def test_full_scan_collection_date_keeps_only_that_utc_day(conn):
 
     stats = collector.run(conn, collection_date="2026-07-21")
 
-    assert stats.new == 1
-    assert stats.skipped_by_date == 3
-    assert conn.execute("SELECT article_id FROM announcements").fetchone()[0] == "today"
+    assert stats.new == 4
+    assert stats.skipped_by_date == 0
+    assert {r[0] for r in conn.execute("SELECT article_id FROM announcements")} == {
+        "before", "today", "after", "undated",
+    }
 
 
-def test_watermark_collection_date_seeds_exact_utc_day_start(conn):
+def test_watermark_collection_date_does_not_override_persisted_watermark(conn):
     collector = _FakeWatermarkCollector("EN", {"strategy": "watermark"}, items=[])
 
     collector.run(conn, collection_date="2026-07-21")
 
-    assert collector.received_since == "2026-07-21T00:00:00Z"
+    assert collector.received_since is None
 
 
 def test_full_scan_keeps_all_items_without_lookback_days(conn):
