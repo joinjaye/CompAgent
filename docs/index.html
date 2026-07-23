@@ -601,12 +601,12 @@ tr.detail-row td { background:var(--surface-2); padding:14px 16px; }
     </section>
     <section class="guide-section"><h3 class="guide-section-title">时间字段与活动状态</h3>
       <div class="guide-rule-grid">
-        <div class="guide-rule"><strong>抓取日期 · fetched_at</strong><span>系统首次抓到该内容的时间，首次入库后保持不变；历史缺失值使用已有时间作近似补齐。</span></div>
-        <div class="guide-rule"><strong>更新日期 · update_time</strong><span>系统检测到正文内容发生变化的时间。首次抓取不算更新；内容未变时保持原值，未发生过变更可为空。</span></div>
-        <div class="guide-rule"><strong>发布日期 · post_time</strong><span>来源平台公布文章或活动页面的时间；与系统何时发现它无关，源端缺失时以首次抓取时间近似。</span></div>
-        <div class="guide-rule"><strong>Listing 生效时间</strong><span>effective_time_from_article，由程序从上下币文章正文确定性识别，通常表示开放交易、上线或下架生效时间，不是 AI 推测。</span></div>
+        <div class="guide-rule"><strong>抓取日期</strong><span>系统首次抓到该内容的时间，首次入库后保持不变。</span></div>
+        <div class="guide-rule"><strong>更新日期</strong><span>系统检测到正文内容发生变化的时间，未发生过变更为空。</span></div>
+        <div class="guide-rule"><strong>发布日期</strong><span>来源平台公布文章或活动页面的时间；与系统何时发现它无关，源端缺失时以首次抓取时间近似。</span></div>
+        <div class="guide-rule"><strong>上币/活动起止日期</strong><span>由程序从文章正文识别。</span></div>
       </div>
-      <div class="guide-warning" style="margin-top:8px"><strong>活动状态采用独立生命周期口径：</strong>开始时间晚于批次日为 Upcoming；开始时间不晚于批次日且结束时间不早于批次日为 Ongoing；结束时间早于批次日为 Ended。New / Updated 表示本次采集变化，不会覆盖生命周期，因此一条活动可以同时是 New 和 Ongoing。</div>
+      
     </section>
     <section class="guide-section"><h3 class="guide-section-title">ZMX 差异标签</h3><div class="guide-diff-list">
       <div class="guide-diff" style="--diff-color:var(--status-critical)"><i></i><strong>未检索到同类</strong><span>未在 ZMX 基线内容中形成匹配。</span></div>
