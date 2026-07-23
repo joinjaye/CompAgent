@@ -283,7 +283,7 @@ def test_send_image_via_bot_failure_raises(monkeypatch):
 # ============================================================
 
 
-def test_build_daily_card_contains_two_summaries_image_then_four_links():
+def test_build_daily_card_contains_two_summaries_image_then_five_links():
     digest = SimpleNamespace(
         daily_summary="综合总结两句话。整体变化清晰。",
         campaign_summary="活动总结两句话。奖励保持稳定。",
@@ -318,8 +318,9 @@ def test_build_daily_card_contains_two_summaries_image_then_four_links():
     footer_action = card["elements"][action_indexes[0]]
     assert footer_action["layout"] == "flow"
     assert [button["text"]["content"] for button in footer_action["actions"]] == [
-        "Campaign", "Product", "Listing", "Dashboard",
+        "Campaign", "Product", "Listing", "Dashboard", "Feedback",
     ]
+    assert "shrlgDIsTSpHzPPk8PmN4EIdvmh" in payload
     assert card["header"]["template"] == "blue"
 
 

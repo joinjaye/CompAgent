@@ -336,6 +336,7 @@ def build_daily_card(
             base_url, env.get("FEISHU_LISTING_APP_TOKEN"), env.get("FEISHU_LISTING_TABLE_ID")
         ),
         "打开可视化看板": env.get("DASHBOARD_PUBLIC_URL") or dashboard_url,
+        "问卷反馈": "https://skyrocket.sg.larksuite.com/share/base/form/shrlgDIsTSpHzPPk8PmN4EIdvmh",
     }
     summaries = [
         ("CAMPAIGN", "活动策略观察", "blue", getattr(digest, "campaign_summary", None)),
@@ -380,6 +381,7 @@ def build_daily_card(
             ("Product", links["Product 表"], "default"),
             ("Listing", links["Listing & Delisting 表"], "default"),
             ("Dashboard", links["打开可视化看板"], "primary"),
+            ("Feedback", links["问卷反馈"], "default"),
         )
         if url
     ]
