@@ -43,7 +43,9 @@ def test_fetch_list_maps_fields_from_real_fixture(monkeypatch):
     item = next(i for i in items if i.article_id == "actcenter-6223")
     assert item.title == "Bitcoin Pizza Day Giveaway!"
     assert "活动周期" in item.content
-    assert item.post_time == "2026-05-22T10:00:00Z"
+    assert item.post_time is None
+    assert item.extra["activity_start_time"] == "2026-05-22T10:00:00Z"
+    assert item.extra["activity_end_time"] == "2026-05-26T10:00:00Z"
     assert item.url == "https://www.bitunix.com/activity/basic/pizza-day-2026"
 
 

@@ -99,7 +99,7 @@ def compute_digest_cache_key(batches: list[dict], prompt_version: str = PROMPT_V
 
 @dataclass
 class DailyDigestResult:
-    generated: bool  # False = dry_run，或本日没有任何批次，或响应校验失败
+    generated: bool  # False = dry_run（有批次），或响应校验失败
     from_cache: bool = False
     daily_summary: Optional[str] = None
     campaign_summary: Optional[str] = None
@@ -109,6 +109,28 @@ class DailyDigestResult:
     cache_key: Optional[str] = None
     prompt: Optional[BuiltPrompt] = None
     issues: list[str] = field(default_factory=list)
+
+
+def _empty_day_digest() -> DailyDigestResult:
+    """没有可分析批次是正常业务状态，不应让生产日报失败或调用 LLM。"""
+    return DailyDigestResult(
+        generated=True,
+        from_cache=False,
+        daily_summary=(
+            "今日未发现可纳入分析的竞品 Campaign、Product 或 Listing & Delisting 更新。"
+            "看板继续展示最近已入库的历史数据，本批次不生成新的趋势结论。"
+        ),
+        campaign_summary=(
+            "今日未发现可分析的 Campaign 更新。"
+            "现有活动记录继续保留在看板和多维表格中，等待下一批有效变化。"
+        ),
+        product_summary=(
+            "今日未发现可分析的 Product 更新。"
+            "现有产品记录继续保留在看板和多维表格中，等待下一批有效变化。"
+        ),
+        tokens_used=0,
+        issues=["no_batches_for_locale_date"],
+    )
 
 
 def _strip_code_fences(text: str) -> str:
@@ -156,10 +178,10 @@ def peek_cached_digest(conn: sqlite3.Connection, locale: str, batch_date: str) -
     快照生成，不应该在渲染数据的过程中触发网络请求；如果 daily digest 还没有被
     真正跑过（真实生产环境里应该是 `python -m src.analysis daily-digest` 之类的
     独立步骤，见模块顶部说明，本次 session 未实现调度触发），返回 None，
-    调用方据此展示"待生成"占位而不是报错。"""
+    调用方据此展示"待生成"占位而不是报错。无批次时直接返回确定性的空数据日摘要。"""
     batches = load_locale_batches(conn, locale, batch_date)
     if not batches:
-        return None
+        return _empty_day_digest()
     cache_key = compute_digest_cache_key(batches)
     cached = get_cached_response(conn, cache_key)
     if cached is None:
@@ -187,7 +209,8 @@ def generate_daily_digest(
     dry_run: bool = True,
 ) -> DailyDigestResult:
     """dry_run=True（默认）：只构建 prompt + cache_key，不查缓存、不调用 LLM，
-    generated 恒为 False——用于"看逻辑对不对/看 prompt 长什么样"，不产出内容。
+    有批次时 generated 恒为 False——用于"看逻辑对不对/看 prompt 长什么样"，不产出内容；
+    无批次时返回确定性的空数据日摘要，不构建 prompt、也不调用 LLM。
     dry_run=False：先查 llm_cache，命中则复用（tokens_used=0，跟 Phase 4 批次分析
     对 EN->FR/IDcache 复用的语义一致）；未命中才真正调用，需要传入 credentials。
     provider="cursor_agent" 时 credentials 应为 CursorCredentials（走
@@ -196,7 +219,7 @@ def generate_daily_digest(
     """
     batches = load_locale_batches(conn, locale, batch_date)
     if not batches:
-        return DailyDigestResult(generated=False, issues=["no_batches_for_locale_date"])
+        return _empty_day_digest()
 
     prompt = build_daily_digest_prompt(locale, batch_date, batches)
     cache_key = compute_digest_cache_key(batches)

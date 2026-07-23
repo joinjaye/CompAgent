@@ -40,7 +40,8 @@ def conn():
         """
         CREATE TABLE announcements (
             uid TEXT PRIMARY KEY, group_id TEXT, source TEXT, locale TEXT,
-            category TEXT, status TEXT, fetched_at TEXT, duplicate_of TEXT
+            category TEXT, status TEXT, fetched_at TEXT, update_time TEXT, post_time TEXT,
+            duplicate_of TEXT
         )
         """
     )
@@ -56,11 +57,13 @@ def conn():
     c.close()
 
 
-def _insert_ann(conn, uid, group_id, source, locale, category, status, fetched_at="2026-07-14T00:00:00Z"):
+def _insert_ann(conn, uid, group_id, source, locale, category, status,
+                fetched_at="2026-07-14T00:00:00Z", post_time="2026-07-14T00:00:00Z"):
     conn.execute(
-        "INSERT INTO announcements (uid, group_id, source, locale, category, status, fetched_at) "
-        "VALUES (?,?,?,?,?,?,?)",
-        (uid, group_id, source, locale, category, status, fetched_at),
+        """INSERT INTO announcements
+           (uid, group_id, source, locale, category, status, fetched_at, update_time, post_time)
+           VALUES (?,?,?,?,?,?,?,?,?)""",
+        (uid, group_id, source, locale, category, status, fetched_at, fetched_at, post_time),
     )
 
 
@@ -141,3 +144,17 @@ def test_list_batch_keys_orders_en_first_and_skips_other_category(conn):
     assert keys[0].locale == "EN"
     assert keys[1].locale == "FR"
     assert all(k.category != "other" for k in keys)
+
+
+def test_old_backfill_is_stored_but_excluded_from_current_batch(conn):
+    _insert_ann(
+        conn, "old", "g-old", "Lbank", "EN", "campaign", "new",
+        fetched_at="2026-07-23T03:00:00Z", post_time="2026-06-01T00:00:00Z",
+    )
+    _insert_ann(
+        conn, "late", "g-late", "Lbank", "EN", "campaign", "new",
+        fetched_at="2026-07-23T03:00:00Z", post_time="2026-07-22T20:00:00Z",
+    )
+    conn.commit()
+
+    assert get_batch_uids(conn, "Lbank", "campaign", "EN", "2026-07-23") == ["late"]

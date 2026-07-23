@@ -147,9 +147,12 @@ class BingXEventsCollector(BaseCollector):
                         article_id=activity_id,
                         title=entry.get("title"),
                         content=tags,
-                        post_time=offset_iso_to_utc_iso(entry.get("beginTime")),
+                        post_time=None,
                         url=entry.get("activityUrl"),
-                        extra={"end_time_raw": entry.get("endTime")},
+                        extra={
+                            "start_time_raw": entry.get("beginTime"),
+                            "end_time_raw": entry.get("endTime"),
+                        },
                     )
                 )
         return items
@@ -157,7 +160,9 @@ class BingXEventsCollector(BaseCollector):
     def normalize(self, item: RawItem) -> NormalizedAnnouncement:
         article_id = f"{_ARTICLE_ID_PREFIX}{item.article_id}"
         content_text = item.content or ""
-        period = _format_period(item.post_time, offset_iso_to_utc_iso(item.extra.get("end_time_raw")))
+        activity_start = offset_iso_to_utc_iso(item.extra.get("start_time_raw"))
+        activity_end = offset_iso_to_utc_iso(item.extra.get("end_time_raw"))
+        period = _format_period(activity_start, activity_end)
         if period:
             content_text = f"{content_text}\n\n{period}" if content_text else period
         return NormalizedAnnouncement(
@@ -169,6 +174,8 @@ class BingXEventsCollector(BaseCollector):
             content=content_text,
             post_time=item.post_time,
             update_time=None,
+            activity_start_time=activity_start,
+            activity_end_time=activity_end,
             category=None,
             raw_category=self.category,
             group_id=f"bingx_{article_id}",

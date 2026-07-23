@@ -48,12 +48,13 @@ def list_batch_keys(
         SELECT DISTINCT source, category, locale
         FROM announcements
         WHERE {status_clause}
-              AND date(fetched_at) = ?
+              AND date(CASE WHEN status = 'changed' THEN update_time ELSE fetched_at END) = ?
+              AND (status = 'changed' OR post_time IS NULL OR date(post_time) >= date(?, '-2 days'))
               AND source IN ({placeholders})
               AND category IS NOT NULL AND category != 'other'
               AND duplicate_of IS NULL
         """,
-        (batch_date, *sources),
+        (batch_date, batch_date, *sources),
     ).fetchall()
 
     keys = [BatchKey(source=r["source"], category=r["category"], locale=r["locale"], batch_date=batch_date) for r in rows]
@@ -70,11 +71,13 @@ def get_batch_uids(
         f"""
         SELECT uid FROM announcements
         WHERE source = ? AND category = ? AND locale = ?
-              AND {status_clause} AND date(fetched_at) = ?
+              AND {status_clause}
+              AND date(CASE WHEN status = 'changed' THEN update_time ELSE fetched_at END) = ?
+              AND (status = 'changed' OR post_time IS NULL OR date(post_time) >= date(?, '-2 days'))
               AND duplicate_of IS NULL
         ORDER BY uid
         """,
-        (source, category, locale, batch_date),
+        (source, category, locale, batch_date, batch_date),
     ).fetchall()
     return [r["uid"] for r in rows]
 
@@ -88,11 +91,13 @@ def get_batch_rows(
         f"""
         SELECT * FROM announcements
         WHERE source = ? AND category = ? AND locale = ?
-              AND {status_clause} AND date(fetched_at) = ?
+              AND {status_clause}
+              AND date(CASE WHEN status = 'changed' THEN update_time ELSE fetched_at END) = ?
+              AND (status = 'changed' OR post_time IS NULL OR date(post_time) >= date(?, '-2 days'))
               AND duplicate_of IS NULL
         ORDER BY uid
         """,
-        (source, category, locale, batch_date),
+        (source, category, locale, batch_date, batch_date),
     ).fetchall()
 
 

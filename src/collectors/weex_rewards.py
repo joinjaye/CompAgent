@@ -75,9 +75,12 @@ class WeexRewardsCollector(BaseCollector):
                     article_id=f"{_ARTICLE_ID_PREFIX}{entry['activity_id']}",
                     title=entry.get("title"),
                     content=entry.get("sub_title") or "",
-                    post_time=ms_to_iso(entry.get("start_time_ms")),
+                    post_time=None,
                     url=detail_url,
-                    extra={"end_time_ms": entry.get("end_time_ms")},
+                    extra={
+                        "start_time_ms": entry.get("start_time_ms"),
+                        "end_time_ms": entry.get("end_time_ms"),
+                    },
                 )
             )
         return raw_items
@@ -103,7 +106,9 @@ class WeexRewardsCollector(BaseCollector):
 
     def normalize(self, item: RawItem) -> NormalizedAnnouncement:
         content_text = html_to_text(item.content) if item.content else ""
-        period = _format_period(item.post_time, ms_to_iso(item.extra.get("end_time_ms")))
+        activity_start = ms_to_iso(item.extra.get("start_time_ms"))
+        activity_end = ms_to_iso(item.extra.get("end_time_ms"))
+        period = _format_period(activity_start, activity_end)
         if period:
             content_text = f"{content_text}\n\n{period}" if content_text else period
         return NormalizedAnnouncement(
@@ -115,6 +120,8 @@ class WeexRewardsCollector(BaseCollector):
             content=content_text,
             post_time=item.post_time,
             update_time=None,
+            activity_start_time=activity_start,
+            activity_end_time=activity_end,
             category=None,
             raw_category=self.category,
             group_id=f"weex_{item.article_id}",
